@@ -1,0 +1,34 @@
+[workspace]
+members = ["crates/insert_core", "crates/vision"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+opencv = { version = "0.101", default-features = false, features = ["imgproc", "imgcodecs"] }
+serde = { version = "1", features = ["derive"] }
+# float_roundtrip: designs read back from jsonb must equal what was saved, to the last bit.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+thiserror = "2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+# Backend rule: no unwrap()/expect() outside tests and startup code (clippy.toml allows them in tests).
+unwrap_used = "warn"
+expect_used = "warn"
+
+[package]
+name = "paccradle-backend"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

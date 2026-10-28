@@ -1,0 +1,89 @@
+/* A sage cutting mat with a fine grid and every fifth line stronger. */
+.frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  max-width: 60rem;
+  margin: 0;
+  overflow: hidden;
+  border: 10px solid var(--swatch-kraft);
+  border-radius: var(--radius-xl);
+  background-color: var(--swatch-sage);
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.22) 1px, transparent 1px),
+    linear-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.08) 1px, transparent 1px);
+  background-size:
+    120px 120px,
+    120px 120px,
+    24px 24px,
+    24px 24px;
+  background-position: center;
+  box-shadow: var(--shadow-lift);
+}
+
+.play {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 50%;
+  background: var(--swatch-cream);
+  color: var(--swatch-terracotta);
+  box-shadow: var(--shadow-card);
+  transition: scale var(--duration-slow) var(--ease-spring);
+}
+
+.play svg {
+  fill: currentColor;
+  translate: 2px 0;
+}
+
+/* Two rings pulse out of the play badge. */
+.play::before,
+.play::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--swatch-cream);
+  border-radius: 50%;
+  animation: pulse-ring 2.6s var(--ease-out-expo) infinite;
+}
+
+.play::after {
+  animation-delay: 1.3s;
+}
+
+.frame:hover .play {
+  scale: 1.08;
+}
+
+.caption {
+  position: absolute;
+  left: var(--space-5);
+  bottom: var(--space-5);
+  padding: var(--space-2) var(--space-4);
+  border-radius: 4px;
+  background: var(--swatch-cream);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-soft);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+@keyframes pulse-ring {
+  from {
+    opacity: 0.7;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}

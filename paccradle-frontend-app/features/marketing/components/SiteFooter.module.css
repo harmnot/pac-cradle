@@ -1,0 +1,114 @@
+.footer {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: var(--space-5);
+  margin-top: auto;
+  padding-block: var(--space-9) var(--space-6);
+  padding-inline: max(var(--page-gutter), calc((100% - var(--content-width)) / 2));
+  background: var(--swatch-forest) var(--texture-grain);
+  color: var(--color-on-forest);
+}
+
+/* Torn paper edge on top of the footer. */
+.footer::before {
+  content: "";
+  position: absolute;
+  inset: -13px 0 auto;
+  height: 14px;
+  background: var(--swatch-forest);
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='14' viewBox='0 0 160 14'><path d='M0 14V9l6-3 7 4 9-6 6 3 10-5 5 4 8-3 9 5 6-4 9 2 7-5 8 4 6-2 10 5 7-4 8 3 6-5 9 4 7-2 6 3 11 2V14Z'/></svg>")
+    repeat-x bottom / 160px 14px;
+}
+
+.footer .sprig {
+  position: absolute;
+  z-index: -1;
+  top: var(--space-8);
+  right: max(var(--page-gutter), calc((100% - var(--content-width)) / 2));
+  width: clamp(6rem, 11vw, 10rem);
+  color: var(--swatch-sage-light);
+  opacity: 0.4;
+}
+
+.wordmark {
+  color: var(--swatch-twine);
+  font-family: var(--font-display);
+  font-size: var(--text-wordmark);
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1;
+  font-weight: var(--weight-medium);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.tagline {
+  max-width: 22ch;
+  color: var(--color-on-forest-muted);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-style: italic;
+}
+
+.nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.heading {
+  margin-bottom: var(--space-3);
+  color: var(--swatch-kraft);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.links {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Underline that draws in from the left. */
+.links a {
+  color: var(--color-on-forest);
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 450ms var(--ease-out-expo);
+}
+
+.links a:hover {
+  background-size: 100% 1px;
+}
+
+.note {
+  color: var(--color-on-forest-muted);
+  font-size: var(--text-sm);
+}
+
+.divider {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: var(--border-width) solid color-mix(in srgb, var(--color-on-forest) 18%, transparent);
+}
+
+@media (min-width: 56rem) {
+  .footer {
+    grid-template-columns: 1.3fr 1fr;
+    column-gap: var(--space-8);
+  }
+
+  .wordmark,
+  .note {
+    grid-column: 1 / -1;
+  }
+}

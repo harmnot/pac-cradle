@@ -1,0 +1,15 @@
+[package]
+name = "vision"
+description = "Paccradle vision pipeline: find the paper, flatten it to 10 px/mm, cut out and measure the product (CLAUDE.md §5)."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+opencv.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,95 @@
+.dialog {
+  width: min(100% - 2 * var(--page-gutter), 32rem);
+  padding: var(--space-7) var(--space-6) var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface) var(--texture-grain);
+  color: var(--color-text);
+  box-shadow: var(--shadow-dialog);
+  opacity: 0;
+  transform: translate3d(0, 24px, 0) scale(0.96);
+  transition:
+    opacity 450ms var(--ease-out-expo),
+    transform 450ms var(--ease-out-expo),
+    overlay 450ms allow-discrete,
+    display 450ms allow-discrete;
+}
+
+.dialog[open] {
+  opacity: 1;
+  transform: none;
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(0.96);
+  }
+}
+
+.dialog::backdrop {
+  background: rgb(30 22 14 / 0);
+  backdrop-filter: blur(0);
+  transition:
+    background-color 450ms var(--ease-out-expo),
+    backdrop-filter 450ms var(--ease-out-expo),
+    overlay 450ms allow-discrete,
+    display 450ms allow-discrete;
+}
+
+.dialog[open]::backdrop {
+  background: rgb(30 22 14 / 0.45);
+  backdrop-filter: blur(6px);
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    background: rgb(30 22 14 / 0);
+    backdrop-filter: blur(0);
+  }
+}
+
+.close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+.closeButton {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg);
+  cursor: pointer;
+  transition:
+    rotate var(--duration-normal) var(--ease-spring),
+    border-color var(--duration-normal) var(--ease-out-expo);
+}
+
+.closeButton:hover {
+  rotate: 90deg;
+  border-color: var(--color-text);
+}
+
+.badge {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: var(--space-4);
+  border-radius: 50%;
+  background: var(--color-terracotta-soft);
+  color: var(--color-terracotta);
+}
+
+.title {
+  font-size: var(--text-xl);
+}
+
+.body {
+  margin-block: var(--space-3) var(--space-5);
+  color: var(--color-text-muted);
+}

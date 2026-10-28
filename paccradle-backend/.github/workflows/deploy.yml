@@ -1,0 +1,250 @@
+name: Deploy
+
+# main → production (api.paccradle.com), development → development
+# (api-dev.paccradle.com). Both run on the VPS with plain Docker (no Compose).
+# CI must pass first; Telegram gets the result. Setup: DEPLOYMENT.md.
+on:
+  push:
+    branches: [main, development]
+    # Changes that can't affect the API image don't rebuild it.
+    paths-ignore:
+      - "**.md"
+      - ".claude/**"
+      - ".idea/**"
+      - "deploy/**"
+      - "postman/**"
+      - "scripts/dev/**"
+  # Redeploy the head of the branch picked in "Run workflow".
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy per environment at a time; a newer push waits, it never cancels
+# a deploy halfway.
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  APP: api
+  APP_NAME: paccradle API
+  IMAGE_NAME: paccradle-api
+
+jobs:
+  meta:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      environment: ${{ steps.environment.outputs.environment }}
+      version: ${{ steps.version.outputs.version }}
+      git_tag: ${{ steps.version.outputs.git_tag }}
+      commit_title: ${{ steps.commit.outputs.title }}
+      error_summary: ${{ steps.failure.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Map the branch to an environment
+        id: environment
+        run: |
+          case "$GITHUB_REF_NAME" in
+            main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
+            development) echo "environment=development" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::Only main (production) and development are deployed, not '$GITHUB_REF_NAME'." | tee "$RUNNER_TEMP/meta.log"
+              exit 1
+              ;;
+          esac
+
+      - name: Commit title
+        id: commit
+        run: |
+          title="$(git log -1 --format=%s)"
+          echo "title=${title:0:200}" >> "$GITHUB_OUTPUT"
+
+      - name: Version from Cargo.toml
+        id: version
+        env:
+          ENVIRONMENT: ${{ steps.environment.outputs.environment }}
+          MANIFEST_FILE: Cargo.toml
+        run: |
+          base="$(awk -F'"' '/^\[package\]/ { section = 1; next } /^\[/ { section = 0 }
+            section && $1 ~ /^version *= *$/ { print $2; exit }' Cargo.toml)"
+          bash .github/scripts/resolve-version.sh "$ENVIRONMENT" "$base" | tee "$RUNNER_TEMP/meta.log"
+
+      - name: Summarise the failure
+        id: failure
+        if: failure()
+        run: |
+          summary="$(grep -h '::error::' "$RUNNER_TEMP/meta.log" 2>/dev/null | sed 's/^::error:://' | head -n 1)"
+          echo "summary=${summary:0:400}" >> "$GITHUB_OUTPUT"
+
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build image
+    needs: [meta, ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build time
+        id: clock
+        run: echo "now=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      # Compiled dependencies are cached between runs (GitHub Actions cache),
+      # so a code change only recompiles the paccradle-api crate.
+      - name: Build ${{ env.IMAGE_NAME }}:${{ needs.meta.outputs.version }}
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.meta.outputs.version }}
+          build-args: |
+            APP_VERSION=${{ needs.meta.outputs.version }}
+            APP_ENVIRONMENT=${{ needs.meta.outputs.environment }}
+            GIT_REVISION=${{ github.sha }}
+            BUILD_DATE=${{ steps.clock.outputs.now }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          outputs: type=docker,dest=${{ runner.temp }}/image.tar
+          cache-from: type=gha,scope=${{ env.IMAGE_NAME }}
+          cache-to: type=gha,scope=${{ env.IMAGE_NAME }},mode=max
+          provenance: false
+          sbom: false
+
+      - name: Compress the image
+        run: gzip -1 "$RUNNER_TEMP/image.tar"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image
+          path: ${{ runner.temp }}/image.tar.gz
+          retention-days: 1
+          compression-level: 0
+
+  deploy:
+    name: Deploy to ${{ needs.meta.outputs.environment }}
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ needs.meta.outputs.environment }}
+      url: ${{ vars.DEPLOY_URL }}
+    outputs:
+      site_url: ${{ vars.DEPLOY_URL }}
+      previous_version: ${{ steps.deploy.outputs.previous_version }}
+      previous_revision: ${{ steps.deploy.outputs.previous_revision }}
+      error_summary: ${{ steps.failure.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: image
+          path: ${{ runner.temp }}
+
+      - name: Set up SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          VPS_SSH_USER: ${{ secrets.VPS_SSH_USER }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: bash .github/scripts/ssh-setup.sh
+
+      - name: Upload the image to the VPS
+        run: ssh vps load < "$RUNNER_TEMP/image.tar.gz" 2>&1 | tee "$RUNNER_TEMP/load.log"
+
+      # Stops the running container, starts the new one and waits for
+      # /api/v1/ready; if that fails it puts the previous version back.
+      - name: Deploy on the VPS
+        id: deploy
+        env:
+          ENVIRONMENT: ${{ needs.meta.outputs.environment }}
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          # shellcheck disable=SC2029 # the arguments are meant to expand here, on the runner
+          ssh vps deploy "$APP" "$ENVIRONMENT" "$VERSION" 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          grep -E '^previous_(version|revision)=' "$RUNNER_TEMP/deploy.log" >> "$GITHUB_OUTPUT" || true
+
+      - name: Public smoke test (Nginx, TLS, DNS)
+        if: vars.DEPLOY_URL != ''
+        env:
+          DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 3 --retry-all-errors --max-time 10 \
+            -o /dev/null "$DEPLOY_URL/api/v1/health" \
+            || { echo "ERROR: $DEPLOY_URL/api/v1/health is not answering through Nginx" | tee "$RUNNER_TEMP/smoke.log"; exit 1; }
+
+      - name: Summarise the failure
+        id: failure
+        if: failure()
+        run: |
+          summary="$(grep -h '^ERROR' "$RUNNER_TEMP"/*.log 2>/dev/null | tail -n 2 | tr '\n' ' ')"
+          echo "summary=${summary:0:400}" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Tag the release
+    needs: [meta, deploy]
+    if: needs.meta.outputs.environment == 'production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Tag ${{ needs.meta.outputs.git_tag }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.meta.outputs.git_tag }}
+        run: |
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq .object.sha 2>/dev/null || true)"
+          if [[ $existing == "$GITHUB_SHA" ]]; then
+            echo "$TAG already points to $GITHUB_SHA."
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          echo "Tagged $GITHUB_SHA as $TAG."
+
+  notify:
+    name: Telegram
+    needs: [meta, ci, build, deploy, release]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Send the report
+        env:
+          TG_STATUS: ${{ needs.deploy.result == 'success' && 'success' || 'failure' }}
+          TG_APP_NAME: ${{ env.APP_NAME }}
+          TG_ENVIRONMENT: ${{ needs.meta.outputs.environment }}
+          TG_VERSION: ${{ needs.meta.outputs.version }}
+          TG_SITE_URL: ${{ needs.deploy.outputs.site_url }}
+          TG_COMMIT_TITLE: ${{ needs.meta.outputs.commit_title }}
+          TG_PREVIOUS_VERSION: ${{ needs.deploy.outputs.previous_version }}
+          TG_PREVIOUS_REVISION: ${{ needs.deploy.outputs.previous_revision }}
+          TG_ERROR_SUMMARY: ${{ needs.deploy.outputs.error_summary || needs.meta.outputs.error_summary }}
+          TG_NOTE: ${{ needs.release.result == 'failure' && 'Deployed, but the git tag could not be created.' || '' }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_BEGAMIS_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHANNEL_CHAT_IDS }}
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_BEGAMIS_ALERT_DEV_TOKEN }}
+          TELEGRAM_ALERT_CHAT_IDS: ${{ secrets.TELEGRAM_CHANNEL_ALERT_CHAT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/telegram-notify.sh

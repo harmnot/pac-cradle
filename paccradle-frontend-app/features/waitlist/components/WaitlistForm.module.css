@@ -1,0 +1,108 @@
+.form {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 34rem;
+}
+
+.input {
+  min-height: 3.25rem;
+  padding: 0 var(--space-5);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  transition:
+    border-color var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.error {
+  grid-column: 1 / -1;
+  min-height: 1.5em;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}
+
+/* On the forest-green panel. */
+.dark .input {
+  border-color: color-mix(in srgb, var(--color-on-forest) 30%, transparent);
+  background: color-mix(in srgb, var(--color-on-forest) 8%, transparent);
+  color: var(--color-on-forest);
+}
+
+.dark .input::placeholder {
+  color: var(--color-on-forest-muted);
+}
+
+.dark .input:focus-visible {
+  border-color: var(--swatch-kraft);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--swatch-kraft) 28%, transparent);
+}
+
+.dark .error {
+  color: var(--color-error-on-dark);
+}
+
+.success {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 34rem;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-success);
+  font-weight: var(--weight-medium);
+  animation: success-in 700ms var(--ease-spring) backwards;
+}
+
+.success.dark {
+  background: color-mix(in srgb, var(--color-on-forest) 10%, transparent);
+  color: var(--color-on-forest);
+}
+
+.successIcon {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.successIcon path {
+  stroke-width: 2;
+  stroke-dasharray: 0 1;
+  animation: draw-check 600ms var(--ease-out-expo) 250ms forwards;
+}
+
+@media (min-width: 36rem) {
+  .form {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+@keyframes success-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes draw-check {
+  to {
+    stroke-dasharray: 1 0;
+  }
+}

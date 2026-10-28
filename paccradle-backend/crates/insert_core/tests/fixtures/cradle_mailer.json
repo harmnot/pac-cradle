@@ -1,0 +1,40 @@
+{
+  "material": {
+    "board": "chipboard",
+    "thickness_mm": 1.5,
+    "clearance_mm": 1.0,
+    "slot_tolerance_mm": 0.3
+  },
+  "products": [
+    {
+      "id": "p1",
+      "contour_mm": [
+        [0.0, 0.0],
+        [52.0, 0.0],
+        [52.0, 38.0],
+        [0.0, 38.0]
+      ],
+      "height_mm": 110.0,
+      "quantity": 2
+    }
+  ],
+  "insert": {
+    "style": "cradle_platform",
+    "deck_height_mm": 40.0,
+    "margin_mm": 12.0,
+    "placements": [
+      { "product_id": "p1", "center_mm": [38.0, 31.0], "rotation_deg": 0.0 },
+      { "product_id": "p1", "center_mm": [102.0, 31.0], "rotation_deg": 0.0 }
+    ]
+  },
+  "outer_box": {
+    "style": "mailer",
+    "material": {
+      "board": "e_flute",
+      "thickness_mm": 1.6,
+      "clearance_mm": 1.5,
+      "slot_tolerance_mm": 0.5
+    },
+    "inside_mm": null
+  }
+}

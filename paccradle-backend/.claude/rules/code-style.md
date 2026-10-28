@@ -1,0 +1,22 @@
+# Code Style Guidelines
+
+- Use snake_case for file names, function names, and variable names.
+- better error handling with safe error handling patterns.
+- Use `Result<T, E>` for functions that can fail, and propagate errors using the `?` operator.
+- Avoid using `unwrap` or `expect` in production code.
+- avoid deeply nested code blocks, prefer early returns and guard clauses.
+- avoid if else deeply nested, prefer match or early return.
+- avoid 3 parameters in function, prefer struct or tuple to pass data.
+- must using trait for shared behavior, avoid code duplication.
+- make reusable functions to have single responsibility and avoid side effects.
+- always give documentation for public functions and modules using `///` comments.
+- always using transactional for multiple database operations to ensure data integrity.
+- ignore data type number for database id, always use UUID for database id.
+- always use pagination for list API.
+- always **create** API contracts and documentation on root folder here on `./postman/` when making changes to request/response structures with new file (naming file with end of date now) that focus only on the part where the change is made, and i will manually merge it into the main API contract file.
+- ensure code is secure and safe from vulnerabilities, and follow best practices for security.
+- prefer generic types and traits to allow for more flexible and reusable code.
+- make data types enum if it has a limited set of possible values.
+- if you build API get list it must always have pagination (page, page_size, total_pages), filtering, and sorting capabilities.
+- seperate api name convention between /clients and /admin later with semantic versions
+- do not add crate if standart vanilla rust can handle it , unless really need it to be cleaner

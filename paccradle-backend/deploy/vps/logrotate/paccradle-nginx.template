@@ -1,0 +1,20 @@
+# paccradle Nginx logs: rotated every day, compressed, kept
+# ${NGINX_LOG_RETENTION_DAYS} days (about six months), then deleted.
+# Rendered by deploy/vps/install.sh into /etc/logrotate.d/paccradle-nginx.
+${NGINX_LOG_DIR}/*.log {
+    daily
+    rotate ${NGINX_LOG_RETENTION_DAYS}
+    maxage ${NGINX_LOG_RETENTION_DAYS}
+    dateext
+    dateformat -%Y%m%d
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 ${NGINX_USER} adm
+    sharedscripts
+    postrotate
+        # Nginx reopens its log files (USR1): no reload, no dropped requests.
+        if [ -s /run/nginx.pid ]; then kill -USR1 "$(cat /run/nginx.pid)"; fi
+    endscript
+}

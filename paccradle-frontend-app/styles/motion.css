@@ -1,0 +1,37 @@
+/*
+ * Scroll reveals, driven by `components/motion/MotionController.tsx`.
+ *
+ * Mark an element with one of:
+ *   data-reveal          rises and fades in (renders as data-reveal="true")
+ *   data-reveal="words"  only starts the word animation of a SplitText inside it
+ *   data-reveal="draw"   only starts line-drawing animations inside it (see Botanical)
+ * The controller sets `data-revealed` when the element scrolls into view.
+ * Stagger with the `--reveal-delay` custom property (components/motion/reveal.ts).
+ *
+ * Elements are only hidden while `html.motion-ready` is set (added before first paint and
+ * removed again if the controller never starts), and never with reduced motion.
+ * Hover effects use the individual `translate`/`rotate`/`scale` properties so they never
+ * fight the reveal animation, which animates `transform`.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html.motion-ready [data-reveal="true"]:not([data-revealed]) {
+    opacity: 0;
+  }
+
+  html.motion-ready [data-reveal="true"][data-revealed] {
+    animation: reveal-rise var(--duration-reveal) var(--ease-out-expo) var(--reveal-delay, 0ms)
+      backwards;
+  }
+}
+
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

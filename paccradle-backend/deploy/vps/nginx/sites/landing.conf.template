@@ -1,0 +1,69 @@
+# ${LANDING_DOMAIN}: the paccradle landing page, production (container
+# paccradle-landing-production). ${LANDING_WWW_DOMAIN} redirects to it.
+# Rendered by deploy/vps/install.sh into /etc/nginx/conf.d/paccradle-landing.conf.
+# The container serves the Astro build with the site's own cache and security
+# headers (paccradle-landing/deploy/nginx); this server adds TLS, HSTS and logs.
+
+upstream paccradle_landing_production {
+    server 127.0.0.1:${LANDING_PRODUCTION_PORT};
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    ${LISTEN_HTTP_IPV6}
+    server_name ${LANDING_DOMAIN} ${LANDING_WWW_DOMAIN};
+    access_log ${NGINX_LOG_DIR}/${LANDING_DOMAIN}.access.log paccradle_json;
+
+    include snippets/paccradle/acme-challenge.conf;
+    location / {
+        return 301 https://${LANDING_DOMAIN}$request_uri;
+    }
+}
+
+# www → apex in one hop, path and query kept.
+server {
+    listen 443 ssl;
+    ${LISTEN_HTTPS_IPV6}
+    http2 on;
+    server_name ${LANDING_WWW_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${LANDING_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${LANDING_DOMAIN}/privkey.pem;
+    include snippets/paccradle/tls.conf;
+    include snippets/paccradle/server-defaults.conf;
+
+    access_log ${NGINX_LOG_DIR}/${LANDING_DOMAIN}.access.log paccradle_json;
+    error_log  ${NGINX_LOG_DIR}/${LANDING_DOMAIN}.error.log warn;
+    include snippets/paccradle/hsts.conf;
+
+    return 301 https://${LANDING_DOMAIN}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    ${LISTEN_HTTPS_IPV6}
+    http2 on;
+    server_name ${LANDING_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${LANDING_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${LANDING_DOMAIN}/privkey.pem;
+    include snippets/paccradle/tls.conf;
+    include snippets/paccradle/server-defaults.conf;
+
+    access_log ${NGINX_LOG_DIR}/${LANDING_DOMAIN}.access.log paccradle_json;
+    error_log  ${NGINX_LOG_DIR}/${LANDING_DOMAIN}.error.log warn;
+
+    include snippets/paccradle/hsts.conf;
+    # Ties a browser report to its log line (edge_request_id).
+    add_header X-Request-Id $request_id always;
+
+    # Static pages only: nothing is uploaded here.
+    client_max_body_size 64k;
+    limit_req zone=paccradle_static burst=200 nodelay;
+    include snippets/paccradle/proxy.conf;
+
+    location / {
+        proxy_pass http://paccradle_landing_production;
+    }
+}

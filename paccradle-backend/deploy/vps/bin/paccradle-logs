@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# paccradle-logs: read the paccradle Nginx and container logs.
+#
+#   paccradle-logs sites                         sites, log sizes, oldest kept day
+#   paccradle-logs tail   <site> [filter]        live and coloured; filter: errors | 5xx | slow
+#   paccradle-logs errors <site>                 Nginx error log, live
+#   paccradle-logs find   <request-id>           one request in every site's logs, rotated ones too
+#   paccradle-logs slow   <site> [seconds] [days] slowest requests (default > 1 s, last 1 day)
+#   paccradle-logs top    <site> [days]          interactive GoAccess dashboard (q quits; default 7 days)
+#   paccradle-logs report <site> <file.html> [days]  the same as an HTML report
+#   paccradle-logs app    <app> <environment>    container logs, live (api JSON logs pretty-printed)
+#
+# <site> is a domain (api.paccradle.com) or one of: landing, app, api, api-dev.
+# Access logs are JSON lines (log_format paccradle_json); jq filters work too:
+#   jq 'select(.status >= 500)' /var/log/nginx/paccradle/api.paccradle.com.access.log
+set -euo pipefail
+
+readonly CONFIG_FILE="${paccradle_CONFIG:-/etc/paccradle/vps.env}"
+readonly LOG_DIR=/var/log/nginx/paccradle
+
+die() {
+  printf 'ERROR: %s\n' "$*" >&2
+  exit 1
+}
+usage() {
+  sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//' >&2
+  exit 2
+}
+
+if [[ -r $CONFIG_FILE ]]; then
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+fi
+
+resolve_site() {
+  case "${1:-}" in
+    landing) printf '%s' "${LANDING_DOMAIN:?LANDING_DOMAIN is not set}" ;;
+    app) printf '%s' "${APP_DOMAIN:?APP_DOMAIN is not set}" ;;
+    api) printf '%s' "${API_DOMAIN:?API_DOMAIN is not set}" ;;
+    api-dev) printf '%s' "${API_DEV_DOMAIN:?API_DEV_DOMAIN is not set}" ;;
+    "") die "which site? (landing, app, api, api-dev or a domain)" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+access_log() {
+  local file
+  file="$LOG_DIR/$(resolve_site "$1").access.log"
+  [[ -r $file ]] || die "cannot read $file (wrong site, or run with sudo / as a member of adm)"
+  printf '%s' "$file"
+}
+
+# The current log plus rotated ones from the last <days> days, oldest first.
+log_files() {
+  local current=$1 days=$2
+  find "$(dirname "$current")" -maxdepth 1 -name "$(basename "$current")-*" -mtime "-$days" -print \
+    | sort
+  printf '%s\n' "$current"
+}
+
+read_logs() {
+  local file
+  while IFS= read -r file; do
+    zcat -f -- "$file"
+  done
+}
+
+# One line per request: time, status, method, path, timings, client, request ID.
+readonly PRETTY='
+  def paint: if .status >= 500 then "\u001b[31m" elif .status >= 400 then "\u001b[33m"
+             elif .status >= 300 then "\u001b[36m" else "\u001b[32m" end;
+  "\(.time) \(paint)\(.status)\u001b[0m \(.method) \(.path) "
+  + "\(.request_time)s up=\(.upstream_response_time) ip=\(.client_ip) "
+  + "id=\(if .request_id != "" then .request_id else .edge_request_id end)"'
+
+filter_for() {
+  case "${1:-}" in
+    "") printf 'true' ;;
+    errors) printf '.status >= 400' ;;
+    5xx) printf '.status >= 500' ;;
+    slow) printf '.request_time >= 1' ;;
+    *) die "unknown filter '$1' (errors, 5xx or slow)" ;;
+  esac
+}
+
+cmd_sites() {
+  local file oldest
+  printf '%-34s %8s  %s\n' SITE SIZE "OLDEST KEPT"
+  for file in "$LOG_DIR"/*.access.log; do
+    [[ -e $file ]] || continue
+    oldest="$(find "$LOG_DIR" -maxdepth 1 -name "$(basename "$file")*" -printf '%TY-%Tm-%Td\n' | sort | head -n 1)"
+    printf '%-34s %8s  %s\n' "$(basename "$file" .access.log)" \
+      "$(du -ch "$file"* | tail -n 1 | cut -f1)" "$oldest"
+  done
+}
+
+cmd_tail() {
+  local file condition
+  file="$(access_log "$1")"
+  condition="$(filter_for "${2:-}")"
+  tail -n 50 -F "$file" | jq --unbuffered -R -r "fromjson? | select($condition) | $PRETTY"
+}
+
+cmd_errors() {
+  local file
+  file="$LOG_DIR/$(resolve_site "$1").error.log"
+  [[ -r $file ]] || die "cannot read $file"
+  tail -n 100 -F "$file"
+}
+
+cmd_find() {
+  local id=${1:-}
+  [[ $id =~ ^[A-Za-z0-9-]{8,64}$ ]] || die "give a request ID (the API's UUID or Nginx's edge ID)"
+  find "$LOG_DIR" -maxdepth 1 -name '*.access.log*' -print | sort | read_logs \
+    | grep -F -- "$id" | jq -R 'fromjson? // .'
+}
+
+cmd_slow() {
+  local file seconds=${2:-1} days=${3:-1}
+  file="$(access_log "$1")"
+  [[ $seconds =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "seconds must be a number"
+  log_files "$file" "$days" | read_logs \
+    | jq -R -r --argjson limit "$seconds" "fromjson? | select(.request_time >= \$limit) | \"\(.request_time)\t\" + ($PRETTY)" \
+    | sort -rn | head -n 50 | cut -f2-
+}
+
+# GoAccess reads the JSON logs converted to a fixed text format.
+goaccess_input() {
+  local file=$1 days=$2
+  log_files "$file" "$days" | read_logs | jq -R -r '
+    fromjson? | "\(.client_ip) [\(.time[0:10]):\(.time[11:19]) +0000] \"\(.method) \(.path) \(.protocol)\" "
+    + "\(.status) \(.bytes_sent) \"\(.referer | gsub("\""; ""))\" \"\(.user_agent | gsub("\""; ""))\" \(.request_time)"'
+}
+
+run_goaccess() {
+  command -v goaccess > /dev/null || die "goaccess is not installed (apt install goaccess)"
+  goaccess --log-format='%h [%d:%t %^] "%r" %s %b "%R" "%u" %T' \
+    --date-format='%Y-%m-%d' --time-format='%H:%M:%S' --ignore-panel=REMOTE_USER "$@"
+}
+
+cmd_top() {
+  local file days=${2:-7} input
+  file="$(access_log "$1")"
+  input="$(mktemp)"
+  trap 'rm -f "$input"' EXIT
+  goaccess_input "$file" "$days" > "$input"
+  run_goaccess "$input"
+}
+
+cmd_report() {
+  local file output=${2:-} days=${3:-7}
+  [[ -n $output ]] || die "where should the report go? e.g. paccradle-logs report api /tmp/api.html"
+  file="$(access_log "$1")"
+  goaccess_input "$file" "$days" | run_goaccess - --output="$output"
+  printf 'report written to %s\n' "$output"
+}
+
+cmd_app() {
+  local app=${1:-} environment=${2:-}
+  [[ $app =~ ^(api|app|landing)$ && $environment =~ ^(production|development)$ ]] \
+    || die "usage: paccradle-logs app <api|app|landing> <production|development>"
+  docker logs --follow --tail 200 "paccradle-$app-$environment" 2>&1 | jq --unbuffered -R -r '
+    (fromjson? | "\(.timestamp // "") \(.level // "") \(.fields.message // .message // "") "
+      + ((.fields // {}) | del(.message) | if length > 0 then tostring else "" end)
+      + (if .span then " " + (.span | tostring) else "" end)) // .'
+}
+
+main() {
+  local command=${1:-}
+  [[ -n $command ]] || usage
+  shift
+  case "$command" in
+    sites) cmd_sites ;;
+    tail) cmd_tail "$@" ;;
+    errors) cmd_errors "$@" ;;
+    find) cmd_find "$@" ;;
+    slow) cmd_slow "$@" ;;
+    top) cmd_top "$@" ;;
+    report) cmd_report "$@" ;;
+    app) cmd_app "$@" ;;
+    help | -h | --help) usage ;;
+    *) die "unknown command '$command'" ;;
+  esac
+}
+
+main "$@"

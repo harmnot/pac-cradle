@@ -1,0 +1,61 @@
+# paccradle: settings shared by every site (http context).
+# Rendered by deploy/vps/install.sh into /etc/nginx/conf.d/00-paccradle.conf.
+
+# One JSON object per request; read it with `paccradle-logs` (or jq).
+# No query strings, cookies or Authorization headers: account and fitness data
+# never reach the logs.
+#   request_id       the API's x-request-id (UUID v7): the ID the app shows in errors
+#   edge_request_id  Nginx's own ID (sent as X-Request-Id by the static sites)
+log_format paccradle_json escape=json
+  '{'
+    '"time":"$time_iso8601",'
+    '"host":"$host",'
+    '"client_ip":"$remote_addr",'
+    '"method":"$request_method",'
+    '"path":"$uri",'
+    '"protocol":"$server_protocol",'
+    '"status":$status,'
+    '"bytes_sent":$body_bytes_sent,'
+    '"request_length":$request_length,'
+    '"request_time":$request_time,'
+    '"upstream_addr":"$upstream_addr",'
+    '"upstream_status":"$upstream_status",'
+    '"upstream_connect_time":"$upstream_connect_time",'
+    '"upstream_response_time":"$upstream_response_time",'
+    '"request_id":"$upstream_http_x_request_id",'
+    '"edge_request_id":"$request_id",'
+    '"referer":"$http_referer",'
+    '"user_agent":"$http_user_agent",'
+    '"tls":"$ssl_protocol",'
+    '"connection":$connection,'
+    '"connection_requests":$connection_requests,'
+    '"rate_limited":"$limit_req_status"'
+  '}';
+
+# Per-client limits on top of the API's own. Mobile carriers put many people
+# behind one address, so they stay generous.
+limit_req_zone $binary_remote_addr zone=paccradle_api:20m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=paccradle_static:20m rate=60r/s;
+limit_conn_zone $binary_remote_addr zone=paccradle_conn:20m;
+limit_req_status 429;
+limit_conn_status 429;
+limit_req_log_level warn;
+
+# Any other host name (scanners on the bare IP, stale DNS) gets no answer:
+# the connection is closed and no certificate is shown.
+server {
+    listen 80 default_server;
+    ${LISTEN_HTTP_IPV6_DEFAULT}
+    server_name _;
+    access_log ${NGINX_LOG_DIR}/default.access.log paccradle_json;
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    ${LISTEN_HTTPS_IPV6_DEFAULT}
+    server_name _;
+    ssl_reject_handshake on;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    access_log ${NGINX_LOG_DIR}/default.access.log paccradle_json;
+}

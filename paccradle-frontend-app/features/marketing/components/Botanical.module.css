@@ -1,0 +1,89 @@
+.sprig {
+  color: var(--color-sage);
+  overflow: visible;
+  transform-origin: 18% 98%;
+  animation: sway 9s var(--ease-in-out) 2s infinite alternate;
+}
+
+.stem,
+.stalk,
+.leaf,
+.midrib {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 0 1;
+  stroke-opacity: 0;
+  animation: draw 1.4s var(--ease-out-expo) forwards;
+}
+
+.stem {
+  stroke-width: 1.5;
+  animation-duration: 2s;
+  animation-delay: 200ms;
+}
+
+.stalk {
+  stroke-width: 1.2;
+  animation-delay: calc(500ms + var(--leaf-index) * 110ms);
+}
+
+.leaf {
+  stroke-width: 1.3;
+  fill: currentColor;
+  fill-opacity: 0;
+  animation:
+    draw 1.2s var(--ease-out-expo) forwards,
+    leaf-fill 1.2s ease forwards;
+  animation-delay:
+    calc(600ms + var(--leaf-index) * 110ms),
+    calc(1100ms + var(--leaf-index) * 110ms);
+}
+
+.midrib {
+  stroke-width: 0.8;
+  opacity: 0.6;
+  animation-delay: calc(900ms + var(--leaf-index) * 110ms);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(html.motion-ready) .sprig:not([data-revealed]) :is(.stem, .stalk, .leaf, .midrib) {
+    animation-play-state: paused;
+  }
+}
+
+/* Grows each line along its length (pathLength = 1); hidden at the start, so round caps
+   don't leave a dot before the line begins. */
+@keyframes draw {
+  from {
+    stroke-dasharray: 0 1;
+    stroke-opacity: 0;
+  }
+
+  6% {
+    stroke-opacity: 1;
+  }
+
+  to {
+    stroke-dasharray: 1 0;
+    stroke-opacity: 1;
+  }
+}
+
+@keyframes leaf-fill {
+  to {
+    fill-opacity: 0.16;
+  }
+}
+
+@keyframes sway {
+  from {
+    rotate: -1.5deg;
+  }
+
+  to {
+    rotate: 1.5deg;
+  }
+}

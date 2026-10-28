@@ -1,0 +1,72 @@
+# ${API_DOMAIN}: paccradle API, production (container paccradle-api-production).
+# Rendered by deploy/vps/install.sh into /etc/nginx/conf.d/paccradle-api.conf.
+
+upstream paccradle_api_production {
+    server 127.0.0.1:${API_PRODUCTION_PORT};
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    ${LISTEN_HTTP_IPV6}
+    server_name ${API_DOMAIN};
+    access_log ${NGINX_LOG_DIR}/${API_DOMAIN}.access.log paccradle_json;
+
+    include snippets/paccradle/acme-challenge.conf;
+    location / {
+        return 301 https://${API_DOMAIN}$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    ${LISTEN_HTTPS_IPV6}
+    http2 on;
+    server_name ${API_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${API_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${API_DOMAIN}/privkey.pem;
+    include snippets/paccradle/tls.conf;
+    include snippets/paccradle/server-defaults.conf;
+
+    access_log ${NGINX_LOG_DIR}/${API_DOMAIN}.access.log paccradle_json;
+    error_log  ${NGINX_LOG_DIR}/${API_DOMAIN}.error.log warn;
+
+    include snippets/paccradle/hsts.conf;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'" always;
+
+    # JSON bodies; the API caps them itself at HTTP_BODY_LIMIT_BYTES.
+    client_max_body_size 1m;
+    # Off on purpose: compressing token-carrying responses over TLS invites BREACH.
+    gzip off;
+
+    limit_req zone=paccradle_api burst=150 nodelay;
+    include snippets/paccradle/proxy.conf;
+
+    # While a deploy swaps containers (a few seconds), clients get a JSON 503
+    # with Retry-After instead of a bare 502.
+    error_page 502 503 504 = @api_unavailable;
+
+    location / {
+        proxy_pass http://paccradle_api_production;
+    }
+
+    # Progress photo files: PUT up to 10 MiB, with the API's upload timeout.
+    location ~ ^/api/v1/progress-photos/[^/]+/file$ {
+        client_max_body_size 11m;
+        client_body_timeout 120s;
+        proxy_send_timeout 150s;
+        proxy_read_timeout 150s;
+        proxy_pass http://paccradle_api_production;
+    }
+
+    location @api_unavailable {
+        include snippets/paccradle/hsts.conf;
+        add_header Retry-After "5" always;
+        default_type application/json;
+        return 503 '{"error":{"code":"SERVICE_UNAVAILABLE","message":"paccradle is restarting. Please try again in a few seconds.","meta":{}}}';
+    }
+}

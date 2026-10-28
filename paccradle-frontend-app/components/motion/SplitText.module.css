@@ -1,0 +1,32 @@
+/* Each word is clipped by its wrapper and rises into it. */
+.word {
+  display: inline-block;
+  overflow: clip;
+  padding: 0.1em 0.08em 0.14em 0;
+  margin: -0.1em -0.08em -0.14em 0;
+  vertical-align: top;
+}
+
+.inner {
+  display: inline-block;
+  animation: word-rise 1100ms var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--word-delay-base, 120ms) + var(--word-index, 0) * var(--stagger));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(html.motion-ready) [data-reveal]:not([data-revealed]) .inner {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes word-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 108%, 0) rotate(4deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

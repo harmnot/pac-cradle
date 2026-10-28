@@ -1,0 +1,15 @@
+# ${ACME_SERVER_NAMES}: waiting for its certificate.
+# install.sh renders this stub while /etc/letsencrypt/live/<name>/ is missing:
+# it answers Let's Encrypt challenges and nothing else. Run
+# issue-certificates.sh, then install.sh again to get the full HTTPS site.
+server {
+    listen 80;
+    ${LISTEN_HTTP_IPV6}
+    server_name ${ACME_SERVER_NAMES};
+    access_log ${NGINX_LOG_DIR}/${SITE_LOG_NAME}.access.log paccradle_json;
+
+    include snippets/paccradle/acme-challenge.conf;
+    location / {
+        return 503;
+    }
+}

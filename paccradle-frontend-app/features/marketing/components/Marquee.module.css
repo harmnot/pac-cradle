@@ -1,0 +1,79 @@
+.cross {
+  position: relative;
+  padding-block: var(--space-7);
+}
+
+.band {
+  width: 106vw;
+  margin-left: -3vw;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  background-image: var(--texture-grain);
+}
+
+.terracotta {
+  position: relative;
+  z-index: 1;
+  background-color: var(--swatch-terracotta);
+  color: var(--color-on-forest);
+  rotate: -2deg;
+}
+
+.sage {
+  margin-top: -1.25rem;
+  background-color: var(--swatch-sage);
+  color: var(--color-on-forest);
+  rotate: 1.6deg;
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: slide-left 46s linear infinite;
+}
+
+.sage .track {
+  animation-name: slide-right;
+  animation-duration: 54s;
+}
+
+.cross:hover .track {
+  animation-play-state: paused;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) 0 var(--space-4) var(--space-5);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 1.6vw + 0.8rem, 2rem);
+  font-style: italic;
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1;
+  white-space: nowrap;
+}
+
+.mark {
+  opacity: 0.7;
+}
+
+@keyframes slide-left {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes slide-right {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  to {
+    transform: none;
+  }
+}

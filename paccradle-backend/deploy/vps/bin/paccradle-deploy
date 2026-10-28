@@ -1,0 +1,360 @@
+#!/usr/bin/env bash
+# paccradle-deploy: runs the paccradle containers on this VPS with plain Docker.
+#
+#   paccradle-deploy deploy   <app> <environment> <version>
+#   paccradle-deploy rollback <app> <environment> [version]
+#   paccradle-deploy status
+#   paccradle-deploy history  <app> <environment>
+#
+# Apps on this server: api (production, development), app and landing
+# (production; their development builds live on Netlify). The image
+# paccradle-<app>:<version> must be loaded first (paccradle-remote load).
+#
+# A deploy stops the running container, starts the new one on the same
+# 127.0.0.1 port and waits for its health check. If that fails, the previous
+# container starts again and the deploy fails. GitHub Actions reads the
+# previous_*= and deployed_*= lines it prints.
+#
+# Settings: /etc/paccradle/vps.env (ports, limits). API secrets:
+# /etc/paccradle/env/api.<environment>.env. History: /var/lib/paccradle/history.
+set -euo pipefail
+
+readonly CONFIG_FILE="${paccradle_CONFIG:-/etc/paccradle/vps.env}"
+readonly ENV_DIR=/etc/paccradle/env
+readonly STATE_DIR=/var/lib/paccradle
+# Every paccradle image listens on this port inside its container.
+readonly CONTAINER_PORT=8080
+# The API drains requests and background jobs for up to 30 s on SIGTERM.
+readonly STOP_TIMEOUT_SECONDS=35
+
+# Container being swapped, so an interrupt can put the previous one back.
+SWAPPING=""
+RUN_ARGS=()
+
+# Output never stops a deploy halfway, even if the SSH connection drops.
+say() { printf '%s\n' "$*" 2> /dev/null || true; }
+log() { say "$(date -u +%H:%M:%S) $*"; }
+die() {
+  printf 'ERROR: %s\n' "$*" >&2 2> /dev/null || true
+  exit 1
+}
+usage() {
+  sed -n '3,6p' "$0" | sed 's/^# //' >&2
+  exit 2
+}
+
+load_config() {
+  [[ -r $CONFIG_FILE ]] || die "cannot read $CONFIG_FILE (copy deploy/vps/vps.env.example there)"
+  set -a
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+  set +a
+}
+
+validate_target() {
+  [[ ${1:-} =~ ^(api|app|landing)$ ]] || die "unknown app '${1:-}' (api, app or landing)"
+  [[ ${2:-} =~ ^(production|development)$ ]] || die "unknown environment '${2:-}' (production or development)"
+}
+
+validate_version() {
+  [[ ${1:-} =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]] \
+    || die "'${1:-}' is not a release version (1.4.0 or 1.4.0-dev.12)"
+}
+
+# setting <app> <environment> <NAME> [default]: <APP>_<ENVIRONMENT>_<NAME> from vps.env.
+setting() {
+  local key value
+  key="$(printf '%s_%s_%s' "$1" "$2" "$3" | tr '[:lower:]-' '[:upper:]_')"
+  value="${!key:-${4:-}}"
+  [[ -n $value ]] || die "$key is not set in $CONFIG_FILE ($1 has no $2 environment on this server)"
+  printf '%s' "$value"
+}
+
+health_path() {
+  if [[ $1 == api ]]; then printf '/api/v1/ready'; else printf '/healthz'; fi
+}
+
+container_exists() {
+  docker container inspect "$1" > /dev/null 2>&1
+}
+
+image_label() {
+  docker image inspect --format "{{ index .Config.Labels \"$2\" }}" "$1" 2> /dev/null
+}
+
+container_label() {
+  docker container inspect --format "{{ index .Config.Labels \"$2\" }}" "$1" 2> /dev/null
+}
+
+# The API's env file must exist, match the environment and suit docker --env-file.
+check_env_file() {
+  local file=$1 environment=$2 app_env
+  [[ -r $file ]] || die "$file is missing or unreadable (template: deploy/env/$(basename "$file").example)"
+  if grep -qE "^[A-Za-z_][A-Za-z0-9_]*=[\"']" "$file"; then
+    die "$file has quoted values: docker --env-file keeps quotes as part of the value, remove them"
+  fi
+  app_env="$(sed -n 's/^APP_ENV=//p' "$file" | tail -n 1)"
+  [[ $app_env == "$environment" ]] || die "$file sets APP_ENV=$app_env, expected $environment"
+}
+
+# Fills RUN_ARGS: a hardened container published on 127.0.0.1 only.
+build_run_args() {
+  local app=$1 environment=$2 port=$3 memory cpus
+  memory="$(setting "$app" "$environment" MEMORY 512m)"
+  cpus="$(setting "$app" "$environment" CPUS 1)"
+  RUN_ARGS=(
+    --detach
+    --restart unless-stopped
+    --publish "127.0.0.1:$port:$CONTAINER_PORT"
+    --read-only
+    --tmpfs "/tmp:rw,noexec,nosuid,size=64m"
+    --cap-drop ALL
+    --security-opt no-new-privileges=true
+    --pids-limit 256
+    --memory "$memory"
+    --cpus "$cpus"
+    --log-driver local
+    --log-opt "max-size=${CONTAINER_LOG_MAX_SIZE:-20m}"
+    --log-opt "max-file=${CONTAINER_LOG_MAX_FILES:-10}"
+    --label "com.paccradle.deployed-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  )
+  if [[ $app == api ]]; then
+    local env_file="$ENV_DIR/api.$environment.env"
+    check_env_file "$env_file" "$environment"
+    RUN_ARGS+=(
+      --env-file "$env_file"
+      --env APP_HOST=0.0.0.0
+      --env "APP_PORT=$CONTAINER_PORT"
+      # A PostgreSQL on this VPS is reachable as host.docker.internal.
+      --add-host host.docker.internal:host-gateway
+    )
+  fi
+}
+
+# flock works on a read-only descriptor, so a lock file created by another
+# user (an admin with sudo) still works for the deploy user.
+acquire_lock() {
+  local file="$STATE_DIR/locks/$1.lock"
+  [[ -e $file ]] || : >> "$file"
+  exec 9< "$file"
+  flock --wait 600 9 || die "another deploy of $1 is still running"
+}
+
+# Polls the health URL until it answers 200, the container crashes, or
+# HEALTH_TIMEOUT_SECONDS pass.
+wait_healthy() {
+  local name=$1 url=$2 state deadline
+  deadline=$((SECONDS + ${HEALTH_TIMEOUT_SECONDS:-90}))
+  while ((SECONDS < deadline)); do
+    state="$(docker container inspect --format '{{.State.Status}} {{.RestartCount}}' "$name" 2> /dev/null || echo missing)"
+    case "$state" in
+      "running 0") curl -fsS --max-time 3 -o /dev/null "$url" 2> /dev/null && return 0 ;;
+      "created 0") ;;
+      *)
+        log "$name is $state"
+        return 1
+        ;;
+    esac
+    sleep 2
+  done
+  log "$name did not answer $url within ${HEALTH_TIMEOUT_SECONDS:-90}s"
+  return 1
+}
+
+restore_previous() {
+  local name=$1
+  container_exists "$name-previous" || return 0
+  log "starting the previous $name again"
+  docker rm --force "$name" > /dev/null 2>&1 || true
+  docker rename "$name-previous" "$name"
+  docker start "$name" > /dev/null || log "WARNING: the previous $name did not start"
+}
+
+# A deploy killed halfway can leave <name>-previous behind.
+recover_interrupted() {
+  local name=$1 state
+  container_exists "$name-previous" || return 0
+  state="$(docker container inspect --format '{{.State.Status}}' "$name" 2> /dev/null || echo missing)"
+  if [[ $state == running ]]; then
+    log "removing $name-previous, left by an interrupted deploy"
+    docker rm --force "$name-previous" > /dev/null
+  else
+    log "an interrupted deploy left $name-previous: putting it back first"
+    restore_previous "$name"
+  fi
+}
+
+on_interrupt() {
+  if [[ -n $SWAPPING ]]; then
+    restore_previous "$SWAPPING"
+  fi
+  die "interrupted"
+}
+
+# Columns: time, version, revision, action (deploy|rollback), result (ok|failed).
+record_history() {
+  local file="$STATE_DIR/history/$1-$2.tsv"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$3" "$4" "$5" "$6" >> "$file" 2> /dev/null \
+    || log "WARNING: cannot write $file (run paccradle-deploy as the deploy user)"
+}
+
+# Keeps KEEP_IMAGES images: the running one and the latest versions that
+# deployed successfully before it (the rollback targets). Removes the other
+# images this server has deployed (failed or superseded) and leftovers older
+# than every kept one; an image uploaded but not deployed yet is left alone.
+prune_images() {
+  local app=$1 environment=$2 keep="${KEEP_IMAGES:-5}"
+  local history="$STATE_DIR/history/$1-$2.tsv" running version result created image oldest="" good=0
+  local -A kept=() deployed=()
+  running="$(docker container inspect --format '{{.Config.Image}}' "paccradle-$app-$environment" 2> /dev/null || true)"
+  if [[ -n $running ]]; then
+    kept[$running]=1
+    good=1
+  fi
+  if [[ -r $history ]]; then
+    while IFS=$'\t' read -r _ version _ _ result; do
+      deployed["paccradle-$app:$version"]=1
+      if [[ $result == ok && -z ${kept["paccradle-$app:$version"]:-} ]] && ((good < keep)); then
+        kept["paccradle-$app:$version"]=1
+        good=$((good + 1))
+      fi
+    done < <(tac "$history")
+  fi
+
+  local -a images=()
+  mapfile -t images < <(docker image ls \
+    --filter "reference=paccradle-$app" \
+    --filter "label=com.paccradle.environment=$environment" \
+    --filter dangling=false \
+    --format '{{.CreatedAt}}|{{.Repository}}:{{.Tag}}')
+  for image in "${images[@]}"; do
+    created="${image%%|*}"
+    [[ -n ${kept[${image#*|}]:-} ]] || continue
+    [[ -z $oldest || $created < "$oldest" ]] && oldest="$created"
+  done
+  for image in "${images[@]}"; do
+    created="${image%%|*}"
+    image="${image#*|}"
+    [[ -n ${kept[$image]:-} ]] && continue
+    [[ -n ${deployed[$image]:-} || (-n $oldest && $created < "$oldest") ]] || continue
+    if docker image rm "$image" > /dev/null 2>&1; then log "removed old image $image"; fi
+  done
+  docker image prune --force --filter "label=com.paccradle.app=$app" > /dev/null 2>&1 || true
+}
+
+deploy() {
+  local app=$1 environment=$2 version=$3 action=${4:-deploy}
+  validate_target "$app" "$environment"
+  validate_version "$version"
+
+  local name="paccradle-$app-$environment" image="paccradle-$app:$version"
+  local port health_url built_for revision previous_version="" previous_revision=""
+  port="$(setting "$app" "$environment" PORT)"
+  health_url="http://127.0.0.1:$port$(health_path "$app")"
+  docker image inspect "$image" > /dev/null 2>&1 || die "image $image is not on this server (upload it first)"
+  built_for="$(image_label "$image" com.paccradle.environment)"
+  [[ $built_for == "$environment" ]] || die "$image was built for '$built_for', not $environment"
+  revision="$(image_label "$image" org.opencontainers.image.revision)"
+  build_run_args "$app" "$environment" "$port"
+
+  acquire_lock "$app-$environment"
+  recover_interrupted "$name"
+  if container_exists "$name"; then
+    previous_version="$(container_label "$name" com.paccradle.version)"
+    previous_revision="$(container_label "$name" org.opencontainers.image.revision)"
+  fi
+  say "previous_version=$previous_version"
+  say "previous_revision=$previous_revision"
+
+  SWAPPING="$name"
+  if container_exists "$name"; then
+    log "stopping $name (${previous_version:-unknown version})"
+    docker stop --time "$STOP_TIMEOUT_SECONDS" "$name" > /dev/null
+    docker rename "$name" "$name-previous"
+  fi
+
+  log "starting $name from $image on 127.0.0.1:$port"
+  if docker run "${RUN_ARGS[@]}" --name "$name" "$image" > /dev/null && wait_healthy "$name" "$health_url"; then
+    SWAPPING=""
+    docker rm --force "$name-previous" > /dev/null 2>&1 || true
+    record_history "$app" "$environment" "$version" "$revision" "$action" ok
+    prune_images "$app" "$environment"
+    say "deployed_version=$version"
+    say "deployed_revision=$revision"
+    log "$image is live ($environment)"
+    return 0
+  fi
+
+  log "last lines of $name:"
+  docker logs --tail 40 "$name" 2>&1 | sed 's/^/  | /' >&2 || true
+  docker rm --force "$name" > /dev/null 2>&1 || true
+  restore_previous "$name"
+  SWAPPING=""
+  record_history "$app" "$environment" "$version" "$revision" "$action" failed
+  if [[ -n $previous_version ]]; then
+    wait_healthy "$name" "$health_url" || log "WARNING: the restored $previous_version is not healthy either"
+    die "$image failed its health check; rolled back to $previous_version"
+  fi
+  die "$image failed its health check and there was no earlier version to go back to"
+}
+
+# The newest successful version that isn't running and whose image is still here.
+previous_release() {
+  local app=$1 environment=$2 current history version result
+  current="$(container_label "paccradle-$app-$environment" com.paccradle.version || true)"
+  history="$STATE_DIR/history/$app-$environment.tsv"
+  [[ -r $history ]] || return 1
+  while IFS=$'\t' read -r _ version _ _ result; do
+    [[ $result == ok && $version != "$current" ]] || continue
+    docker image inspect "paccradle-$app:$version" > /dev/null 2>&1 || continue
+    printf '%s' "$version"
+    return 0
+  done < <(tac "$history")
+  return 1
+}
+
+rollback() {
+  local app=$1 environment=$2 target=${3:-}
+  validate_target "$app" "$environment"
+  if [[ -z $target ]]; then
+    target="$(previous_release "$app" "$environment")" \
+      || die "no earlier version of $app ($environment) is left on this server"
+  fi
+  validate_version "$target"
+  log "rolling $app ($environment) back to $target"
+  deploy "$app" "$environment" "$target" rollback
+}
+
+status() {
+  docker container ls --all --filter label=com.paccradle.app \
+    --format 'table {{.Names}}\t{{.Label "com.paccradle.version"}}\t{{.Status}}\t{{.Ports}}'
+}
+
+show_history() {
+  validate_target "$1" "$2"
+  local file="$STATE_DIR/history/$1-$2.tsv"
+  [[ -r $file ]] || die "no deploys of $1 ($2) recorded yet"
+  printf 'time\tversion\trevision\taction\tresult\n'
+  tail -n 20 "$file"
+}
+
+main() {
+  [[ $# -ge 1 ]] || usage
+  load_config
+  # A dropped SSH connection must not stop a container swap halfway.
+  trap '' PIPE HUP
+  trap on_interrupt INT TERM
+
+  local command=$1
+  shift
+  case "$command" in
+    deploy) [[ $# -eq 3 ]] || usage; deploy "$@" ;;
+    rollback) [[ $# -ge 2 && $# -le 3 ]] || usage; rollback "$@" ;;
+    status) status ;;
+    history) [[ $# -eq 2 ]] || usage; show_history "$@" ;;
+    help | -h | --help) usage ;;
+    *) die "unknown command '$command' (deploy, rollback, status or history)" ;;
+  esac
+}
+
+main "$@"

@@ -1,0 +1,168 @@
+/*
+ * Design tokens. Every color, size, space and motion value in the app comes from here.
+ * Palette: sustainable packaging — oat and cream paper, kraft board, terracotta and rust ties,
+ * sage and eucalyptus green, espresso ink (from the brand reference images, 2026-10-27).
+ * Components use these custom properties through CSS Modules; never hard-code values.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Paper and ink */
+  --color-bg: #f3ece2; /* oat */
+  --color-surface: #faf6ef; /* label cream */
+  --color-surface-muted: #e9ddcd; /* sand */
+  --color-text: #2b2219; /* espresso ink */
+  --color-text-muted: #6b5f52;
+  --color-border: #ddd0bd;
+  --color-border-strong: #c9b79e;
+
+  /* Brand */
+  --color-accent: #4d6150; /* deep sage: primary actions */
+  --color-accent-strong: #3c4d3f;
+  --color-on-accent: #faf6ef;
+  --color-sage: #6e8268;
+  --color-sage-deep: #5b6e57;
+  --color-sage-soft: #dbe1d4;
+  --color-terracotta: #9a5236;
+  --color-terracotta-deep: #713f28;
+  --color-terracotta-soft: #f0dccf;
+  --color-kraft: #c2a57e;
+  --color-kraft-deep: #a68b6e;
+  --color-kraft-soft: #ebdcc5;
+  --color-ink: #2b2219; /* text on kraft, the same in light and dark mode */
+
+  /* Packaging swatches: physical paper colours, the same in light and dark mode.
+     Text on them: --color-on-forest (dark swatches) or --color-ink (kraft, cream). */
+  --swatch-terracotta: #9a5236;
+  --swatch-rust: #713f28;
+  --swatch-sage: #5b6e57;
+  --swatch-kraft: #c2a57e;
+  --swatch-forest: #2c362c;
+  --swatch-cream: #faf6ef;
+  --swatch-twine: #e2d3bb;
+  --swatch-sage-light: #c9d3c2;
+
+  --color-forest: #2c362c; /* footer and deep panels */
+  --color-on-forest: #efe7da;
+  --color-on-forest-muted: #b9b4a4;
+  --color-focus: #9a5236;
+
+  /* Dieline and fit check (CLAUDE.md §7.1, §7.3) */
+  --color-cut: #2b2219;
+  --color-crease: #9a5236;
+  --color-fit-ok: #4e8a5d;
+  --color-fit-tight: #c8962b;
+  --color-fit-collide: #b23f2c;
+
+  /* Feedback */
+  --color-success: #3e7a52;
+  --color-error: #b23f2c;
+  --color-error-on-dark: #ffcdbd;
+
+  /* Type */
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --display-variation: "SOFT" 60, "WONK" 0;
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(2rem, 2.4vw + 1.2rem, 3rem);
+  --text-3xl: clamp(2.75rem, 5.2vw + 1rem, 5.25rem);
+  --text-wordmark: clamp(3.5rem, 12vw, 9.5rem);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 650;
+  --leading-tight: 1.05;
+  --leading-snug: 1.25;
+  --leading-normal: 1.6;
+  --tracking-label: 0.2em;
+  --tracking-display: -0.025em;
+
+  /* Space */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --space-9: 7rem;
+
+  /* Shape and depth */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
+  --border-width: 1px;
+  --shadow-soft: 0 1px 2px rgb(60 40 20 / 0.06), 0 8px 24px -12px rgb(60 40 20 / 0.18);
+  --shadow-card: 0 1px 2px rgb(60 40 20 / 0.05), 0 18px 40px -18px rgb(60 40 20 / 0.28);
+  --shadow-lift: 0 2px 4px rgb(60 40 20 / 0.06), 0 30px 60px -22px rgb(60 40 20 / 0.38);
+  --shadow-dialog: 0 24px 80px -12px rgb(30 20 10 / 0.45);
+
+  /* Paper grain overlay (tiny inline SVG noise) */
+  --texture-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32 0 0 0 0 .24 0 0 0 0 .15 0 0 0 .11 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+
+  /* Layout */
+  --content-width: 76rem;
+  --prose-width: 46rem;
+  --page-gutter: var(--space-4);
+  --header-height: 4.5rem;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 160ms;
+  --duration-normal: 280ms;
+  --duration-slow: 600ms;
+  --duration-reveal: 1000ms;
+  --stagger: 70ms;
+  --lift: -6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #141812;
+    --color-surface: #1c211a;
+    --color-surface-muted: #1f261d;
+    --color-text: #efe7da;
+    --color-text-muted: #b5ab9b;
+    --color-border: #343c31;
+    --color-border-strong: #4a5446;
+    --color-accent: #9db59a;
+    --color-accent-strong: #b6c9b2;
+    --color-on-accent: #142012;
+    --color-sage: #7f947a;
+    --color-sage-soft: #263023;
+    --color-terracotta: #d58c66;
+    --color-terracotta-soft: #3a271d;
+    --color-kraft: #cdb08a;
+    --color-kraft-soft: #332b20;
+    --color-forest: #0e120d;
+    --color-focus: #d58c66;
+    --color-cut: #efe7da;
+    --color-crease: #d58c66;
+    --color-fit-ok: #7fbf8a;
+    --color-fit-tight: #e0b04c;
+    --color-fit-collide: #e07a5f;
+    --color-success: #8fcf9c;
+    --color-error: #ff9a80;
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 18px 40px -18px rgb(0 0 0 / 0.7);
+    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 30px 60px -22px rgb(0 0 0 / 0.8);
+    --texture-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .95 0 0 0 0 .9 0 0 0 0 .82 0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  }
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --page-gutter: var(--space-6);
+  }
+}

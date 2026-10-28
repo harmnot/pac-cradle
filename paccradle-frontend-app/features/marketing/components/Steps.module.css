@@ -1,0 +1,162 @@
+.steps {
+  position: relative;
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Dashed fold line behind the cards, drawn in when the list scrolls into view. */
+.steps::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2.25rem;
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--color-crease) 0 8px,
+    transparent 8px 15px
+  );
+  transform-origin: top;
+  animation: grow-y 1.6s var(--ease-out-expo) 300ms backwards;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(html.motion-ready) .steps:not([data-revealed])::before {
+    animation-play-state: paused;
+  }
+}
+
+.step {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  transition:
+    translate var(--duration-slow) var(--ease-out-expo),
+    box-shadow var(--duration-slow) var(--ease-out-expo),
+    border-color var(--duration-slow) var(--ease-out-expo);
+}
+
+/* Spotlight that follows the pointer (MotionController sets --glow-x/--glow-y). */
+.step::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    22rem circle at var(--glow-x, 50%) var(--glow-y, 0%),
+    color-mix(in srgb, var(--color-kraft) 26%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--duration-slow) var(--ease-out-expo);
+}
+
+.step:hover {
+  translate: 0 var(--lift);
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-lift);
+}
+
+.step:hover::before {
+  opacity: 1;
+}
+
+.number {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-5);
+  color: transparent;
+  font-family: var(--font-display);
+  font-size: 4.5rem;
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  -webkit-text-stroke: 1px var(--color-border-strong);
+  transition: -webkit-text-stroke-color var(--duration-slow) var(--ease-out-expo);
+}
+
+.step:hover .number {
+  -webkit-text-stroke-color: var(--color-terracotta);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: var(--color-sage-soft);
+  color: var(--color-sage-deep);
+  transition:
+    background-color var(--duration-slow) var(--ease-out-expo),
+    color var(--duration-slow) var(--ease-out-expo),
+    rotate var(--duration-slow) var(--ease-spring);
+}
+
+.step:hover .icon {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  rotate: -10deg;
+}
+
+.title {
+  margin-top: var(--space-2);
+  font-size: var(--text-xl);
+}
+
+.body {
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 56rem) {
+  .steps {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .steps::before {
+    top: 3.9rem;
+    bottom: auto;
+    left: 8%;
+    right: 8%;
+    width: auto;
+    height: 2px;
+    background: repeating-linear-gradient(
+      to right,
+      var(--color-crease) 0 8px,
+      transparent 8px 15px
+    );
+    transform-origin: left;
+    animation-name: grow-x;
+  }
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: none;
+  }
+}

@@ -1,0 +1,16 @@
+[package]
+name = "insert_core"
+description = "Paccradle geometry core: inserts, boxes, hinges and checks (all units mm). Built native for the API and as WASM for the browser preview."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

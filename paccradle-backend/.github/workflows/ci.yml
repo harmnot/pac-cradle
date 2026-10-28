@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  # Pushes to main and development run these checks through deploy.yml, which
+  # deploys only when every job here passes.
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: "1.99.0"
+  # Compile against the committed .sqlx cache: building never needs a database.
+  SQLX_OFFLINE: "true"
+
+jobs:
+  fmt:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: cargo clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --locked -- -D warnings
+
+  test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: paccradle
+          POSTGRES_PASSWORD: paccradle
+          POSTGRES_DB: paccradle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U paccradle -d paccradle"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Read at runtime by #[sqlx::test], which creates a throwaway database per test.
+      DATABASE_URL: postgres://paccradle:paccradle@localhost:5432/paccradle
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked
+      - name: Check that the .sqlx offline cache is up to date
+        env:
+          SQLX_OFFLINE: "false"
+        run: |
+          command -v sqlx >/dev/null || cargo install sqlx-cli --version 0.9.0 --no-default-features --features rustls,postgres
+          sqlx migrate run
+          cargo sqlx prepare --check -- --all-targets
+
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - run: cargo audit

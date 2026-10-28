@@ -1,0 +1,397 @@
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cell {
+  display: flex;
+}
+
+.tile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 16rem;
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background-image: var(--texture-grain);
+  box-shadow: var(--shadow-soft);
+  transition:
+    translate var(--duration-slow) var(--ease-out-expo),
+    box-shadow var(--duration-slow) var(--ease-out-expo);
+}
+
+/* Spotlight that follows the pointer (MotionController sets --glow-x/--glow-y). */
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    24rem circle at var(--glow-x, 50%) var(--glow-y, 0%),
+    rgb(255 255 255 / 0.16),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--duration-slow) var(--ease-out-expo);
+}
+
+.tile:hover {
+  translate: 0 var(--lift);
+  box-shadow: var(--shadow-lift);
+}
+
+.tile:hover::before {
+  opacity: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  transition:
+    rotate var(--duration-slow) var(--ease-spring),
+    scale var(--duration-slow) var(--ease-spring);
+}
+
+.tile:hover .icon {
+  rotate: -12deg;
+  scale: 1.08;
+}
+
+.title {
+  font-size: var(--text-xl);
+}
+
+.body {
+  max-width: 32rem;
+  color: var(--color-text-muted);
+}
+
+.extra {
+  display: flex;
+  align-items: flex-end;
+  margin: auto 0 0;
+  padding-top: var(--space-4);
+}
+
+/* Tones: packaging swatches from the brand palette. */
+.inserts .tile {
+  background-color: var(--swatch-sage);
+  color: var(--color-on-forest);
+}
+
+.inserts .body {
+  color: var(--color-on-forest);
+}
+
+.box .tile {
+  background-color: var(--swatch-kraft);
+  color: var(--color-ink);
+}
+
+.box .body {
+  color: var(--color-ink);
+}
+
+.fit .tile {
+  border: var(--border-width) solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.test .tile {
+  background-color: var(--color-terracotta-soft);
+}
+
+.files .tile {
+  background-color: var(--swatch-forest);
+  color: var(--color-on-forest);
+}
+
+.files .body {
+  color: var(--color-on-forest-muted);
+}
+
+.checks .tile {
+  background-color: var(--color-surface-muted);
+}
+
+/* Insert style thumbnails lift one after another. */
+.thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thumbnail {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid color-mix(in srgb, var(--color-on-forest) 24%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-on-forest) 9%, transparent);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  transition: translate 500ms var(--ease-spring);
+  transition-delay: calc(var(--item-index, 0) * 70ms);
+}
+
+.thumbnail svg {
+  width: 5.5rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.inserts .tile:hover .thumbnail {
+  translate: 0 -8px;
+}
+
+/* Box with a lid that lifts open. */
+.boxArt {
+  width: 8rem;
+  overflow: visible;
+}
+
+.boxBody {
+  fill: color-mix(in srgb, var(--color-ink) 10%, transparent);
+  stroke: var(--color-ink);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.boxCrease {
+  stroke: var(--color-ink);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+
+.lid {
+  fill: var(--color-kraft-soft);
+  stroke: var(--color-ink);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: 0% 50%;
+  transition:
+    translate 700ms var(--ease-spring),
+    rotate 700ms var(--ease-spring);
+}
+
+.box .tile:hover .lid {
+  translate: 0 -14px;
+  rotate: -9deg;
+}
+
+/* Fit legend. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  transition: translate 500ms var(--ease-spring);
+}
+
+.legendItem::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot) 22%, transparent);
+}
+
+.fit .tile:hover .legendItem:nth-child(2) {
+  translate: 0 -4px;
+}
+
+.ok {
+  --dot: var(--color-fit-ok);
+}
+
+.tight {
+  --dot: var(--color-fit-tight);
+}
+
+.collide {
+  --dot: var(--color-fit-collide);
+}
+
+/* Print-at-home tiles slide together; the dashed insert outline turns solid. */
+.tiles {
+  width: 11rem;
+  overflow: visible;
+}
+
+.sheetTile {
+  fill: var(--color-surface);
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+  transition: translate 700ms var(--ease-spring);
+}
+
+.sheetTile:nth-of-type(1) {
+  translate: -5px -5px;
+}
+
+.sheetTile:nth-of-type(2) {
+  translate: 5px -5px;
+}
+
+.sheetTile:nth-of-type(3) {
+  translate: -5px 5px;
+}
+
+.sheetTile:nth-of-type(4) {
+  translate: 5px 5px;
+}
+
+.test .tile:hover .sheetTile {
+  translate: 0 0;
+}
+
+.tiledOutline {
+  fill: none;
+  stroke: var(--color-terracotta);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  transition: stroke-dasharray 700ms var(--ease-out-expo);
+}
+
+.test .tile:hover .tiledOutline {
+  stroke-dasharray: 200 0;
+}
+
+/* File format pills float up one by one. */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pill {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid color-mix(in srgb, var(--color-on-forest) 26%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-on-forest) 9%, transparent);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.08em;
+  transition: translate 500ms var(--ease-spring);
+  transition-delay: calc(var(--item-index, 0) * 70ms);
+}
+
+.files .tile:hover .pill {
+  translate: 0 -6px;
+}
+
+.shield {
+  color: var(--color-sage-deep);
+  transition:
+    scale 600ms var(--ease-spring),
+    rotate 600ms var(--ease-spring);
+}
+
+.checks .tile:hover .shield {
+  scale: 1.12;
+  rotate: -8deg;
+}
+
+@media (min-width: 44rem) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inserts,
+  .test {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 68rem) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "inserts inserts box fit"
+      "inserts inserts test test"
+      "files files checks checks";
+  }
+
+  .inserts {
+    grid-area: inserts;
+  }
+
+  /* The big tile gets bigger thumbnails. */
+  .inserts .thumbnails {
+    gap: var(--space-4);
+  }
+
+  .inserts .thumbnail {
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .inserts .thumbnail svg {
+    width: 7rem;
+  }
+
+  .box {
+    grid-area: box;
+  }
+
+  .fit {
+    grid-area: fit;
+  }
+
+  .test {
+    grid-area: test;
+  }
+
+  .files {
+    grid-area: files;
+  }
+
+  .checks {
+    grid-area: checks;
+  }
+}

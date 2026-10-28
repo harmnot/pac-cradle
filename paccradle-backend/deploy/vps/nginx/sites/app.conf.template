@@ -1,0 +1,50 @@
+# ${APP_DOMAIN}: the paccradle PWA, production (container paccradle-app-production).
+# Rendered by deploy/vps/install.sh into /etc/nginx/conf.d/paccradle-app.conf.
+# The container serves dist/ with the app's own cache and security headers
+# (paccradle-frontend-app/deploy/nginx); this server adds TLS, HSTS and logs.
+
+upstream paccradle_app_production {
+    server 127.0.0.1:${APP_PRODUCTION_PORT};
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    ${LISTEN_HTTP_IPV6}
+    server_name ${APP_DOMAIN};
+    access_log ${NGINX_LOG_DIR}/${APP_DOMAIN}.access.log paccradle_json;
+
+    include snippets/paccradle/acme-challenge.conf;
+    location / {
+        return 301 https://${APP_DOMAIN}$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    ${LISTEN_HTTPS_IPV6}
+    http2 on;
+    server_name ${APP_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${APP_DOMAIN}/privkey.pem;
+    include snippets/paccradle/tls.conf;
+    include snippets/paccradle/server-defaults.conf;
+
+    access_log ${NGINX_LOG_DIR}/${APP_DOMAIN}.access.log paccradle_json;
+    error_log  ${NGINX_LOG_DIR}/${APP_DOMAIN}.error.log warn;
+
+    include snippets/paccradle/hsts.conf;
+    # Ties a browser report to its log line (edge_request_id).
+    add_header X-Request-Id $request_id always;
+
+    # Static files only: nothing is uploaded here.
+    client_max_body_size 64k;
+    # A first load fetches dozens of chunks at once.
+    limit_req zone=paccradle_static burst=200 nodelay;
+    include snippets/paccradle/proxy.conf;
+
+    location / {
+        proxy_pass http://paccradle_app_production;
+    }
+}

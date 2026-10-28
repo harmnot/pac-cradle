@@ -1,0 +1,5 @@
+target/
+.claude/
+**/spike/photos/
+**/spike/out/
+.env*

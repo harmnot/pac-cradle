@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# paccradle-remote: the only command a GitHub Actions key can run on this VPS.
+#
+# Each key is pinned to it in ~deploy/.ssh/authorized_keys, together with the
+# app and environment(s) it may touch:
+#
+#   restrict,command="/usr/local/bin/paccradle-remote api:production" ssh-ed25519 AAAA... paccradle-api-production
+#
+# Requests (the command the workflow sends, in SSH_ORIGINAL_COMMAND):
+#   load                                     docker load from stdin; every image must
+#                                            be paccradle-<app>:<version> for an allowed target
+#   deploy   <app> <environment> <version>   → paccradle-deploy
+#   rollback <app> <environment> [version]   → paccradle-deploy
+#   status                                   → paccradle-deploy status
+# Anything else is refused. `restrict` already disables shells, port
+# forwarding and agent forwarding for the key.
+set -euo pipefail
+
+readonly DEPLOY=/usr/local/bin/paccradle-deploy
+# Upper bound for one upload (bytes); a bigger stream is cut off and rejected.
+readonly MAX_UPLOAD_BYTES="${paccradle_MAX_UPLOAD_BYTES:-2147483648}"
+
+die() {
+  printf 'ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+allowed_targets="${1:-}"
+[[ $allowed_targets =~ ^[a-z]+:[a-z]+(,[a-z]+:[a-z]+)*$ ]] \
+  || die "paccradle-remote needs its allowed targets, e.g. command=\"paccradle-remote api:production\""
+
+is_allowed() {
+  [[ ",$allowed_targets," == *",$1:$2,"* ]]
+}
+
+# An uploaded image is kept only if its name, tag and environment label fit
+# this key; anything else is deleted again.
+image_allowed() {
+  local ref=$1 app tag environment
+  [[ $ref =~ ^paccradle-(api|app|landing):([0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?)$ ]] || return 1
+  app="${BASH_REMATCH[1]}"
+  tag="${BASH_REMATCH[2]}"
+  environment="$(docker image inspect --format '{{ index .Config.Labels "com.paccradle.environment" }}' "$ref" 2> /dev/null)" \
+    || return 1
+  case "$environment" in
+    production) [[ $tag != *-dev.* ]] || return 1 ;;
+    development) [[ $tag == *-dev.* ]] || return 1 ;;
+    *) return 1 ;;
+  esac
+  is_allowed "$app" "$environment"
+}
+
+load_images() {
+  local output line ref loaded=0 rejected=0
+  output="$(head -c "$MAX_UPLOAD_BYTES" | docker load 2>&1)" || die "docker load failed: $output"
+  while IFS= read -r line; do
+    case "$line" in
+      "Loaded image: "*)
+        ref="${line#Loaded image: }"
+        if image_allowed "$ref"; then
+          printf 'loaded %s\n' "$ref"
+          loaded=$((loaded + 1))
+        else
+          docker image rm "$ref" > /dev/null 2>&1 || true
+          printf 'ERROR: %s is not allowed for this key; removed\n' "$ref" >&2
+          rejected=$((rejected + 1))
+        fi
+        ;;
+      "Loaded image ID: "*)
+        docker image rm "${line#Loaded image ID: }" > /dev/null 2>&1 || true
+        printf 'ERROR: untagged image refused\n' >&2
+        rejected=$((rejected + 1))
+        ;;
+    esac
+  done <<< "$output"
+  ((rejected == 0)) || exit 1
+  ((loaded > 0)) || die "the upload contained no image"
+}
+
+read -r -a request <<< "${SSH_ORIGINAL_COMMAND:-}"
+((${#request[@]} <= 4)) || die "too many arguments"
+
+case "${request[0]:-}" in
+  load)
+    ((${#request[@]} == 1)) || die "load takes no arguments"
+    load_images
+    ;;
+  deploy | rollback)
+    is_allowed "${request[1]:-}" "${request[2]:-}" \
+      || die "this key may not ${request[0]} '${request[1]:-}' on '${request[2]:-}'"
+    exec "$DEPLOY" "${request[@]}"
+    ;;
+  status)
+    exec "$DEPLOY" status
+    ;;
+  *)
+    die "unsupported request (load, deploy, rollback or status)"
+    ;;
+esac

@@ -1,0 +1,123 @@
+name: Rollback
+
+# Puts an earlier API image back on the VPS. The VPS keeps the last few images
+# of each environment (KEEP_IMAGES in /etc/paccradle/vps.env), so nothing is
+# rebuilt. Run it from main for production (environment branch rule).
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to roll back
+        type: choice
+        options: [production, development]
+        required: true
+      version:
+        description: Version to run, e.g. 1.3.0 (empty = the one before the current)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+# Shares the deploy workflow's queue, so a rollback never overlaps a deploy.
+concurrency:
+  group: deploy-${{ inputs.environment == 'production' && 'main' || 'development' }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  APP: api
+  APP_NAME: paccradle API
+
+jobs:
+  rollback:
+    name: Roll back ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.DEPLOY_URL }}
+    outputs:
+      site_url: ${{ vars.DEPLOY_URL }}
+      deployed_version: ${{ steps.rollback.outputs.deployed_version }}
+      deployed_revision: ${{ steps.rollback.outputs.deployed_revision }}
+      previous_version: ${{ steps.rollback.outputs.previous_version }}
+      previous_revision: ${{ steps.rollback.outputs.previous_revision }}
+      error_summary: ${{ steps.failure.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Check the version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ -n $VERSION && ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]]; then
+            echo "ERROR: '$VERSION' is not a release version (1.3.0 or 1.3.0-dev.42)" | tee "$RUNNER_TEMP/input.log"
+            exit 1
+          fi
+
+      - name: Set up SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          VPS_SSH_USER: ${{ secrets.VPS_SSH_USER }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: bash .github/scripts/ssh-setup.sh
+
+      - name: Roll back on the VPS
+        id: rollback
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          request=(rollback "$APP" "$ENVIRONMENT")
+          [[ -n $VERSION ]] && request+=("$VERSION")
+          # shellcheck disable=SC2029 # the arguments are meant to expand here, on the runner
+          ssh vps "${request[@]}" 2>&1 | tee "$RUNNER_TEMP/rollback.log"
+          grep -E '^(previous|deployed)_(version|revision)=' "$RUNNER_TEMP/rollback.log" >> "$GITHUB_OUTPUT" || true
+
+      - name: Summarise the failure
+        id: failure
+        if: failure()
+        run: |
+          summary="$(grep -h '^ERROR' "$RUNNER_TEMP"/*.log 2>/dev/null | tail -n 2 | tr '\n' ' ')"
+          echo "summary=${summary:0:400}" >> "$GITHUB_OUTPUT"
+
+  notify:
+    name: Telegram
+    needs: rollback
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Send the report
+        env:
+          TG_STATUS: ${{ needs.rollback.result == 'success' && 'success' || 'failure' }}
+          TG_ACTION: rollback
+          TG_APP_NAME: ${{ env.APP_NAME }}
+          TG_ENVIRONMENT: ${{ inputs.environment }}
+          TG_VERSION: ${{ needs.rollback.outputs.deployed_version || inputs.version || 'the previous version' }}
+          TG_SITE_URL: ${{ needs.rollback.outputs.site_url }}
+          TG_REVISION: ${{ needs.rollback.outputs.deployed_revision }}
+          TG_PREVIOUS_VERSION: ${{ needs.rollback.outputs.previous_version }}
+          TG_PREVIOUS_REVISION: ${{ needs.rollback.outputs.previous_revision }}
+          TG_ERROR_SUMMARY: ${{ needs.rollback.outputs.error_summary }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_BEGAMIS_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHANNEL_CHAT_IDS }}
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_BEGAMIS_ALERT_DEV_TOKEN }}
+          TELEGRAM_ALERT_CHAT_IDS: ${{ secrets.TELEGRAM_CHANNEL_ALERT_CHAT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/telegram-notify.sh
