@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="593.452mm" height="563.976mm" viewBox="0 0 593.452 563.976">
+<style>
+text { font-family: Helvetica, Arial, sans-serif; fill: #222; }
+.label { font-size: 4.5px; font-weight: bold; }
+.note { font-size: 4px; }
+.stage { font-size: 2.6px; }
+.cut { fill: none; stroke: #111; stroke-width: 0.35; }
+.crease { fill: none; stroke: #999; stroke-width: 0.3; stroke-dasharray: 3 1.5; }
+.perf { fill: none; stroke: #111; stroke-width: 0.3; stroke-dasharray: 0.8 1.2; }
+.valley { stroke: #1f6fd1; stroke-width: 0.5; }
+.mountain { stroke: #d1421f; stroke-width: 0.5; }
+.valley-text { fill: #1f6fd1; }
+.mountain-text { fill: #d1421f; }
+.board { fill: #e8d2ac; stroke: #8a6a3a; stroke-width: 0.3; fill-rule: evenodd; }
+.box { fill: none; stroke: #8a6a3a; stroke-width: 0.4; stroke-dasharray: 4 2; }
+.green { fill: #3a9d4a; fill-opacity: 0.35; stroke: #2a7a37; stroke-width: 0.3; }
+.yellow { fill: #e0b020; fill-opacity: 0.45; stroke: #a07a00; stroke-width: 0.3; }
+.red { fill: #d33; fill-opacity: 0.45; stroke: #a11; stroke-width: 0.3; }
+</style>
+<rect width="593.452" height="563.976" fill="#fff"/>
+<text class="label" x="12" y="16">partition_grid_soap: soap × partition grid</text>
+<g transform="translate(12 25)">
+<text class="label" y="4">Insert piece 0: long divider × 3 · 200.81 × 20 mm</text>
+<g transform="translate(0 7)">
+<path class="cut" d="M0 20 L0 0 L200.81 0 L200.81 20 L196.01 20 L196.01 9.5 L193.91 9.5 L193.91 20 L101.455 20 L101.455 9.5 L99.355 9.5 L99.355 20 L6.9 20 L6.9 9.5 L4.8 9.5 L4.8 20 Z"/>
+</g>
+</g>
+<g transform="translate(224.81 25)">
+<text class="label" y="4">Insert piece 1: short divider × 3 · 136.842 × 20 mm</text>
+<g transform="translate(0 7)">
+<path class="cut" d="M0 20 L0 0 L4.8 0 L4.8 10.5 L6.9 10.5 L6.9 0 L67.371 0 L67.371 10.5 L69.471 10.5 L69.471 0 L129.942 0 L129.942 10.5 L132.042 10.5 L132.042 0 L136.842 0 L136.842 20 Z"/>
+</g>
+</g>
+<g transform="translate(373.652 25)">
+<text class="label" y="4">Top view in the box</text>
+<g transform="translate(1.5 8.5)">
+<rect class="box" x="-1.5" y="-1.5" width="203.81" height="139.842"/>
+<rect class="board" x="0" y="5.05" width="200.81" height="1.6"/>
+<rect class="board" x="0" y="67.621" width="200.81" height="1.6"/>
+<rect class="board" x="0" y="130.192" width="200.81" height="1.6"/>
+<rect class="board" x="5.05" y="0" width="1.6" height="136.842"/>
+<rect class="board" x="99.605" y="0" width="1.6" height="136.842"/>
+<rect class="board" x="194.16" y="0" width="1.6" height="136.842"/>
+<path class="green" d="M98.105 38.559 L97.798 41.394 L97.062 44.187 L95.902 46.912 L94.33 49.543 L92.361 52.055 L90.015 54.423 L87.313 56.624 L84.282 58.638 L80.952 60.445 L77.353 62.027 L73.52 63.37 L69.492 64.459 L65.306 65.286 L61.002 65.842 L56.623 66.121 L52.21 66.121 L47.806 65.842 L43.453 65.286 L39.193 64.459 L35.068 63.37 L31.116 62.027 L27.376 60.445 L23.885 58.638 L20.675 56.624 L17.777 54.423 L15.22 52.055 L13.028 49.543 L11.223 46.912 L9.82 44.187 L8.835 41.394 L8.277 38.559 L8.15 35.712 L8.457 32.877 L9.193 30.084 L10.353 27.359 L11.925 24.728 L13.893 22.216 L16.24 19.848 L18.942 17.647 L21.972 15.633 L25.303 13.826 L28.902 12.244 L32.735 10.901 L36.763 9.811 L40.949 8.985 L45.253 8.429 L49.632 8.15 L54.045 8.15 L58.449 8.429 L62.802 8.985 L67.062 9.811 L71.187 10.901 L75.139 12.244 L78.879 13.826 L82.37 15.633 L85.58 17.647 L88.478 19.848 L91.035 22.216 L93.227 24.728 L95.032 27.359 L96.435 30.084 L97.42 32.877 L97.978 35.712Z"/>
+<text class="note" x="52.127" y="38.535">0</text>
+<path class="green" d="M192.66 38.559 L192.353 41.394 L191.617 44.187 L190.457 46.912 L188.885 49.543 L186.916 52.055 L184.57 54.423 L181.868 56.624 L178.837 58.638 L175.506 60.445 L171.908 62.027 L168.075 63.37 L164.047 64.459 L159.861 65.286 L155.557 65.842 L151.178 66.121 L146.765 66.121 L142.361 65.842 L138.008 65.286 L133.748 64.459 L129.622 63.37 L125.671 62.027 L121.931 60.445 L118.44 58.638 L115.23 56.624 L112.332 54.423 L109.775 52.055 L107.583 49.543 L105.777 46.912 L104.375 44.187 L103.39 41.394 L102.832 38.559 L102.705 35.712 L103.011 32.877 L103.748 30.084 L104.908 27.359 L106.48 24.728 L108.448 22.216 L110.795 19.848 L113.497 17.647 L116.527 15.633 L119.858 13.826 L123.457 12.244 L127.289 10.901 L131.318 9.811 L135.504 8.985 L139.808 8.429 L144.187 8.15 L148.6 8.15 L153.004 8.429 L157.357 8.985 L161.617 9.811 L165.742 10.901 L169.694 12.244 L173.434 13.826 L176.925 15.633 L180.135 17.647 L183.033 19.848 L185.59 22.216 L187.782 24.728 L189.587 27.359 L190.99 30.084 L191.975 32.877 L192.533 35.712Z"/>
+<text class="note" x="146.682" y="38.535">1</text>
+<path class="green" d="M98.105 101.13 L97.798 103.965 L97.062 106.758 L95.902 109.483 L94.33 112.114 L92.361 114.626 L90.015 116.994 L87.313 119.195 L84.282 121.209 L80.952 123.016 L77.353 124.598 L73.52 125.941 L69.492 127.03 L65.306 127.857 L61.002 128.413 L56.623 128.692 L52.21 128.692 L47.806 128.413 L43.453 127.857 L39.193 127.03 L35.068 125.941 L31.116 124.598 L27.376 123.016 L23.885 121.209 L20.675 119.195 L17.777 116.994 L15.22 114.626 L13.028 112.114 L11.223 109.483 L9.82 106.758 L8.835 103.965 L8.277 101.13 L8.15 98.282 L8.457 95.448 L9.193 92.655 L10.353 89.93 L11.925 87.299 L13.893 84.787 L16.24 82.419 L18.942 80.217 L21.972 78.204 L25.303 76.397 L28.902 74.815 L32.735 73.472 L36.763 72.382 L40.949 71.556 L45.253 71 L49.632 70.721 L54.045 70.721 L58.449 71 L62.802 71.556 L67.062 72.382 L71.187 73.472 L75.139 74.815 L78.879 76.397 L82.37 78.204 L85.58 80.217 L88.478 82.419 L91.035 84.787 L93.227 87.299 L95.032 89.93 L96.435 92.655 L97.42 95.448 L97.978 98.282Z"/>
+<text class="note" x="52.127" y="101.106">2</text>
+</g>
+</g>
+<g transform="translate(12 183.842)">
+<text class="label" y="4">Box piece 0: mailer × 1 · 351.652 × 361.134 mm</text>
+<g transform="translate(0 7)">
+<path class="crease" d="M71.521 187.292 L280.131 187.292"/>
+<path class="crease" d="M71.521 156.192 L280.131 156.192"/>
+<path class="crease" d="M73.921 14.75 L277.731 14.75"/>
+<path class="crease" d="M71.521 159.092 L71.521 185.992"/>
+<path class="crease" d="M280.131 159.092 L280.131 185.992"/>
+<path class="crease" d="M71.521 330.834 L280.131 330.834"/>
+<path class="crease" d="M71.521 332.134 L71.521 359.034"/>
+<path class="crease" d="M280.131 332.134 L280.131 359.034"/>
+<path class="crease" d="M69.421 187.292 L69.421 330.834"/>
+<path class="crease" d="M39.921 188.092 L39.921 327.934"/>
+<path class="crease" d="M36.221 188.092 L36.221 327.934"/>
+<path class="crease" d="M282.231 187.292 L282.231 330.834"/>
+<path class="crease" d="M311.731 188.092 L311.731 327.934"/>
+<path class="crease" d="M315.431 188.092 L315.431 327.934"/>
+<line class="valley" x1="71.521" y1="187.292" x2="280.131" y2="187.292"/>
+<text class="stage valley-text" x="141.858" y="186.492">s0</text>
+<line class="valley" x1="71.521" y1="156.192" x2="280.131" y2="156.192"/>
+<text class="stage valley-text" x="211.394" y="155.392">s5</text>
+<line class="valley" x1="73.921" y1="14.75" x2="277.731" y2="14.75"/>
+<text class="stage valley-text" x="142.658" y="13.95">s6</text>
+<line class="valley" x1="71.521" y1="159.092" x2="71.521" y2="185.992"/>
+<text class="stage valley-text" x="72.321" y="176.225">s1</text>
+<line class="valley" x1="280.131" y1="159.092" x2="280.131" y2="185.992"/>
+<text class="stage valley-text" x="280.931" y="167.259">s1</text>
+<line class="valley" x1="71.521" y1="330.834" x2="280.131" y2="330.834"/>
+<text class="stage valley-text" x="211.394" y="330.034">s0</text>
+<line class="valley" x1="71.521" y1="332.134" x2="71.521" y2="359.034"/>
+<text class="stage valley-text" x="72.321" y="340.3">s1</text>
+<line class="valley" x1="280.131" y1="332.134" x2="280.131" y2="359.034"/>
+<text class="stage valley-text" x="280.931" y="349.267">s1</text>
+<line class="valley" x1="69.421" y1="187.292" x2="69.421" y2="330.834"/>
+<text class="stage valley-text" x="70.221" y="234.339">s2</text>
+<line class="valley" x1="39.921" y1="188.092" x2="39.921" y2="327.934"/>
+<text class="stage valley-text" x="40.721" y="280.52">s3</text>
+<line class="valley" x1="36.221" y1="188.092" x2="36.221" y2="327.934"/>
+<text class="stage valley-text" x="37.021" y="233.906">s4</text>
+<line class="valley" x1="282.231" y1="187.292" x2="282.231" y2="330.834"/>
+<text class="stage valley-text" x="283.031" y="282.187">s2</text>
+<line class="valley" x1="311.731" y1="188.092" x2="311.731" y2="327.934"/>
+<text class="stage valley-text" x="312.531" y="233.906">s3</text>
+<line class="valley" x1="315.431" y1="188.092" x2="315.431" y2="327.934"/>
+<text class="stage valley-text" x="316.231" y="280.52">s4</text>
+<path class="cut" d="M0 185.992 L0 159.092 L71.521 159.092 L71.521 156.192 L68.621 156.192 L68.621 14.75 L73.921 14.75 L73.921 0 L277.731 0 L277.731 14.75 L283.031 14.75 L283.031 156.192 L280.131 156.192 L280.131 159.092 L351.652 159.092 L351.652 185.992 L280.131 185.992 L280.131 187.292 L311.731 187.292 L311.731 188.092 L344.131 188.092 L344.131 217.952 L345.731 217.952 L345.731 232.952 L344.131 232.952 L344.131 283.073 L345.731 283.073 L345.731 298.073 L344.131 298.073 L344.131 327.934 L311.731 327.934 L311.731 330.834 L280.131 330.834 L280.131 332.134 L351.652 332.134 L351.652 359.034 L280.131 359.034 L280.131 361.134 L71.521 361.134 L71.521 359.034 L0 359.034 L0 332.134 L71.521 332.134 L71.521 330.834 L39.921 330.834 L39.921 327.934 L7.521 327.934 L7.521 298.073 L5.921 298.073 L5.921 283.073 L7.521 283.073 L7.521 232.952 L5.921 232.952 L5.921 217.952 L7.521 217.952 L7.521 188.092 L39.921 188.092 L39.921 187.292 L71.521 187.292 L71.521 185.992 Z"/>
+<path class="cut" d="M72.071 217.702 L72.071 233.202 L74.171 233.202 L74.171 217.702 Z"/>
+<path class="cut" d="M72.071 282.823 L72.071 298.323 L74.171 298.323 L74.171 282.823 Z"/>
+<path class="cut" d="M277.481 217.702 L277.481 233.202 L279.581 233.202 L279.581 217.702 Z"/>
+<path class="cut" d="M277.481 282.823 L277.481 298.323 L279.581 298.323 L279.581 282.823 Z"/>
+</g>
+</g>
+<g transform="translate(375.652 183.842)">
+<text class="note" y="4" xml:space="preserve">Insert: EFlute 1.6 mm · 200.81 × 136.842 × 20 mm</text>
+<text class="note" y="10" xml:space="preserve">Box: Mailer in EFlute 1.6 mm · inside 203.81 × 139.842 × 29.5 · outside 214.41 × 145.142 × 32.7 mm</text>
+<text class="note" y="16" xml:space="preserve">Fit:</text>
+<text class="note" y="22" xml:space="preserve">  #0 soap: Green, 1.5 mm clear (target 1.5 mm)</text>
+<text class="note" y="28" xml:space="preserve">  #1 soap: Green, 1.5 mm clear (target 1.5 mm)</text>
+<text class="note" y="34" xml:space="preserve">  #2 soap: Green, 1.5 mm clear (target 1.5 mm)</text>
+<text class="note" y="40" xml:space="preserve">Warnings: 0</text>
+</g>
+</svg>

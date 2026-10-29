@@ -104,6 +104,17 @@ impl CountLimits {
     }
 }
 
+/// A share of something: a number from 0 to 1.
+fn check_fraction(field: &str, value: f64) -> Result<(), DesignError> {
+    if (0.0..=1.0).contains(&value) {
+        return Ok(());
+    }
+    Err(DesignError::FractionOutOfRange {
+        field: field.to_owned(),
+        value,
+    })
+}
+
 /// True when the point is a real number within reach of the origin.
 fn within_reach(point: Point) -> bool {
     point.is_finite() && point.x.abs() <= MAX_LENGTH_MM && point.y.abs() <= MAX_LENGTH_MM
@@ -175,6 +186,9 @@ fn validate_insert(design: &Design) -> Result<(), DesignError> {
         InsertSpec::PartitionGrid(grid) => validate_grid(grid, &design.products),
         InsertSpec::CutoutCard(card) => {
             Limits::SPACING.check("insert.margin_mm", card.margin_mm)?;
+            if let Some(notches) = card.finger_notches {
+                check_fraction("insert.finger_notches.along", notches.along)?;
+            }
             validate_placements(&card.placements, &design.products)
         }
         InsertSpec::CradlePlatform(cradle) => {

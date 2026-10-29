@@ -20,9 +20,9 @@
 | Background jobs | Postgres job table (`FOR UPDATE SKIP LOCKED`), worker in the same binary at first                                              |
 | File storage    | S3-compatible object storage (Cloudflare R2); signed URLs only                                                                 |
 | Vision          | `opencv` crate (needs system OpenCV + libclang); `ort` for SAM 2 later (pin the exact version, CLAUDE.md §5.4)                 |
-| Geometry        | `insert_core`: `kurbo` for paths, a polygon offset/boolean library (`i_overlay` or Clipper2, picked in M1-A2)                  |
-| Exports         | SVG, PDF (`printpdf` or `krilla`), DXF (`dxf`) — server-only feature of `insert_core`                                          |
-| WASM            | `wasm-bindgen` build of `insert_core` for the browser preview (no exporters)                                                   |
+| Geometry        | `insert_core`: own `Path`/`Polygon` types (lines + arcs, no `kurbo`); `i_overlay` for offsets and booleans, used only in `geometry/area.rs` |
+| Exports         | `insert_core` `export` feature (server only; the API crate turns it on): one `export::Sheet` layout drawn as SVG, PDF and DXF R12, all hand-written (B1 to B3); the free print-at-home test PDF (B4, `export::TestPrint`) tiles the preview geometry over A4/Letter with the same PDF writer |
+| WASM            | `crates/insert_core_wasm`: `wasm-bindgen` wrapper of `insert_core` for the browser preview (JSON in/out, drawn lines as straight segments within 0.05 mm with points to 0.01 mm, no exporters). `scripts/build-wasm.sh` builds it into the frontend; the `wasm-bindgen` CLI must match the crate version pinned in its `Cargo.toml` |
 | API docs        | Postman: dated contract files in `postman/` (see `code-style.md`)                                                              |
 | IDs             | UUID v7                                                                                                                        |
 | Time            | UTC everywhere (`timestamptz`)                                                                                                 |

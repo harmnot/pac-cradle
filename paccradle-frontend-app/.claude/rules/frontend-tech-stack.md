@@ -10,7 +10,7 @@
   - `three`, `@react-three/fiber` (3D fold preview; no drei — controls and cameras come from `three/addons`)
   - `exifr` (read EXIF from JPEG/HEIC before resizing)
   - Paddle.js (loaded from Paddle's CDN, required by Paddle)
-  - the `insert_core` WASM package (built from `paccradle-backend/crates/insert_core`, imported by local path)
+  - the `insert_core` WASM package (built from `paccradle-backend/crates/insert_core_wasm` by `npm run build:wasm` into `wasm/insert-core/`, generated and not committed; load it through `features/design/insert-core.ts`)
   - the Plausible analytics script tag
 - Any other runtime dependency needs an explicit, written justification in `MILESTONES.md` (Decision log).
 - Dev-only tooling (types, lint, tests) is allowed because it ships nothing to users.

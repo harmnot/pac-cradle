@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/insert_core", "crates/vision"]
+members = ["crates/insert_core", "crates/insert_core_wasm", "crates/vision"]
 resolver = "3"
 
 [workspace.package]
@@ -8,6 +8,8 @@ edition = "2024"
 publish = false
 
 [workspace.dependencies]
+# Polygon offsets and booleans for insert_core (picked in M1-A2: pure Rust, builds for WASM).
+i_overlay = { version = "9.1", default-features = false }
 opencv = { version = "0.101", default-features = false, features = ["imgproc", "imgcodecs"] }
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip: designs read back from jsonb must equal what was saved, to the last bit.
@@ -32,3 +34,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+# The API makes the production files, so it turns on insert_core's exporters.
+insert_core = { path = "crates/insert_core", features = ["export"] }
+
+# The browser build of insert_core_wasm (scripts/build-wasm.sh): smaller over faster.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1

@@ -21,6 +21,9 @@ pub enum Board {
     CFlute,
 }
 
+/// Narrowest strip of board CLAUDE.md §6.5 accepts, whatever the thickness.
+const MIN_WEB_MM: f64 = 3.0;
+
 /// A closed range of millimetres.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct MmRange {
@@ -90,5 +93,11 @@ impl Material {
             clearance_mm,
             slot_tolerance_mm,
         }
+    }
+
+    /// Narrowest strip of board to leave between two holes, or between a hole and an
+    /// edge (CLAUDE.md §6.5): 3 mm or 3× the thickness, whichever is more.
+    pub fn min_web_mm(&self) -> f64 {
+        (3.0 * self.thickness_mm).max(MIN_WEB_MM)
     }
 }

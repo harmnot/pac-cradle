@@ -47,7 +47,19 @@ jobs:
           node-version-file: paccradle-frontend-app/.nvmrc
           cache: npm
           cache-dependency-path: paccradle-frontend-app/package-lock.json
+      # The editor imports insert_core built for the browser (M1-A10): build it first.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: paccradle-backend
+      - uses: taiki-e/install-action@v2
+        with:
+          # Same version as wasm-bindgen in paccradle-backend/Cargo.lock (build-wasm.sh checks).
+          tool: wasm-bindgen@0.2.129
       - run: npm ci
+      - run: npm run build:wasm
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm run build

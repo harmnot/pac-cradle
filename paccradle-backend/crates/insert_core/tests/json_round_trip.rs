@@ -60,7 +60,7 @@ fn optional_fields_can_be_left_out() {
     let design: Design = serde_json::from_value(json!({
         "material": { "board": "paperboard", "thickness_mm": 0.5, "clearance_mm": 1.0, "slot_tolerance_mm": 0.3 },
         "products": [{ "id": "p1", "contour_mm": [[0.0, 0.0], [20.0, 0.0], [20.0, 20.0]], "height_mm": 10.0, "quantity": 1 }],
-        "insert": { "style": "cutout_card", "margin_mm": 8.0, "finger_notches": false }
+        "insert": { "style": "cutout_card", "margin_mm": 8.0 }
     }))
     .unwrap();
 
@@ -69,6 +69,22 @@ fn optional_fields_can_be_left_out() {
         panic!("expected a cutout card, got {:?}", design.insert);
     };
     assert!(card.placements.is_empty());
+    assert_eq!(card.finger_notches, None, "no notches unless asked");
+    assert_eq!(card.align, insert_core::Align::Center);
+}
+
+#[test]
+fn finger_notch_settings_default_to_the_middle_of_the_bottom_side() {
+    let notches: insert_core::FingerNotches = serde_json::from_value(json!({})).unwrap();
+    assert_eq!(notches.side, insert_core::NotchSide::Bottom);
+    assert_eq!(notches.along, 0.5);
+
+    let moved: insert_core::FingerNotches =
+        serde_json::from_value(json!({ "side": "both", "along": 0.25 })).unwrap();
+    assert_eq!(moved.side, insert_core::NotchSide::Both);
+    assert_eq!(moved.along, 0.25);
+    let corner: insert_core::Align = serde_json::from_value(json!("bottom_right")).unwrap();
+    assert_eq!(corner, insert_core::Align::BottomRight);
 }
 
 #[test]
@@ -136,6 +152,7 @@ fn piece_with_arcs_panels_and_hinges_round_trips() {
             },
             fold_deg: 90.0,
             direction: FoldDirection::Valley,
+            offset_mm: 0.0,
             stage: 0,
         }],
     };

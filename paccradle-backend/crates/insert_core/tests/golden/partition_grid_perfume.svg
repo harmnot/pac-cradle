@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="681.3mm" height="360.45mm" viewBox="0 0 681.3 360.45">
+<style>
+text { font-family: Helvetica, Arial, sans-serif; fill: #222; }
+.label { font-size: 4.5px; font-weight: bold; }
+.note { font-size: 4px; }
+.stage { font-size: 2.6px; }
+.cut { fill: none; stroke: #111; stroke-width: 0.35; }
+.crease { fill: none; stroke: #999; stroke-width: 0.3; stroke-dasharray: 3 1.5; }
+.perf { fill: none; stroke: #111; stroke-width: 0.3; stroke-dasharray: 0.8 1.2; }
+.valley { stroke: #1f6fd1; stroke-width: 0.5; }
+.mountain { stroke: #d1421f; stroke-width: 0.5; }
+.valley-text { fill: #1f6fd1; }
+.mountain-text { fill: #d1421f; }
+.board { fill: #e8d2ac; stroke: #8a6a3a; stroke-width: 0.3; fill-rule: evenodd; }
+.box { fill: none; stroke: #8a6a3a; stroke-width: 0.4; stroke-dasharray: 4 2; }
+.green { fill: #3a9d4a; fill-opacity: 0.35; stroke: #2a7a37; stroke-width: 0.3; }
+.yellow { fill: #e0b020; fill-opacity: 0.45; stroke: #a07a00; stroke-width: 0.3; }
+.red { fill: #d33; fill-opacity: 0.45; stroke: #a11; stroke-width: 0.3; }
+</style>
+<rect width="681.3" height="360.45" fill="#fff"/>
+<text class="label" x="12" y="16">partition_grid_perfume: perfume × partition grid</text>
+<g transform="translate(12 25)">
+<text class="label" y="4">Insert piece 0: long divider × 1 · 111.6 × 70 mm</text>
+<g transform="translate(0 7)">
+<path class="cut" d="M0 70 L0 0 L17.875 0 L17.883 0.387 L17.907 0.774 L17.946 1.16 L18.001 1.543 L18.072 1.925 L18.158 2.302 L18.26 2.676 L18.377 3.046 L18.508 3.41 L18.655 3.769 L18.816 4.122 L18.991 4.468 L19.18 4.806 L19.383 5.136 L19.599 5.458 L19.828 5.77 L20.07 6.073 L20.324 6.366 L20.589 6.649 L20.866 6.92 L21.154 7.18 L21.452 7.427 L21.76 7.663 L22.077 7.886 L22.403 8.095 L22.737 8.291 L23.079 8.473 L23.429 8.642 L23.784 8.795 L24.146 8.934 L24.513 9.059 L24.885 9.168 L25.261 9.262 L25.641 9.34 L26.023 9.403 L26.408 9.451 L26.794 9.482 L27.181 9.498 L27.569 9.498 L27.956 9.482 L28.342 9.451 L28.727 9.403 L29.109 9.34 L29.489 9.262 L29.865 9.168 L30.237 9.059 L30.604 8.934 L30.966 8.795 L31.321 8.642 L31.671 8.473 L32.013 8.291 L32.347 8.095 L32.673 7.886 L32.99 7.663 L33.298 7.427 L33.596 7.18 L33.884 6.92 L34.161 6.649 L34.426 6.366 L34.68 6.073 L34.922 5.77 L35.151 5.458 L35.367 5.136 L35.57 4.806 L35.759 4.468 L35.934 4.122 L36.095 3.769 L36.242 3.41 L36.373 3.046 L36.49 2.676 L36.592 2.302 L36.678 1.925 L36.749 1.543 L36.804 1.16 L36.843 0.774 L36.867 0.387 L36.875 0 L74.725 0 L74.733 0.387 L74.757 0.774 L74.796 1.16 L74.851 1.543 L74.922 1.925 L75.008 2.302 L75.11 2.676 L75.227 3.046 L75.358 3.41 L75.505 3.769 L75.666 4.122 L75.841 4.468 L76.03 4.806 L76.233 5.136 L76.449 5.458 L76.678 5.77 L76.92 6.073 L77.174 6.366 L77.439 6.649 L77.716 6.92 L78.004 7.18 L78.302 7.427 L78.61 7.663 L78.927 7.886 L79.253 8.095 L79.587 8.291 L79.929 8.473 L80.279 8.642 L80.634 8.795 L80.996 8.934 L81.363 9.059 L81.735 9.168 L82.111 9.262 L82.491 9.34 L82.873 9.403 L83.258 9.451 L83.644 9.482 L84.031 9.498 L84.419 9.498 L84.806 9.482 L85.192 9.451 L85.577 9.403 L85.959 9.34 L86.339 9.262 L86.715 9.168 L87.087 9.059 L87.454 8.934 L87.816 8.795 L88.171 8.642 L88.521 8.473 L88.863 8.291 L89.197 8.095 L89.523 7.886 L89.84 7.663 L90.148 7.427 L90.446 7.18 L90.734 6.92 L91.011 6.649 L91.276 6.366 L91.53 6.073 L91.772 5.77 L92.001 5.458 L92.217 5.136 L92.42 4.806 L92.609 4.468 L92.784 4.122 L92.945 3.769 L93.092 3.41 L93.223 3.046 L93.34 2.676 L93.442 2.302 L93.528 1.925 L93.599 1.543 L93.654 1.16 L93.693 0.774 L93.717 0.387 L93.725 0 L111.6 0 L111.6 70 L56.85 70 L56.85 34.5 L54.75 34.5 L54.75 70 Z"/>
+</g>
+</g>
+<g transform="translate(148.8 25)">
+<text class="label" y="4">Insert piece 1: short divider × 1 · 83.6 × 70 mm</text>
+<g transform="translate(0 7)">
+<path class="cut" d="M0 70 L0 0 L10.875 0 L10.883 0.387 L10.907 0.774 L10.946 1.16 L11.001 1.543 L11.072 1.925 L11.158 2.302 L11.26 2.676 L11.377 3.046 L11.508 3.41 L11.655 3.769 L11.816 4.122 L11.991 4.468 L12.18 4.806 L12.383 5.136 L12.599 5.458 L12.828 5.77 L13.07 6.073 L13.324 6.366 L13.589 6.649 L13.866 6.92 L14.154 7.18 L14.452 7.427 L14.76 7.663 L15.077 7.886 L15.403 8.095 L15.737 8.291 L16.079 8.473 L16.429 8.642 L16.784 8.795 L17.146 8.934 L17.513 9.059 L17.885 9.168 L18.261 9.262 L18.641 9.34 L19.023 9.403 L19.408 9.451 L19.794 9.482 L20.181 9.498 L20.569 9.498 L20.956 9.482 L21.342 9.451 L21.727 9.403 L22.109 9.34 L22.489 9.262 L22.865 9.168 L23.237 9.059 L23.604 8.934 L23.966 8.795 L24.321 8.642 L24.671 8.473 L25.013 8.291 L25.347 8.095 L25.673 7.886 L25.99 7.663 L26.298 7.427 L26.596 7.18 L26.884 6.92 L27.161 6.649 L27.426 6.366 L27.68 6.073 L27.922 5.77 L28.151 5.458 L28.367 5.136 L28.57 4.806 L28.759 4.468 L28.934 4.122 L29.095 3.769 L29.242 3.41 L29.373 3.046 L29.49 2.676 L29.592 2.302 L29.678 1.925 L29.749 1.543 L29.804 1.16 L29.843 0.774 L29.867 0.387 L29.875 0 L40.75 0 L40.75 35.5 L42.85 35.5 L42.85 0 L53.725 0 L53.733 0.387 L53.757 0.774 L53.796 1.16 L53.851 1.543 L53.922 1.925 L54.008 2.302 L54.11 2.676 L54.227 3.046 L54.358 3.41 L54.505 3.769 L54.666 4.122 L54.841 4.468 L55.03 4.806 L55.233 5.136 L55.449 5.458 L55.678 5.77 L55.92 6.073 L56.174 6.366 L56.439 6.649 L56.716 6.92 L57.004 7.18 L57.302 7.427 L57.61 7.663 L57.927 7.886 L58.253 8.095 L58.587 8.291 L58.929 8.473 L59.279 8.642 L59.634 8.795 L59.996 8.934 L60.363 9.059 L60.735 9.168 L61.111 9.262 L61.491 9.34 L61.873 9.403 L62.258 9.451 L62.644 9.482 L63.031 9.498 L63.419 9.498 L63.806 9.482 L64.192 9.451 L64.577 9.403 L64.959 9.34 L65.339 9.262 L65.715 9.168 L66.087 9.059 L66.454 8.934 L66.816 8.795 L67.171 8.642 L67.521 8.473 L67.863 8.291 L68.197 8.095 L68.523 7.886 L68.84 7.663 L69.148 7.427 L69.446 7.18 L69.734 6.92 L70.011 6.649 L70.276 6.366 L70.53 6.073 L70.772 5.77 L71.001 5.458 L71.217 5.136 L71.42 4.806 L71.609 4.468 L71.784 4.122 L71.945 3.769 L72.092 3.41 L72.223 3.046 L72.34 2.676 L72.442 2.302 L72.528 1.925 L72.599 1.543 L72.654 1.16 L72.693 0.774 L72.717 0.387 L72.725 0 L83.6 0 L83.6 70 Z"/>
+</g>
+</g>
+<g transform="translate(285.6 25)">
+<text class="label" y="4">Top view in the box</text>
+<g transform="translate(1.75 8.75)">
+<rect class="box" x="-1.75" y="-1.75" width="115.1" height="87.1"/>
+<rect class="board" x="0" y="41" width="111.6" height="1.6"/>
+<rect class="board" x="55" y="0" width="1.6" height="83.6"/>
+<path class="green" d="M1.5 1.5 L53.5 1.5 L53.5 39.5 L1.5 39.5Z"/>
+<text class="note" x="26.5" y="21.9">0</text>
+<path class="green" d="M58.1 1.5 L110.1 1.5 L110.1 39.5 L58.1 39.5Z"/>
+<text class="note" x="83.1" y="21.9">1</text>
+<path class="green" d="M1.5 44.1 L53.5 44.1 L53.5 82.1 L1.5 82.1Z"/>
+<text class="note" x="26.5" y="64.5">2</text>
+<path class="green" d="M58.1 44.1 L110.1 44.1 L110.1 82.1 L58.1 82.1Z"/>
+<text class="note" x="83.1" y="64.5">3</text>
+</g>
+</g>
+<g transform="translate(12 131.1)">
+<text class="label" y="4">Box piece 0: shipping box × 1 · 447.9 × 210.35 mm</text>
+<g transform="translate(0 7)">
+<path class="crease" d="M116.6 47.8 L116.6 162.55"/>
+<path class="crease" d="M206.7 47.8 L206.7 162.55"/>
+<path class="crease" d="M324.8 47.8 L324.8 162.55"/>
+<path class="crease" d="M417.9 48.3 L417.9 162.05"/>
+<path class="crease" d="M0.25 162.55 L114.85 162.55"/>
+<path class="crease" d="M0.25 47.8 L114.85 47.8"/>
+<path class="crease" d="M118.35 162.55 L204.95 162.55"/>
+<path class="crease" d="M118.35 47.8 L204.95 47.8"/>
+<path class="crease" d="M208.45 162.55 L323.05 162.55"/>
+<path class="crease" d="M208.45 47.8 L323.05 47.8"/>
+<path class="crease" d="M326.55 162.55 L413.15 162.55"/>
+<path class="crease" d="M326.55 47.8 L413.15 47.8"/>
+<line class="valley" x1="116.6" y1="47.8" x2="116.6" y2="162.55"/>
+<text class="stage valley-text" x="117.4" y="85.25">s0</text>
+<line class="valley" x1="206.7" y1="47.8" x2="206.7" y2="162.55"/>
+<text class="stage valley-text" x="207.5" y="123.5">s0</text>
+<line class="valley" x1="324.8" y1="47.8" x2="324.8" y2="162.55"/>
+<text class="stage valley-text" x="325.6" y="85.25">s0</text>
+<line class="valley" x1="417.9" y1="48.3" x2="417.9" y2="162.05"/>
+<text class="stage valley-text" x="418.7" y="123.333">s0</text>
+<line class="valley" x1="0.25" y1="162.55" x2="114.85" y2="162.55"/>
+<text class="stage valley-text" x="39.25" y="161.75">s2 +3</text>
+<line class="valley" x1="0.25" y1="47.8" x2="114.85" y2="47.8"/>
+<text class="stage valley-text" x="77.45" y="47">s4 +3</text>
+<line class="valley" x1="118.35" y1="162.55" x2="204.95" y2="162.55"/>
+<text class="stage valley-text" x="148.017" y="161.75">s1</text>
+<line class="valley" x1="118.35" y1="47.8" x2="204.95" y2="47.8"/>
+<text class="stage valley-text" x="176.883" y="47">s3</text>
+<line class="valley" x1="208.45" y1="162.55" x2="323.05" y2="162.55"/>
+<text class="stage valley-text" x="247.45" y="161.75">s2 +3</text>
+<line class="valley" x1="208.45" y1="47.8" x2="323.05" y2="47.8"/>
+<text class="stage valley-text" x="285.65" y="47">s4 +3</text>
+<line class="valley" x1="326.55" y1="162.55" x2="413.15" y2="162.55"/>
+<text class="stage valley-text" x="356.217" y="161.75">s1</text>
+<line class="valley" x1="326.55" y1="47.8" x2="413.15" y2="47.8"/>
+<text class="stage valley-text" x="385.083" y="47">s3</text>
+<path class="cut" d="M0 162.55 L0 47.8 L0.25 47.8 L0.25 0 L114.85 0 L114.85 47.8 L118.35 47.8 L118.35 0 L204.95 0 L204.95 47.8 L208.45 47.8 L208.45 0 L323.05 0 L323.05 47.8 L326.55 47.8 L326.55 0 L413.15 0 L413.15 47.8 L417.9 47.8 L417.9 48.3 L447.9 48.3 L447.9 162.05 L417.9 162.05 L417.9 162.55 L413.15 162.55 L413.15 210.35 L326.55 210.35 L326.55 162.55 L323.05 162.55 L323.05 210.35 L208.45 210.35 L208.45 162.55 L204.95 162.55 L204.95 210.35 L118.35 210.35 L118.35 162.55 L114.85 162.55 L114.85 210.35 L0.25 210.35 L0.25 162.55 Z"/>
+</g>
+</g>
+<g transform="translate(471.9 131.1)">
+<text class="note" y="4" xml:space="preserve">Insert: EFlute 1.6 mm · 111.6 × 83.6 × 70 mm</text>
+<text class="note" y="10" xml:space="preserve">Box: Shipping in BFlute 3 mm · inside 115.1 × 87.1 × 111.75 · outside 121.1 × 96.1 × 123.75 mm</text>
+<text class="note" y="16" xml:space="preserve">Fit:</text>
+<text class="note" y="22" xml:space="preserve">  #0 perfume: Green, 1.5 mm clear (target 1.5 mm)</text>
+<text class="note" y="28" xml:space="preserve">  #1 perfume: Green, 1.5 mm clear (target 1.5 mm)</text>
+<text class="note" y="34" xml:space="preserve">  #2 perfume: Green, 1.5 mm clear (target 1.5 mm)</text>
+<text class="note" y="40" xml:space="preserve">  #3 perfume: Green, 1.5 mm clear (target 1.5 mm)</text>
+<text class="note" y="46" xml:space="preserve">Warnings: 0</text>
+</g>
+</svg>

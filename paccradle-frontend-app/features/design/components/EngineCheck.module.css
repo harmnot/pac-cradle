@@ -1,0 +1,88 @@
+/* Development check for the browser engine (M1-A10). */
+.check {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.status,
+.timing {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-error);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--space-2);
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.slider {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 32rem;
+}
+
+.button {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--space-2);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.figure {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--space-2);
+}
+
+.figure figcaption {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.drawing {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cut {
+  fill: none;
+  stroke: var(--color-cut);
+  stroke-width: 0.5;
+}
+
+.crease {
+  fill: none;
+  stroke: var(--color-crease);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 2;
+}

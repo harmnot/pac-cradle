@@ -8,7 +8,12 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Production file writers (M1-B): server only. The browser build never turns this on.
+export = []
+
 [dependencies]
+i_overlay.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 

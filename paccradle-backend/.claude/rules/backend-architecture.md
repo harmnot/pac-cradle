@@ -7,6 +7,7 @@
 - **Workspace** (`paccradle-backend/` is a Cargo workspace, DEC-03):
   - `src/` — the Axum API (this document).
   - `crates/insert_core/` — geometry core: inserts, boxes, hinges, fit checks, manufacturability warnings; all units mm. Compiled natively for the API and to WASM for the browser preview. Export writers (SVG/PDF/DXF) sit behind a server-only feature flag (CLAUDE.md §6.1).
+  - `crates/insert_core_wasm/` — the browser build of `insert_core` (M1-A10): `generate`, `fits` and `warnings` over JSON, drawn lines as straight segments within 0.05 mm, points to 0.01 mm (CLAUDE.md §7.4). It never enables the export writers. Its own lints allow the `unsafe` glue `wasm-bindgen` generates; hand-written `unsafe` is still denied.
   - `crates/vision/` — photo → paper → flattened 10 px/mm image → product outline in mm (CLAUDE.md §5). Pure computation, no I/O beyond the image it is given.
 - **External providers:** Paddle (payments, merchant of record), Cloudflare R2 (photos and export files), a transactional email provider (magic links), and later an AI provider for the L3 vision helper (CLAUDE.md §5.4).
 - **Side-effect flow:** request → service writes data + a job row in one transaction → worker picks the job (`FOR UPDATE SKIP LOCKED`) → job calls a service, which calls `vision`, `insert_core` or a third-party provider with retries.

@@ -22,6 +22,7 @@
     "style": "cradle_platform",
     "deck_height_mm": 40.0,
     "margin_mm": 12.0,
+    "align": "center",
     "placements": [
       { "product_id": "p1", "center_mm": [38.0, 31.0], "rotation_deg": 0.0 },
       { "product_id": "p1", "center_mm": [102.0, 31.0], "rotation_deg": 0.0 }

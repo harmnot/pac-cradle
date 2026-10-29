@@ -43,7 +43,7 @@ public/
 ## 3. App rules
 - Auth: access token in memory; refresh token in an `HttpOnly`, `Secure`, `SameSite` cookie set by the API; never store tokens in `localStorage`.
 - Payments open Paddle Checkout (Paddle.js overlay); never handle card data in the app.
-- Production vector files are never generated in the browser; the preview uses `insert_core` WASM with coordinates rounded to 0.5 mm (CLAUDE.md §7.4).
+- Production vector files are never generated in the browser; the preview uses `insert_core` WASM, whose drawn lines come back as straight segments within 0.05 mm, points to 0.01 mm (CLAUDE.md §7.4).
 - Server data lives in the typed API hooks; React state/Context only for UI, editor and session state.
 - Performance budget: marketing pages ship minimal JS; the editor lazy-loads three.js and the WASM; fast first load on mid-range Android phones over 4G.
 - Phones get capture and view; desktop gets full editing (CLAUDE.md §7.1).

@@ -1,9 +1,17 @@
-//! Sample designs shared by the integration tests.
+//! Sample designs and shapes shared by the integration tests.
 #![allow(dead_code)]
 
+pub mod fold;
+pub mod golden;
+pub mod measure;
+pub mod pdf;
+pub mod solid;
+pub mod svg;
+
 use insert_core::{
-    Board, BoxSize, BoxSpec, BoxStyle, CradlePlatformSpec, CutoutCardSpec, Design, InsertSpec,
-    Material, PartitionGridSpec, Placement, Point, Polygon, Product,
+    Align, Area, Board, BoxSize, BoxSpec, BoxStyle, CradlePlatformSpec, CutoutCardSpec, Design,
+    FingerNotches, Insert, InsertSpec, Material, OuterBox, Packaging, Panel, PartitionGridSpec,
+    Path, Piece, Placement, Point, Polygon, Product, Segment, Transform,
 };
 
 /// Axis-aligned rectangle from the origin, like a vision outline of a box.
@@ -66,7 +74,8 @@ pub fn card_design() -> Design {
         ],
         insert: InsertSpec::CutoutCard(CutoutCardSpec {
             margin_mm: 10.0,
-            finger_notches: true,
+            finger_notches: Some(FingerNotches::default()),
+            align: Align::Center,
             placements: vec![Placement {
                 product_id: "gloss".to_owned(),
                 center_mm: Point::new(30.0, 60.0),
@@ -93,12 +102,94 @@ pub fn cradle_design() -> Design {
         insert: InsertSpec::CradlePlatform(CradlePlatformSpec {
             deck_height_mm: 40.0,
             margin_mm: 12.0,
+            align: Align::Center,
             placements: Vec::new(),
         }),
         outer_box: Some(BoxSpec {
             style: BoxStyle::Mailer,
             material: Material::starting_values(Board::EFlute),
             inside_mm: None,
+        }),
+    }
+}
+
+/// Where a placement puts the product's outline: turned about the centre of its
+/// bounding box, which then lands on `center_mm`.
+pub fn placed_outline(product: &Product, placement: &Placement) -> Area {
+    let pivot = product
+        .contour_mm
+        .bounds()
+        .unwrap_or_else(|| panic!("product `{}` has no outline", product.id))
+        .center();
+    let place = Transform::shift(Point::ORIGIN - pivot).then(Transform {
+        turn_deg: placement.rotation_deg,
+        shift: placement.center_mm,
+    });
+    Area::from_polygon(&product.contour_mm.transformed(place))
+        .unwrap_or_else(|error| panic!("outline of `{}`: {error}", product.id))
+}
+
+/// A packaging built by hand for the exports: a Ø60 disc (a full-circle arc, centre
+/// (30, 30)) with a quarter-turn crease arc and a perforation, cut twice, as the insert
+/// and again as a one-piece "box". Checks arcs, mirroring and the perforation layer.
+pub fn arc_packaging() -> Packaging {
+    let circle = Path {
+        start: Point::new(60.0, 30.0),
+        segments: vec![Segment::Arc {
+            center: Point::new(30.0, 30.0),
+            sweep_deg: 360.0,
+        }],
+        closed: true,
+    };
+    // A quarter turn, clockwise on screen, from the top of the circle to its right.
+    let crease = Path {
+        start: Point::new(30.0, 10.0),
+        segments: vec![Segment::Arc {
+            center: Point::new(30.0, 30.0),
+            sweep_deg: 90.0,
+        }],
+        closed: false,
+    };
+    let perforation = Path {
+        start: Point::new(15.0, 45.0),
+        segments: vec![Segment::Line {
+            to: Point::new(25.0, 45.0),
+        }],
+        closed: false,
+    };
+    let piece = Piece {
+        name: "disc".to_owned(),
+        quantity: 2,
+        outline: circle,
+        holes: Vec::new(),
+        creases: vec![crease],
+        perforations: vec![perforation],
+        panels: vec![Panel {
+            outline: Polygon(Vec::new()),
+            holes: Vec::new(),
+        }],
+        hinges: Vec::new(),
+    };
+    let size = BoxSize {
+        length_mm: 60.0,
+        width_mm: 60.0,
+        height_mm: 10.0,
+    };
+    Packaging {
+        insert: Insert {
+            pieces: vec![piece.clone()],
+            length_mm: 60.0,
+            width_mm: 60.0,
+            height_mm: 1.0,
+            placements: Vec::new(),
+            mounts: Vec::new(),
+        },
+        outer_box: Some(OuterBox {
+            style: BoxStyle::Mailer,
+            pieces: vec![piece],
+            inside_mm: size,
+            outside_mm: size,
+            mounts: Vec::new(),
         }),
     }
 }

@@ -223,7 +223,7 @@ Use the Rust `opencv` crate (v0.101.1, released 2026-10-09). It supports OpenCV 
 L1 OpenCV ── confidence ≥ 0.85 ──▶ done
     │ 0.60–0.85
     ▼
-L2 SAM 2 (ONNX, on server CPU) with a box prompt from L1 ── ok ──▶ done
+L2 SAM 2 (Candle, on server CPU) with a box prompt from L1 ── ok ──▶ done
     │ < 0.60 or failed
     ▼
 L3 AI helper (Hugging Face → Gemini free tier → fal.ai):
@@ -236,7 +236,7 @@ Ask the user: tap the product, or switch to Trace mode
 
 **L2: open-source segmentation**
 
-- **SAM 2** (tiny 38.9M or small 46M parameters). Its checkpoints are **Apache 2.0** licensed [18]. Run it through ONNX Runtime with the `ort` crate. 2.0 is still a release candidate (rc.13 wraps ONNX Runtime 1.28), so **pin the exact version** [23].
+- **SAM 2** (tiny 38.9M or small 46M parameters). Its checkpoints are **Apache 2.0** licensed [18]. Run it through Pure Rust with the `Candle` crate. 2.0 is still a release candidate, so **pin the exact version** [23].
 - **BiRefNet** (repo is MIT; check the license of the weights) is an alternative. It also has a lite version that third-party tools run in the browser [20].
 - **Do not use RMBG-2.0.** It is CC BY-NC 4.0, so commercial use needs a paid license from BRIA [21].
 - **SAM 3** uses a new custom "SAM License". Read it before using it [19].
@@ -336,15 +336,13 @@ Write the geometry once, as the Rust crate `insert_core`, and compile it twice:
 - **Native**, inside Axum: final exports (SVG/PDF/DXF/CF2).
 - **WASM** (wasm-bindgen), in the browser: instant preview while the user drags sliders.
 
-The export writers (DXF/PDF/CF2) are compiled **only into the server build**. A Cargo feature flag controls this.
+The export writers (DXF/PDF/CF2) are compiled **only into the server build**. A Cargo feature flag controls this. The browser build is a thin wrapper crate, `insert_core_wasm` (M1-A10), that never turns that flag on.
 
-Suggested libraries:
+Libraries:
 
-- `kurbo` for paths and curves.
-- A polygon library for offsets and booleans (`i_overlay`, or a Clipper2 binding).
-- `dxf` for DXF.
-- `printpdf` or `krilla` for PDF.
-- `svg` for SVG.
+- **`i_overlay`** for polygon offsets and booleans (picked in M1-A2: pure Rust, so it builds for WASM, and it's the engine inside `geo`). The C++ Clipper2 binding can't build for WASM.
+- No `kurbo`: paths are only lines and circular arcs, and the crate flattens arcs with a few lines of its own math (M1-A2).
+- For the exports: SVG, PDF and DXF (R12) are all written by hand (M1-B1 to B3). They need only lines, colours, layers and built-in-font text, so no crate (the vanilla-Rust rule). The free print-at-home test PDF (M1-B4) uses the same PDF writer.
 
 ```rust
 // simplified data model (all units mm)
@@ -360,9 +358,9 @@ struct Hinge { panel_a: usize, panel_b: usize, axis: Line, fold_deg: f64, valley
 
 | Style                                                                                 | Best for                                     | Main settings                                                                                                                                                                              | Phase |
 | ------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
-| **Partition grid** (slotted dividers, the FEFCO 09xx "interior fittings" family [16]) | Several identical items: bottles, jars       | Rows × columns from the product size + clearance; divider height; slot width = board thickness + tolerance; slot depth = half the height + 0.5 mm; optional outer frame and finger notches | MVP   |
-| **Cutout card** (flat card with product-shaped holes)                                 | Lipsticks, tubes, jewelry, small electronics | Card = box inside size − clearance; hole = product outline + clearance; finger notches                                                                                                     | MVP   |
-| **Cradle platform** (folded raised deck with holes, walls fold down, lock tabs)       | Perfume and premium bottles                  | Deck height; hole size taken at deck height; wall and tab sizes                                                                                                                            | MVP   |
+| **Partition grid** (slotted dividers, the FEFCO 09xx "interior fittings" family [16]) | Several identical items: bottles, jars       | Rows × columns from the product size + clearance (cells stretch to fill a fixed box); divider height; slot width = board thickness + tolerance; slot depth = half the height + 0.5 mm; optional outer frame and finger notches | MVP   |
+| **Cutout card** (flat card with product-shaped holes)                                 | Lipsticks, tubes, jewelry, small electronics | Card = box inside size − clearance; hole = product outline + clearance; finger notches (side and position settable, default middle of a long side); product positions and row alignment settable, default centred | MVP   |
+| **Cradle platform** (folded raised deck with holes, walls fold down, lock tabs)       | Perfume and premium bottles                  | Deck height; hole size taken at deck height; product alignment. Built (M1-A5) as one piece: two tube legs along the long edges (wall, foot, riser) lock into deck slots with tabs; leg and tab sizes follow from the board and deck height | MVP   |
 | **Pocket tray**                                                                       | Kits with mixed items                        | Tray walls + internal cells                                                                                                                                                                | v1    |
 | **Neck holder**                                                                       | Bottles with necks                           | Neck hole; legs height                                                                                                                                                                     | v1    |
 | **Layered nest** (U15)                                                                | Premium, plastic-free "foam look"            | Layers count; outline per layer                                                                                                                                                            | v2    |
@@ -371,8 +369,8 @@ struct Hinge { panel_a: usize, panel_b: usize, axis: Line, fold_deg: f64, valley
 
 - **Styles:** mailer box (FEFCO 0427 style, hinged lid with locking tabs), shipping box (FEFCO 0201, regular slotted container), and a paperboard tuck-end carton [16].
 - **Sizing:**
-    - Inside size = insert outer size + clearance.
-    - Outside size = inside + about one board thickness per side.
+    - Inside size = insert outer size + clearance on each side; height = the tallest product or insert + clearance.
+    - Outside size follows from each style's layers of board (t = thickness, g = slot tolerance): mailer + 6t + 2g long, + 3t + g wide, + 2t tall (double end walls); shipping box + 2t, + 3t (joint flap), + 4t (two layers of flaps top and bottom).
     - Fine-tune the allowance for each material with real test cuts.
 - **Show next to the box:**
     - Inside and outside sizes.
@@ -395,8 +393,8 @@ These are common ranges and my starting values. Users can edit everything, and t
 
 - Holes closer than **3 mm or 3× board thickness** to each other or to an edge.
 - A hole within 2× thickness of a crease line.
-- A slot width that doesn't match the board thickness.
-- Features smaller than 1 mm.
+- A slot width that doesn't match the board thickness (slot tolerance outside 0.1–1 mm, **estimate**).
+- Board, or a cut-out, narrower than 1 mm.
 - Crease lines crossing cut lines.
 - Open cut paths, or duplicate lines (die makers dislike double lines).
 - A piece bigger than the chosen sheet or Cricut mat.
@@ -444,7 +442,7 @@ These are common ranges and my starting values. Users can edit everything, and t
 
 1. Each piece is made of **panels** (polygons) joined by **hinges** (crease lines). The engine already knows these because it generates the shape (§6.1).
 2. Pick a **root panel**, such as the deck or the box bottom. Walk the hinge graph outward from the root.
-3. For each child panel: `child_transform = parent_transform × rotate(hinge_axis, fold_deg × t)`, where `t` goes from 0 to 1 with easing. Fold in stages (walls first, tabs last) for a nicer animation.
+3. For each child panel: `child_transform = parent_transform × rotate(turn_line, fold_deg × t)`, where `t` goes from 0 to 1 with easing. The turn line is the crease, except for a flap that bends round another layer (a shipping box's outer flaps): there it lies `offset_mm` past the crease, and the strip before it stays with the parent. Fold in stages (walls first, tabs last) for a nicer animation.
 4. Draw each panel as the polygon **extruded by the board thickness**, with kraft or white material.
 5. **Partition grid:** animate the strips sliding down into each other's slots.
 6. **Isometric camera:** orthographic, rotated 45° and tilted ≈ 35.26°. Also offer orbit view, an "exploded" view, and a fold slider from 0% to 100%.
@@ -454,10 +452,10 @@ These are common ranges and my starting values. Users can edit everything, and t
 - **Product stand-ins in 3D:**
     - The outline is extruded to the product's height, giving a prism.
     - In v1, the side-photo profile is turned around its axis to make a bottle shape (Three.js lathe).
-- **Fit colors:** offset the product outline by the clearance and compare it with each hole using polygon booleans.
-    - Green: clearance ≥ target.
+- **Fit colors:** measure each product's gap to what surrounds it, seen from above (its hole's edge, grid strips, cradle legs, the insert's edge).
+    - Green: clearance ≥ target, the clearance recommended for the insert's board (§6.4).
     - Yellow: tight.
-    - Red: collides.
+    - Red: collides (board, another product, a leg, or off the insert).
 - **Unboxing video:**
     - Record the canvas (`canvas.captureStream()` + `MediaRecorder`) as WebM or MP4, depending on the browser.
     - Add a watermark on the free plan.
@@ -466,8 +464,8 @@ These are common ranges and my starting values. Users can edit everything, and t
 ### 7.4 Protecting paid files
 
 - **Production vectors are made only on the server**, after the entitlement check (§9.4).
-- The browser preview uses coordinates rounded to 0.5 mm and no layers.
-- Free PNG and PDF exports carry a watermark.
+- The browser preview gets plain straight segments within 0.05 mm of the true lines, points to 0.01 mm, no arcs and no layers. It draws smooth when zoomed but isn't a production file. (0.5 mm rounding was tried first and made curves stair-stepped: M1-A10.)
+- Free PNG and PDF exports carry a watermark. The print-at-home test PDF draws the preview's lines, with no layers, and each tiled page holds only its own part of a piece (M1-B4).
 - Download links are short-lived signed URLs.
 
 Someone determined could still copy a preview. That's acceptable: most buyers want clean, layered production files.
@@ -486,7 +484,7 @@ Phone / Desktop browser
 ┌──────────────────────── Axum API (Rust) ────────────────────────┐│
 │ auth · designs · captures · exports · share · billing           ││
 │                                                                  ││
-│  Vision worker ── L1 OpenCV ─▶ L2 SAM 2 (ort/ONNX) ─▶ L3 AI     │◀── HTTPS, only when unsure: HF → Gemini → fal.ai
+│  Vision worker ── L1 OpenCV ─▶ L2 SAM 2 (Pure Rust Candle) ─▶ L3 AI     │◀── HTTPS, only when unsure: HF → Gemini → fal.ai
 │  Export worker ── insert_core (native) ─▶ SVG / PDF / DXF       ││
 │  Paddle webhook ─▶ entitlements (unlock / credits / subscription)│◀── Paddle (signed webhooks)
 └───────┬──────────────────────────────┬──────────────────────────┘│
@@ -503,7 +501,7 @@ Phone / Desktop browser
 | Web framework | Axum + Tokio + tower-http (CORS, compression, body limit, tracing)                    | Use the latest stable versions                            |
 | Database      | PostgreSQL + `sqlx`                                                                   | A small managed Postgres or one on the VPS                |
 | Jobs          | A Postgres job table (`FOR UPDATE SKIP LOCKED`) or a Rust queue crate                 | Vision and export run as jobs, not inside the web request |
-| Vision        | `opencv` crate (needs system OpenCV + clang), `ort` for ONNX                          | Build in Docker with OpenCV runtime libraries             |
+| Vision        | `opencv` crate (needs system OpenCV + clang), `Candle`                          | Build in Docker with OpenCV runtime libraries             |
 | Files         | S3-compatible storage (e.g. Cloudflare R2)                                            | Signed URLs; delete photos automatically                  |
 | Auth          | Email magic link (your own) **or** a hosted auth service                              | Hosted auth saves 1–2 weeks **(estimate)**                |
 | Emails        | A transactional email API                                                             | Magic links and receipts. Paddle also emails receipts.    |

@@ -46,11 +46,14 @@ pub enum InsertSpec {
 /// Partition grid settings. Slot width and depth come from the board (CLAUDE.md §6.2).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PartitionGridSpec {
+    /// Cells across y (the box's width).
     pub rows: u32,
+    /// Cells along x (the box's length).
     pub columns: u32,
     pub divider_height_mm: f64,
-    /// Adds a frame around the grid.
+    /// Adds strips round the outside of the grid.
     pub outer_frame: bool,
+    /// Half-round notches in the strips' top edges, one in the middle of each cell wall.
     pub finger_notches: bool,
 }
 
@@ -59,20 +62,101 @@ pub struct PartitionGridSpec {
 pub struct CutoutCardSpec {
     /// Smallest distance from a hole to the card edge.
     pub margin_mm: f64,
-    pub finger_notches: bool,
-    /// Where each product sits. Empty means the generator lays them out (M1-A3).
+    /// Half-round notches beside each hole, to get a finger in. `None` cuts plain holes.
+    #[serde(default)]
+    pub finger_notches: Option<FingerNotches>,
+    /// Where the products the generator lays out sit on a card of fixed size (a box with
+    /// a fixed inside size). Centred by default. Rows inside the block line up the same way.
+    #[serde(default)]
+    pub align: Align,
+    /// Where each product sits. Products without one are laid out by the generator.
     #[serde(default)]
     pub placements: Vec<Placement>,
 }
 
-/// Cradle platform settings. Wall and tab sizes follow from the deck height (M1-A5).
+/// Where the finger notch sits on each hole. Sides are named as the product lies
+/// lengthwise (long side along x, the way the generator lays it); they turn with the
+/// product. Every field can be left out of the JSON.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FingerNotches {
+    /// Which long side gets a notch.
+    pub side: NotchSide,
+    /// Where along that side the notch's centre sits: 0 at the left end, 0.5 in the
+    /// middle, 1 at the right end.
+    pub along: f64,
+}
+
+impl Default for FingerNotches {
+    /// One notch in the middle of the bottom long side.
+    fn default() -> Self {
+        Self {
+            side: NotchSide::Bottom,
+            along: 0.5,
+        }
+    }
+}
+
+/// Which long side of a hole gets a finger notch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NotchSide {
+    /// The side with the larger y (lower on screen).
+    #[default]
+    Bottom,
+    Top,
+    /// One notch on each long side, to pinch the product out.
+    Both,
+}
+
+/// Where a block of products sits in the space it may fill.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Align {
+    TopLeft,
+    Top,
+    TopRight,
+    Left,
+    #[default]
+    Center,
+    Right,
+    BottomLeft,
+    Bottom,
+    BottomRight,
+}
+
+impl Align {
+    /// How far into the spare room the block moves, along x and along y: 0 keeps it at
+    /// the left or top, 0.5 centres it, 1 pushes it to the right or bottom.
+    pub const fn shares(self) -> (f64, f64) {
+        match self {
+            Self::TopLeft => (0.0, 0.0),
+            Self::Top => (0.5, 0.0),
+            Self::TopRight => (1.0, 0.0),
+            Self::Left => (0.0, 0.5),
+            Self::Center => (0.5, 0.5),
+            Self::Right => (1.0, 0.5),
+            Self::BottomLeft => (0.0, 1.0),
+            Self::Bottom => (0.5, 1.0),
+            Self::BottomRight => (1.0, 1.0),
+        }
+    }
+}
+
+/// Cradle platform settings. Leg and lock tab sizes follow from the deck height and
+/// the board.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CradlePlatformSpec {
-    /// Height of the deck above the box floor.
+    /// Height of the deck's top above the box floor.
     pub deck_height_mm: f64,
-    /// Smallest distance from a hole to the deck edge.
+    /// Smallest distance from a hole to the deck edge. Along the long edges, the holes
+    /// also keep clear of the legs and their lock slots, which can take more.
     pub margin_mm: f64,
-    /// Where each product sits. Empty means the generator lays them out.
+    /// Where the products the generator lays out sit on a deck of fixed size (a box with
+    /// a fixed inside size). Centred by default, as on the cutout card.
+    #[serde(default)]
+    pub align: Align,
+    /// Where each product sits. Products without one are laid out by the generator.
     #[serde(default)]
     pub placements: Vec<Placement>,
 }
@@ -81,9 +165,10 @@ pub struct CradlePlatformSpec {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Placement {
     pub product_id: String,
-    /// Centre of the product's outline, in mm from the insert's top-left corner.
+    /// Where the centre of the outline's bounding box (taken before turning) lands, in mm
+    /// from the insert's top-left corner.
     pub center_mm: Point,
-    /// Turn of the outline around its centre; positive is clockwise on screen.
+    /// Turn of the outline around that centre; positive is clockwise on screen.
     pub rotation_deg: f64,
 }
 

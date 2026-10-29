@@ -173,5 +173,24 @@
 
   "legal.updated": "Last updated: {date}",
   "legal.missingName": "[legal name not set]",
-  "legal.missingEmail": "[contact email not set]"
+  "legal.missingEmail": "[contact email not set]",
+
+  "dev.engine.title": "Geometry engine check",
+  "dev.engine.lead": "The sample design generated in the browser on every slider move, and timed. Development only.",
+  "dev.engine.loading": "Loading the engine…",
+  "dev.engine.loadFailed": "The engine didn't load: {message}",
+  "dev.engine.loaded": "Engine loaded in {ms} ms · {size}",
+  "dev.engine.size": "{transfer} KB downloaded, {decoded} KB unpacked",
+  "dev.engine.sizeUnknown": "download size unknown",
+  "dev.engine.style": "Insert style",
+  "dev.engine.style.partition_grid": "Partition grid",
+  "dev.engine.style.cutout_card": "Cutout card",
+  "dev.engine.style.cradle_platform": "Cradle platform",
+  "dev.engine.diameter": "Jar diameter: {mm} mm",
+  "dev.engine.frame": "Last frame: {ms} ms (generate + fits) · median of the last {count}: {median} ms",
+  "dev.engine.bench": "Run {frames} frames",
+  "dev.engine.benchResult": "{frames} frames: median {median} ms, 95th percentile {p95} ms per frame · warnings: median {warnings} ms",
+  "dev.engine.fits": "Fit: {green} green, {yellow} yellow, {red} red",
+  "dev.engine.error": "Can't generate: {message}",
+  "dev.engine.drawing": "Insert pieces, flat: cut lines solid, creases dashed"
 }

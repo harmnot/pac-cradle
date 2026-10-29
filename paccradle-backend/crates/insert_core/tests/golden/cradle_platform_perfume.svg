@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="569mm" height="728.5mm" viewBox="0 0 569 728.5">
+<style>
+text { font-family: Helvetica, Arial, sans-serif; fill: #222; }
+.label { font-size: 4.5px; font-weight: bold; }
+.note { font-size: 4px; }
+.stage { font-size: 2.6px; }
+.cut { fill: none; stroke: #111; stroke-width: 0.35; }
+.crease { fill: none; stroke: #999; stroke-width: 0.3; stroke-dasharray: 3 1.5; }
+.perf { fill: none; stroke: #111; stroke-width: 0.3; stroke-dasharray: 0.8 1.2; }
+.valley { stroke: #1f6fd1; stroke-width: 0.5; }
+.mountain { stroke: #d1421f; stroke-width: 0.5; }
+.valley-text { fill: #1f6fd1; }
+.mountain-text { fill: #d1421f; }
+.board { fill: #e8d2ac; stroke: #8a6a3a; stroke-width: 0.3; fill-rule: evenodd; }
+.box { fill: none; stroke: #8a6a3a; stroke-width: 0.4; stroke-dasharray: 4 2; }
+.green { fill: #3a9d4a; fill-opacity: 0.35; stroke: #2a7a37; stroke-width: 0.3; }
+.yellow { fill: #e0b020; fill-opacity: 0.45; stroke: #a07a00; stroke-width: 0.3; }
+.red { fill: #d33; fill-opacity: 0.45; stroke: #a11; stroke-width: 0.3; }
+</style>
+<rect width="569" height="728.5" fill="#fff"/>
+<text class="label" x="12" y="16">cradle_platform_perfume: perfume × cradle platform</text>
+<g transform="translate(12 25)">
+<text class="label" y="4">Insert piece 0: cradle × 1 · 78 × 228.8 mm</text>
+<g transform="translate(0 7)">
+<path class="crease" d="M0 83.15 L78 83.15"/>
+<path class="crease" d="M0 44.65 L78 44.65"/>
+<path class="crease" d="M0 39.25 L78 39.25"/>
+<path class="crease" d="M0 145.65 L78 145.65"/>
+<path class="crease" d="M0 184.15 L78 184.15"/>
+<path class="crease" d="M0 189.55 L78 189.55"/>
+<line class="mountain" x1="0" y1="83.15" x2="78" y2="83.15"/>
+<text class="stage mountain-text" x="26.8" y="82.35">s0</text>
+<line class="mountain" x1="0" y1="44.65" x2="78" y2="44.65"/>
+<text class="stage mountain-text" x="52.8" y="43.85">s1</text>
+<line class="mountain" x1="0" y1="39.25" x2="78" y2="39.25"/>
+<text class="stage mountain-text" x="26.8" y="38.45">s2</text>
+<line class="mountain" x1="0" y1="145.65" x2="78" y2="145.65"/>
+<text class="stage mountain-text" x="52.8" y="144.85">s0</text>
+<line class="mountain" x1="0" y1="184.15" x2="78" y2="184.15"/>
+<text class="stage mountain-text" x="26.8" y="183.35">s1</text>
+<line class="mountain" x1="0" y1="189.55" x2="78" y2="189.55"/>
+<text class="stage mountain-text" x="52.8" y="188.75">s2</text>
+<path class="cut" d="M0 1.5 L14.25 1.5 L14.25 0 L29.25 0 L29.25 1.5 L48.75 1.5 L48.75 0 L63.75 0 L63.75 1.5 L78 1.5 L78 227.3 L63.75 227.3 L63.75 228.8 L48.75 228.8 L48.75 227.3 L29.25 227.3 L29.25 228.8 L14.25 228.8 L14.25 227.3 L0 227.3 Z"/>
+<path class="cut" d="M12 95.4 L12 133.4 L12.007 133.517 L12.028 133.636 L12.064 133.752 L12.113 133.862 L12.176 133.966 L12.25 134.062 L12.335 134.147 L12.431 134.222 L12.534 134.285 L12.644 134.335 L12.76 134.371 L12.879 134.393 L13 134.4 L65 134.4 L65.117 134.393 L65.236 134.372 L65.352 134.336 L65.462 134.287 L65.566 134.224 L65.662 134.15 L65.747 134.065 L65.822 133.969 L65.885 133.866 L65.935 133.756 L65.971 133.64 L65.993 133.521 L66 133.4 L66 95.4 L65.993 95.283 L65.972 95.164 L65.936 95.048 L65.887 94.938 L65.824 94.834 L65.75 94.739 L65.665 94.653 L65.569 94.578 L65.466 94.515 L65.356 94.465 L65.24 94.429 L65.121 94.407 L65 94.4 L13 94.4 L12.883 94.407 L12.764 94.428 L12.648 94.464 L12.538 94.513 L12.434 94.576 L12.338 94.65 L12.253 94.736 L12.178 94.831 L12.115 94.934 L12.065 95.044 L12.029 95.16 L12.007 95.279 Z"/>
+<path class="cut" d="M14.1 87.65 L14.1 89.45 L29.4 89.45 L29.4 87.65 Z"/>
+<path class="cut" d="M14.1 139.35 L14.1 141.15 L29.4 141.15 L29.4 139.35 Z"/>
+<path class="cut" d="M48.6 87.65 L48.6 89.45 L63.9 89.45 L63.9 87.65 Z"/>
+<path class="cut" d="M48.6 139.35 L48.6 141.15 L63.9 141.15 L63.9 139.35 Z"/>
+</g>
+</g>
+<g transform="translate(133.2 25)">
+<text class="label" y="4">Top view in the box</text>
+<g transform="translate(1.5 8.5)">
+<rect class="box" x="-1.5" y="-1.5" width="81" height="67"/>
+<path class="board" d="M0 63.25 L0 0.75 L78 0.75 L78 63.25Z M12 13 L12 51 L12.007 51.117 L12.028 51.236 L12.064 51.352 L12.113 51.462 L12.176 51.566 L12.25 51.662 L12.335 51.747 L12.431 51.822 L12.534 51.885 L12.644 51.935 L12.76 51.971 L12.879 51.993 L13 52 L65 52 L65.117 51.993 L65.236 51.972 L65.352 51.936 L65.462 51.887 L65.566 51.824 L65.662 51.75 L65.747 51.665 L65.822 51.569 L65.885 51.466 L65.935 51.356 L65.971 51.24 L65.993 51.121 L66 51 L66 13 L65.993 12.883 L65.972 12.764 L65.936 12.648 L65.887 12.538 L65.824 12.434 L65.75 12.338 L65.665 12.253 L65.569 12.178 L65.466 12.115 L65.356 12.065 L65.24 12.029 L65.121 12.007 L65 12 L13 12 L12.883 12.007 L12.764 12.028 L12.648 12.064 L12.538 12.113 L12.434 12.176 L12.338 12.25 L12.253 12.335 L12.178 12.431 L12.115 12.534 L12.065 12.644 L12.029 12.76 L12.007 12.879Z M14.1 5.25 L14.1 7.05 L29.4 7.05 L29.4 5.25Z M14.1 56.95 L14.1 58.75 L29.4 58.75 L29.4 56.95Z M48.6 5.25 L48.6 7.05 L63.9 7.05 L63.9 5.25Z M48.6 56.95 L48.6 58.75 L63.9 58.75 L63.9 56.95Z"/>
+<path class="green" d="M13 13 L65 13 L65 51 L13 51Z"/>
+<text class="note" x="38" y="33.4">0</text>
+</g>
+</g>
+<g transform="translate(12 272.8)">
+<text class="label" y="4">Box piece 0: mailer × 1 · 545 × 394.7 mm</text>
+<g transform="translate(0 7)">
+<path class="crease" d="M229.6 211.7 L315.4 211.7"/>
+<path class="crease" d="M229.6 98.6 L315.4 98.6"/>
+<path class="crease" d="M232 30 L313 30"/>
+<path class="crease" d="M229.6 101.5 L229.6 210.4"/>
+<path class="crease" d="M315.4 101.5 L315.4 210.4"/>
+<path class="crease" d="M229.6 282.4 L315.4 282.4"/>
+<path class="crease" d="M229.6 283.7 L229.6 392.6"/>
+<path class="crease" d="M315.4 283.7 L315.4 392.6"/>
+<path class="crease" d="M227.5 211.7 L227.5 282.4"/>
+<path class="crease" d="M116 212.5 L116 279.5"/>
+<path class="crease" d="M112.3 212.5 L112.3 279.5"/>
+<path class="crease" d="M317.5 211.7 L317.5 282.4"/>
+<path class="crease" d="M429 212.5 L429 279.5"/>
+<path class="crease" d="M432.7 212.5 L432.7 279.5"/>
+<line class="valley" x1="229.6" y1="211.7" x2="315.4" y2="211.7"/>
+<text class="stage valley-text" x="259" y="210.9">s0</text>
+<line class="valley" x1="229.6" y1="98.6" x2="315.4" y2="98.6"/>
+<text class="stage valley-text" x="287.6" y="97.8">s5</text>
+<line class="valley" x1="232" y1="30" x2="313" y2="30"/>
+<text class="stage valley-text" x="259.8" y="29.2">s6</text>
+<line class="valley" x1="229.6" y1="101.5" x2="229.6" y2="210.4"/>
+<text class="stage valley-text" x="230.4" y="173.3">s1</text>
+<line class="valley" x1="315.4" y1="101.5" x2="315.4" y2="210.4"/>
+<text class="stage valley-text" x="316.2" y="137">s1</text>
+<line class="valley" x1="229.6" y1="282.4" x2="315.4" y2="282.4"/>
+<text class="stage valley-text" x="287.6" y="281.6">s0</text>
+<line class="valley" x1="229.6" y1="283.7" x2="229.6" y2="392.6"/>
+<text class="stage valley-text" x="230.4" y="319.2">s1</text>
+<line class="valley" x1="315.4" y1="283.7" x2="315.4" y2="392.6"/>
+<text class="stage valley-text" x="316.2" y="355.5">s1</text>
+<line class="valley" x1="227.5" y1="211.7" x2="227.5" y2="282.4"/>
+<text class="stage valley-text" x="228.3" y="234.467">s2</text>
+<line class="valley" x1="116" y1="212.5" x2="116" y2="279.5"/>
+<text class="stage valley-text" x="116.8" y="256.367">s3</text>
+<line class="valley" x1="112.3" y1="212.5" x2="112.3" y2="279.5"/>
+<text class="stage valley-text" x="113.1" y="234.033">s4</text>
+<line class="valley" x1="317.5" y1="211.7" x2="317.5" y2="282.4"/>
+<text class="stage valley-text" x="318.3" y="258.033">s2</text>
+<line class="valley" x1="429" y1="212.5" x2="429" y2="279.5"/>
+<text class="stage valley-text" x="429.8" y="234.033">s3</text>
+<line class="valley" x1="432.7" y1="212.5" x2="432.7" y2="279.5"/>
+<text class="stage valley-text" x="433.5" y="256.367">s4</text>
+<path class="cut" d="M0 239.15 L0 224.15 L1.6 224.15 L1.6 212.5 L116 212.5 L116 211.7 L229.6 211.7 L229.6 210.4 L194.5 210.4 L194.5 101.5 L229.6 101.5 L229.6 98.6 L226.7 98.6 L226.7 30 L232 30 L232 0 L313 0 L313 30 L318.3 30 L318.3 98.6 L315.4 98.6 L315.4 101.5 L350.5 101.5 L350.5 210.4 L315.4 210.4 L315.4 211.7 L429 211.7 L429 212.5 L543.4 212.5 L543.4 224.15 L545 224.15 L545 239.15 L543.4 239.15 L543.4 252.85 L545 252.85 L545 267.85 L543.4 267.85 L543.4 279.5 L429 279.5 L429 282.4 L315.4 282.4 L315.4 283.7 L350.5 283.7 L350.5 392.6 L315.4 392.6 L315.4 394.7 L229.6 394.7 L229.6 392.6 L194.5 392.6 L194.5 283.7 L229.6 283.7 L229.6 282.4 L116 282.4 L116 279.5 L1.6 279.5 L1.6 267.85 L0 267.85 L0 252.85 L1.6 252.85 L1.6 239.15 Z"/>
+<path class="cut" d="M230.15 223.9 L230.15 239.4 L232.25 239.4 L232.25 223.9 Z"/>
+<path class="cut" d="M230.15 252.6 L230.15 268.1 L232.25 268.1 L232.25 252.6 Z"/>
+<path class="cut" d="M312.75 223.9 L312.75 239.4 L314.85 239.4 L314.85 223.9 Z"/>
+<path class="cut" d="M312.75 252.6 L312.75 268.1 L314.85 268.1 L314.85 252.6 Z"/>
+</g>
+</g>
+<g transform="translate(12 686.5)">
+<text class="note" y="4" xml:space="preserve">Insert: Chipboard 1.5 mm · 78 × 64 × 40 mm</text>
+<text class="note" y="10" xml:space="preserve">Box: Mailer in EFlute 1.6 mm · inside 81 × 67 × 111.5 · outside 91.6 × 72.3 × 114.7 mm</text>
+<text class="note" y="16" xml:space="preserve">Fit:</text>
+<text class="note" y="22" xml:space="preserve">  #0 perfume: Green, 0.998 mm clear (target 1 mm)</text>
+<text class="note" y="28" xml:space="preserve">Warnings: 0</text>
+</g>
+</svg>

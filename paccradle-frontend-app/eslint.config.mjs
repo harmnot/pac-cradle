@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // insert_core's generated WebAssembly glue (npm run build:wasm).
+    "wasm/**",
   ]),
 ]);
 

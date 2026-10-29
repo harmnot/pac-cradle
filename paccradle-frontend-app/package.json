@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:wasm": "../paccradle-backend/scripts/build-wasm.sh"
   },
   "dependencies": {
     "next": "16.4.3",
