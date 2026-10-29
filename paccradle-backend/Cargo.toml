@@ -15,6 +15,10 @@ serde = { version = "1", features = ["derive"] }
 # float_roundtrip: designs read back from jsonb must equal what was saved, to the last bit.
 serde_json = { version = "1", features = ["float_roundtrip"] }
 thiserror = "2"
+# The free PNG preview (M1-B5), server only behind insert_core's `export` feature: smooth
+# line drawing and PNG writing, and letter shapes from the bundled font.
+tiny-skia = "0.12"
+ttf-parser = { version = "0.25", default-features = false, features = ["std", "variable-fonts"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -43,3 +47,18 @@ inherits = "release"
 opt-level = "s"
 lto = true
 codegen-units = 1
+
+# The PNG preview's drawing and compression run fast even in debug builds and tests
+# (unoptimised, one picture takes seconds).
+[profile.dev.package.tiny-skia]
+opt-level = 3
+[profile.dev.package.tiny-skia-path]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.ttf-parser]
+opt-level = 3

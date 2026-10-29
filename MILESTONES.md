@@ -29,7 +29,7 @@
 | Item              | Value                                                                       |
 | ----------------- | --------------------------------------------------------------------------- |
 | Milestone         | **M0: Validate & set up** (your tasks) · **M1: MVP build** started early (see Decision log, 2026-10-28) |
-| Next task         | **M1-B5**: watermarked PNG preview · **M1-B3**: your check of the DXF in LibreCAD or Inkscape and your cutter app · **M0-07**: test photos (yours), then I run the M0-11 report |
+| Next task         | **M1-C3**: manual corrections (C2's remaining checks wait for the M0-07 photos) · **M1-B3**: your check of the DXF in LibreCAD or Inkscape and your cutter app · **M0-07**: test photos (yours), then I run the M0-11 report |
 | Waiting on        | You: B3 check in your apps, a printed B4 test print (once), DEC-01, DEC-06, DEC-08 (confirm the 3 styles), M0-05 settings, M0-06 Paddle, M0-07 photos |
 | Blockers          | None for M1-A. M0-03: first commit exists (`0284845`); the clean-clone Docker check is still to run |
 | Last updated      | 2026-10-29                                                                  |
@@ -571,14 +571,67 @@ pac-cradle/                      ← one git repo
     - The PDF test helpers moved to `tests/common/pdf.rs`, shared with the B2 tests.
     - 184 tests in the workspace in Docker, with fmt and clippy clean. The `.wasm` still holds none of the exporters (619 KB, 219 KB gzipped).
     - For you, once: print `tests/golden/export_test_print_cradle_mailer_a4.pdf` at 100 %. Check that the bar measures 50 mm, tape the mailer's tiles together using the map on page 1, and fold the cradle.
-- [ ] **B5 · Watermarked PNG preview** · _claude_
+- [x] **B5 · Watermarked PNG preview** · _claude_ (done 2026-10-29)
+    - Your choices (same day): drawn on the server with tiny-skia, showing the pieces and the fit view.
+    - Status: `crates/insert_core/src/export/png/`, behind the `export` feature. `Packaging::to_png(&design)` returns the PNG. `Preview::of((packaging, design))` is the layout behind it, public for tests and later callers.
+        - **What it shows**, top to bottom:
+            - A title, then the sizes and the fit in words, e.g. "Fit: both products have at least the 1 mm room we suggest for chipboard", or "2 tight", "1 not fitting".
+            - The top view: the insert in the box's inside, with products coloured by fit (green, yellow, red).
+            - Every piece flat, once each, from the production sheet: insert pieces, then box pieces mirrored with the print side up. Cut lines solid, creases dashed, folds numbered in order.
+            - A legend, and a footer saying it's a preview, not a production file.
+        - **Scale**: the pieces share one scale, so their rows come out about 1800 px wide, at most 10 px per mm. The whole picture stays within 4000 px either way.
+        - **The top view gets its own, larger scale** (about 720 px long) when the pieces' scale would leave it small, and its label then says "(enlarged)". Text keeps its size in px whatever the scale.
+        - **Look**: the site's drawing colours from `styles/tokens.css` (espresso cuts, terracotta creases, kraft board, the three fit colours) on label cream, in Geist, the site's typeface.
+            - The font is bundled at `crates/insert_core/fonts/Geist-Variable.ttf`, with its licence (SIL Open Font License 1.1) beside it, so the server needs no installed fonts.
+        - **Fold circles** reuse the test print's placement, moved to `export/marks.rs` and now shared. Their size is a parameter, because the PNG sizes its circles in px.
+        - **Watermark**: "PACCRADLE PREVIEW - NOT FOR PRODUCTION" in bold rows at 30° across the whole picture, 13 % opaque, drawn over the drawings. Each design shifts its rows its own way (seeded from the pieces' sizes), so the same design always draws the same picture. The row shift is shared with the test print (`export::jitter`).
+        - **Not a production file** (§7.4): it draws the preview's geometry as pixels, nothing the browser doesn't already have.
+        - New dependencies, server only (the browser build's tree has none of them): `tiny-skia` 0.12 (drawing, PNG writing) and `ttf-parser` 0.25 (letter shapes).
+            - Counting their dependencies, 17 crates get compiled, mostly `png`'s compression and checksum stack (`flate2`, `fdeflate`, two `miniz_oxide` versions, `crc32fast`). That's more than the 5–8 I estimated when you chose this.
+            - In dev and test builds the image crates compile optimised (workspace `Cargo.toml`). Unoptimised, one picture took seconds and the PNG tests 22 s; now 3 s.
+        - Speed (native, release): about 180 ms per picture, about 590 KB each, for the two samples.
+    - Checked: I looked at the rendered pictures: the cradle in a mailer, the grid in a shipping box, and a card with tight fits.
+    - 8 new tests (`tests/export_png.rs`), reading the PNG back with tiny-skia's decoder:
+        - A PNG of the laid-out size, at most 4000 px, with the top view first and then each sheet piece once, every drawing inside the picture and its label above it.
+        - Each product shows its own fit colour where the layout puts it: green samples; a card cut tight (yellow); the sample card's gloss off the edge and a compact pushed onto it (red).
+        - Every outline corner sits on a dark line, and creases show terracotta dashes.
+        - The top view is enlarged to 720 px and says so; the pieces share the scale.
+        - The watermark reaches every 400 px square.
+        - Huge designs stay within 4000 px; tiny ones stop at 10 px per mm.
+        - The same design gives the same bytes.
+        - Two golden pictures, `preview_cradle_mailer.png` and `preview_grid_shipping.png`, compared pixel by pixel: at most 0.1 % of pixels may differ by more than 24 levels, because tiny-skia's SIMD smoothing can differ by a shade between processors.
+    - 192 tests in the workspace in Docker, with fmt and clippy clean. The `.wasm` is unchanged: 619 KB, 219 KB gzipped, with no PNG code or font in it.
 
 ### M1-C · Vision service (§5)
 
-- [ ] **C1 · Production vision crate** · _claude_
+- [x] **C1 · Production vision crate** · _claude_ (done 2026-10-29)
     - Turn the spike into the `vision` crate. It runs as a job and returns §5.5 JSON.
+    - Status: `crates/vision`. The capture job (D5) calls one function: `vision::run((&input, &image_bytes))`. It returns the §5.5 `VisionResult`, or a `VisionError` with a stable code. The job table and the API's link to OpenCV come with D2 and D5.
+        - **Input** (`input.rs`): `CaptureInput { paper, mode, pen_width_mm }` reads from the job's JSON. `paper` takes `A4` or `a4`, `Letter` or `letter`; the pen width defaults to 0.5 mm and must be 0.1–3 mm. It's checked before the file is looked at.
+        - **Upload checks** (`image.rs`): `vision::inspect(bytes)` reads the format and pixel size from the file's header, decoding nothing.
+            - Only JPEG, PNG and WebP (lossy, lossless and extended) are accepted. HEIC is converted to JPEG in the browser (E2).
+            - At most 40 million pixels, so a crafted file can't make the server decode a huge image (§8.5). At least 1000 px on the long side, about the least that measures to the §5.6 targets.
+            - The API can call it at upload time (D4).
+        - **Decoding**: `vision::decode` runs the checks, then decodes to BGR, turned upright by the photo's EXIF orientation. OpenCV 4.10 does that when decoding from memory too; a test checks it. It refuses images whose pixels don't match their header.
+        - **Errors**: each has a stable code the API translates: `CAPTURE_UNSUPPORTED_IMAGE`, `_UNREADABLE_IMAGE`, `_IMAGE_TOO_LARGE`, `_IMAGE_TOO_SMALL`, `_INVALID_INPUT`, `_PAPER_NOT_FOUND`, `_PRODUCT_NOT_FOUND`, `_TRACE_NOT_FOUND` and `_PROCESSING_FAILED`. `is_users_to_fix()` is false only for the last, an OpenCV failure the API logs and doesn't explain.
+        - **Warnings** are codes now, translated by `kind` like the A7 warnings: `tall_product_looks_bigger`, `touches_paper_edge`, `other_objects` (with `count`) and `low_confidence` (with `confidence`). The English sentences stay as `Display`. CLAUDE.md §5.5's example is updated.
+        - **The result reads back from JSON**, because the API stores it with the capture and reads it again. A test checks the round trip and the §5.5 shape.
+        - Both tools (`measure`, `accuracy`) now read photos the job's way. The accuracy report (M0-11) calls `vision::run` itself, so it measures exactly what production runs.
+        - The library docs no longer call it a spike. The `spike/` folder keeps the M0-07 photos, truth table and report.
+    - Speed: about 0.5 s per 4000 × 3000 JPEG photo, from bytes to result (release, Docker x86_64 on this Mac).
+    - 8 new tests (`tests/production.rs`, Docker only, like all OpenCV tests):
+        - `run` measures the same disc from JPEG, PNG and WebP files.
+        - `inspect` reads all four header kinds.
+        - Headers claiming 400 million, 81 million and 100 million pixels are refused without decoding.
+        - Small, foreign (GIF, HEIC, PDF, empty), cut-short and broken files are refused with the right codes.
+        - EXIF orientation 6 turns the photo upright and it still measures.
+        - The input reads from JSON and bad pen widths are refused first.
+        - The result has the §5.5 shape and reads back.
+        - The error codes and who can fix each.
+    - The synthetic-photo helpers moved to `tests/common`, shared with the spike's 5 tests. 13 vision tests pass in Docker; fmt and clippy are clean.
 - [ ] **C2 · Trace mode in the production path** · _claude_
     - Includes the pen-width setting.
+    - From C1: trace mode already runs through `vision::run`, with the pen width checked (0.1–3 mm, default 0.5). What's left needs the M0-07 photos: trace-specific checks on real photos (gaps in the pen line, a product left on the paper), and calibrating the half-pen-width rule (M0-10). The editor's pen-width setting is E2.
 - [ ] **C3 · Manual corrections** · _claude_ · §3 step 4
     - A tap point re-runs detection. An edited contour is accepted as it is.
 - [ ] **C4 · Tall-product warning + height input** · _claude_ · §5.2 fix B, DEC-09
@@ -601,7 +654,10 @@ pac-cradle/                      ← one git repo
     - Cloudflare R2 provider behind a trait.
     - 10 MB limit, file-type check, pixel cap, rate limits.
     - Strip GPS from EXIF, signed URLs, a job that deletes photos after 30 days.
+    - From C1: `vision::inspect(bytes)` does the file-type check and pixel cap from the header, without decoding (JPEG, PNG, WebP; at most 40 million pixels, at least 1000 px on the long side). Call it before storing. It doesn't strip GPS: a photo re-encoded through the browser's canvas has no EXIF left, but one sent straight from a phone still does.
+    - The docs disagree on the upload size: 10 MB here, 15 MB in CLAUDE.md §8.5 and the handler rules. Pick one here.
 - [ ] **D5 · Captures endpoints**: create, get, correct; each one starts a vision job · _claude_ · §8.3
+    - From C1: the job calls `vision::run((&input, &bytes))` in a blocking task (about 0.5 s a photo) and stores the `VisionResult` as the capture's `result` jsonb. On failure it stores the error's `code()`: explain it to the user when `is_users_to_fix()`, log it when not. The API then links OpenCV, so the runtime image needs its libraries (Dockerfile note).
 - [ ] **D6 · Designs endpoints** · _claude_ · §8.3
     - Create, get and patch, with versions.
     - "My designs" list with `page`, `page_size`, `total_pages`, filtering and sorting (your code-style rule).
@@ -609,6 +665,7 @@ pac-cradle/                      ← one git repo
     - Entitlement check: Pro, then credit, otherwise `402` with the checkout payload.
     - Export job, then signed download URLs.
     - From B4: the test print (`Packaging::to_test_print(paper)`) is free, so it skips the entitlement check. Rate-limit it like other exports. `Paper` has no serde yet: add it with the request schema.
+    - From B5: the PNG preview (`Packaging::to_png(&design)`) is free too, about 180 ms per picture: run it as a job like the other exports.
 - [ ] **D8 · `/me` endpoint** · _claude_
 - [ ] **D9 · Tests + contracts** · _claude_
     - `#[sqlx::test]` integration tests for every endpoint.
@@ -658,6 +715,7 @@ pac-cradle/                      ← one git repo
 - [ ] **E9 · Export + checkout** · _claude_ · §9.3
     - Free: watermarked PNG and test PDF (make watermark to not let the AI can not delete it if user want to take the photo and then they use ai to generate what we serve).
     - From B4: the test PDF is made on the server and its watermark is done (see B4). Default the paper by country, as in §3 step 2 (Letter for the US, Canada, Mexico and the Philippines; A4 elsewhere), and let the user switch.
+    - From B5: the watermarked PNG is made on the server too (see B5). The download button only needs the export endpoint.
     - Paid: Paddle.js overlay checkout, wait for the unlock (SSE or polling `/me`), then download.
 - [ ] **E10 · My designs**: list and reopen · _claude_
 - [ ] **E11 · Phone layout**: capture and view only · _claude_ · §7.1
@@ -690,6 +748,7 @@ pac-cradle/                      ← one git repo
 
 - [ ] **G1 · Deploy** · _claude_ · §8.2
     - Docker images, with the OpenCV runtime in the API image. VPS deploy, HTTPS, database backups.
+    - From C1: Debian's `libopencv-imgcodecs410` pulls in GDAL, OpenEXR and TIFF, which the API never uses. A slimmer OpenCV build (core, imgproc, imgcodecs with JPEG, PNG and WebP only) would shrink the runtime image a lot.
 - [ ] **G2 · Monitoring** · _claude_ · §13
     - Error tracking. Pick a tool. An SDK such as Sentry's is a new runtime dependency, so write down why (DEC-05).
     - Funnel events: visit → capture → design finished → export paid.
@@ -818,7 +877,9 @@ Ideas that came up mid-build. Review them at each gate.
 - **Lid ears on the mailer**: the lid closes with its front tuck flap only. Many roll-end tuck-front mailers also have small flaps on the lid's sides that tuck into the ends. Add them if beta users want a firmer close.
 - **Bigger paper for the test print** (B4): a shipping box takes 8 Letter tiles. An A3 / Tabloid option would halve that for people with such a printer.
 - **Test print text in other languages** (B4): the instructions are English strings in `export/test_print/instructions.rs`. Move them to translatable tables with the first new language (DEC-11, M4-05).
-- **The name in files** (B4): the watermark ("PACCRADLE TEST PRINT") and the PDF titles use the working name. Change them with DEC-01.
+- **The name in files** (B4, B5): the watermarks ("PACCRADLE TEST PRINT", "PACCRADLE PREVIEW"), the PDF titles and the PNG's footer use the working name. Change them with DEC-01.
+- **Smaller PNG previews** (B5): tiny-skia always writes full-colour PNGs with transparency, about 590 KB for the samples. Writing RGB without transparency, or fewer colours, would roughly halve that if storage or download size starts to matter.
+- **Share-link and SEO images from the PNG code** (B5): `Preview` and its drawing code can make Open Graph images for share links (M2-05), template-page thumbnails (M2-03) and, later, the isometric renders (M3-13).
 - **Tidy the backend env examples**: they still mention a PWA and "progress photos" from another project, and the Paddle webhook path `/api/v1/webhooks/paddle` differs from §8.3 (`/api/v1/paddle/webhook`). Pick one path in F3.
 
 ---
@@ -894,6 +955,13 @@ Ideas that came up mid-build. Review them at each gate.
 | 2026-10-29 | M1-B4 | **Seams: cut the hatched strip off a tile's left and top, lay that edge on the next tile's line; grey diamonds across each seam** | The sewing-pattern way: it works with opaque paper, because the diamond halves left after cutting only join up when the pages line up. |
 | 2026-10-29 | M1-B4 | **Fold steps: each hinge stage is a numbered circle on its crease; white = away from the printed side, black = towards it** | The A6 note: box pieces print mirrored, so their folds go away from the printed side. A number on the crease needs no panel names, and the instructions list the same steps. |
 | 2026-10-29 | M1-B4 | **Scale bar on every page (50 mm on A4, 2 in on Letter), and `/PrintScaling /None` in the file** | "Fit to page" shrinks a print by a few percent, enough to spoil a fit check. Letter users mostly have inch rulers. |
+| 2026-10-29 | M1-B5 | **The PNG preview is drawn on the server with `tiny-skia` 0.12 and `ttf-parser` 0.25, with the Geist font bundled** (SIL Open Font License) | Your choice, over OpenCV (dated fonts, tests only in Docker), the browser canvas (no images for share links or emails) and drawing everything by hand. Smooth lines, PNG writing and letter shapes are where a crate is cleaner (your rule's exception). Server only, behind `export`. Cost: 17 compiled crates, mostly `png`'s compression stack. |
+| 2026-10-29 | M1-B5 | **The PNG shows the sizes and fit in words, the top view coloured by fit, and every piece flat with numbered folds** | Your choice. The top view gets its own, larger scale (about 720 px long, labelled "enlarged"), because it's the picture a client looks at and the box's scale leaves it small. |
+| 2026-10-29 | M1-B5 | **Golden PNGs are compared pixel by pixel within a tolerance** (at most 0.1 % of pixels off by more than 24 levels), not byte by byte | tiny-skia smooths with SIMD code that can differ by a shade between processors (this Mac, Docker, CI). The same machine still gives identical bytes, which a test checks. |
+| 2026-10-29 | M1-C1 | **One entry point for capture jobs: `vision::run((CaptureInput, image bytes))`** returns the §5.5 result or an error with a stable `CAPTURE_*` code | The job (D5) stays a thin wrapper: no OpenCV types or file paths cross into the API. Plain computation, so it runs in a blocking task. |
+| 2026-10-29 | M1-C1 | **Uploads are checked from the header before decoding**: JPEG, PNG or WebP only, at most 40 million pixels, at least 1000 px on the long side | §8.5 asks for a file-type check and a pixel cap against crafted files; reading the header costs nothing. 40 MP leaves room for photos sent straight from a phone (the browser sends at most 4000 px on the long side). Below about 1000 px a sheet gets under 3 px per mm, too coarse for the §5.6 targets. |
+| 2026-10-29 | M1-C1 | **Photo warnings and errors are codes** (`kind` with its numbers; `CAPTURE_*`), with English as the fallback text | The editor translates every string (DEC-11), as with the A7 warnings. CLAUDE.md §5.5's example changed from sentences to `{ "kind": … }`. |
+| 2026-10-29 | M1-C1 | **The photo's EXIF orientation turns it upright on decode; the EXIF values the browser sends are kept for later, not used to turn the photo** | The browser re-encodes photos already upright, so most arrive without EXIF. Turning them by the sent values as well would turn some twice. The sent focal length is for pose correction (M3-03). |
 
 ---
 
@@ -932,3 +1000,5 @@ Ideas that came up mid-build. Review them at each gate.
 | 2026-10-29 | M1-B2 | PDF export: `Packaging::to_pdf()`, one true-size page with CUT, CREASE (dashed), PERFORATION, DIMENSIONS and LABELS layers, arcs as Bézier curves, written by hand. `pypdf` (strict) reads it; macOS renders it. 5 new tests; Docker (166) passes. |
 | 2026-10-29 | M1-B3 | DXF export: `Packaging::to_dxf()`, R12 in mm, CUT/CREASE/PERFORATION layers in red/blue/green, one polyline per path with arcs as bulges, written by hand. `ezdxf` reads and audits it (0 errors) and draws it right. 5 new tests; Docker (171) passes. Waiting on your check in LibreCAD or Inkscape and your cutter app. |
 | 2026-10-29 | M1-B4 | Print-at-home test PDF: `Packaging::to_test_print(Paper)`. Every copy at true size; whole pieces share pages, bigger ones are tiled with 10 mm overlaps, trim strips, diamonds and tile names (empty tiles left out); numbered fold circles; instructions page; scale bar; watermark over the lines; preview geometry, no layers. Shared PDF code moved to `export/pdf/`. `pypdf` (strict) reads it; pages rendered and checked. 13 new tests; Docker (184) passes; WASM still has no exporters. |
+| 2026-10-29 | M1-B5 | Watermarked PNG preview: `Packaging::to_png(&design)`, drawn with tiny-skia in the site's colours and Geist. Sizes and fit in words, top view coloured by fit (enlarged), every piece flat with numbered folds, legend, watermark over everything. Fold-circle placement now shared with the test print. About 180 ms and 590 KB per picture. 8 new tests (pixel checks, two pixel-tolerance goldens); Docker (192) passes; WASM unchanged. |
+| 2026-10-29 | M1-C1 | Production vision crate: `vision::run((input, bytes))` for capture jobs; upload checks from the header (JPEG/PNG/WebP, 40 MP cap, 1000 px minimum) before decoding; EXIF orientation honoured; warnings and errors as codes; results read back from JSON; both tools on the job's path. About 0.5 s per photo. 8 new tests (13 in the crate) pass in Docker. |

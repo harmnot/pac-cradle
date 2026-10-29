@@ -11,13 +11,14 @@ use super::{
     MARGIN_MM, OVERLAP_MM, Paper, Polyline, ScaleBar, TestPage, TestPrint, Tile, View, inside,
     instructions, tile_name,
 };
+use crate::export::marks::{KeepOut, mark_spots};
 use crate::export::num;
 use crate::export::pdf::draw::{
     self, Font, PT_PER_MM, Text, line, path_commands, text_at, text_width_mm,
 };
 use crate::export::pdf::file::write_file;
-use crate::export::{Fold, LineKind};
-use crate::geometry::{Bounds, Line, Path, Point};
+use crate::export::{LineKind, jitter};
+use crate::geometry::{Bounds, Path, Point};
 use crate::piece::FoldDirection;
 
 /// Fold marks: a circle this big round the step number.
@@ -26,13 +27,6 @@ const FOLD_NUMBER_MM: f64 = 3.0;
 /// Helvetica's digits stand about this share of the font size above the baseline, halved:
 /// how far below the middle a centred number's baseline goes.
 const DIGIT_HALF_HEIGHT: f64 = 0.36;
-/// Fold marks keep at least this far apart, centre to centre: creases a board apart
-/// (a mailer's double end walls) would otherwise stack their circles.
-const FOLD_MARK_SPACING_MM: f64 = 2.0 * FOLD_MARK_RADIUS_MM + 0.6;
-/// A mark moves at most this many spacings along its crease, either way (far enough to
-/// leave an overlap), and stays this share of the crease's length from its ends.
-const FOLD_MARK_TRIES: i32 = 6;
-const FOLD_MARK_END_SHARE: f64 = 0.1;
 
 /// A whole piece's label: its baseline this far above the piece.
 const LABEL_TEXT_MM: f64 = 3.0;
@@ -205,7 +199,7 @@ impl TestPrint {
             let Some(item) = self.items.get(view.item) else {
                 continue;
             };
-            let spots = mark_spots((&item.folds, &self.seams_of(view.item)));
+            let spots = mark_spots((&item.folds, &self.seams_of(view.item), FOLD_MARK_RADIUS_MM));
             for (fold, spot) in item.folds.iter().zip(spots) {
                 if inside((spot, view.window)) {
                     content.push_str(&fold_mark((view.to_page(spot), fold.step, fold.direction)));
@@ -215,9 +209,13 @@ impl TestPrint {
         content
     }
 
-    /// Where item `item`'s tiles join, in its coordinates: none for a whole piece.
-    fn seams_of(&self, item: usize) -> Seams {
-        let mut seams = Seams::default();
+    /// Where item `item`'s tiles overlap, in its coordinates, for fold marks to keep out
+    /// of (the next tile covers them, or the trim cuts them): none for a whole piece.
+    fn seams_of(&self, item: usize) -> KeepOut {
+        let mut seams = KeepOut {
+            half_width_mm: HALF_OVERLAP_MM,
+            ..KeepOut::default()
+        };
         for page in &self.pages {
             let (Some(tile), Some(view)) = (page.tile, page.views.first()) else {
                 continue;
@@ -311,73 +309,6 @@ fn run_commands((run, view): (&Polyline, &View)) -> String {
         false => "S\n",
     });
     commands
-}
-
-/// The seam lines where a tiled item's pages join, in its coordinates.
-#[derive(Debug, Clone, Default)]
-struct Seams {
-    /// Seams running down the item, at these x.
-    xs: Vec<f64>,
-    /// Seams running across, at these y.
-    ys: Vec<f64>,
-}
-
-impl Seams {
-    /// True when a mark at `spot` stays wholly out of the overlaps round the seams, where
-    /// the next tile covers it or the trim cuts it.
-    fn clear_of(&self, spot: Point) -> bool {
-        let reach = HALF_OVERLAP_MM + FOLD_MARK_RADIUS_MM;
-        self.xs.iter().all(|x| (spot.x - x).abs() >= reach)
-            && self.ys.iter().all(|y| (spot.y - y).abs() >= reach)
-    }
-}
-
-/// Where each fold's mark goes, in the item's coordinates: the middle of its crease, or
-/// the nearest spot along it that keeps clear of the marks placed before and of the
-/// overlaps round `seams`. When no spot clears the seams too, the nearest one clear of
-/// the other marks. Worked out per item, so a mark lands in the same place on every page
-/// that shows it.
-fn mark_spots((folds, seams): (&[Fold], &Seams)) -> Vec<Point> {
-    let mut spots: Vec<Point> = Vec::with_capacity(folds.len());
-    for fold in folds {
-        let Line { from, to } = fold.axis;
-        let length = from.distance_to(to);
-        let at = |share: f64| {
-            Point::new(
-                from.x + share * (to.x - from.x),
-                from.y + share * (to.y - from.y),
-            )
-        };
-        let step = match length > 0.0 {
-            true => FOLD_MARK_SPACING_MM / length,
-            false => 0.0,
-        };
-        // The middle, then a spacing either side, then two, …
-        let candidates: Vec<Point> = (0..=2 * FOLD_MARK_TRIES)
-            .map(|try_| {
-                let side = match try_ % 2 {
-                    0 => -1.0,
-                    _ => 1.0,
-                };
-                0.5 + side * f64::from((try_ + 1) / 2) * step
-            })
-            .filter(|share| (FOLD_MARK_END_SHARE..=1.0 - FOLD_MARK_END_SHARE).contains(share))
-            .map(at)
-            .collect();
-        let apart = |spot: &Point| {
-            spots
-                .iter()
-                .all(|placed| placed.distance_to(*spot) >= FOLD_MARK_SPACING_MM)
-        };
-        let spot = candidates
-            .iter()
-            .find(|spot| apart(spot) && seams.clear_of(**spot))
-            .or_else(|| candidates.iter().find(|spot| apart(spot)))
-            .copied()
-            .unwrap_or_else(|| at(0.5));
-        spots.push(spot);
-    }
-    spots
 }
 
 /// A fold's step number in a circle at `center`: a white circle for a fold away from the
@@ -636,7 +567,7 @@ fn watermark((paper, number): (Paper, usize)) -> String {
     for row in -rows..=rows {
         // Along the row is (cos, -sin) on the page (y down); across it is (sin, cos).
         let across = row as f64 * WATERMARK_ROW_MM;
-        let along = -reach - jitter((number, row)) * period;
+        let along = -reach - jitter((number as u64, row)) * period;
         content.push_str(&text_at(Text {
             at: Point::new(
                 center.x + along * cos + across * sin,
@@ -650,17 +581,6 @@ fn watermark((paper, number): (Paper, usize)) -> String {
     }
     content.push_str("Q\n");
     content
-}
-
-/// A share from 0 to 1 that looks random but comes out the same on every run, for one
-/// row of one page (a SplitMix64 hash).
-fn jitter((page, row): (usize, i64)) -> f64 {
-    let mut hash = (page as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
-        ^ (row as u64).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    hash ^= hash >> 31;
-    hash = hash.wrapping_mul(0x94D0_49BB_1331_11EB);
-    hash ^= hash >> 29;
-    (hash % 1000) as f64 / 1000.0
 }
 
 /// The whole file: catalog (asking readers to print at actual size), the page list,

@@ -32,7 +32,8 @@
 //! piece once, box pieces mirrored print side up, and writes it as SVG
 //! ([`Packaging::to_svg`]). The free print-at-home test PDF (M1-B4,
 //! `Packaging::to_test_print`) tiles every copy over A4 or Letter pages from the preview's
-//! geometry. The browser build never turns the feature on.
+//! geometry, and the free PNG preview (M1-B5, `Packaging::to_png`) draws the pieces and
+//! the fit as a watermarked picture. The browser build never turns the feature on.
 
 pub mod check;
 pub mod design;

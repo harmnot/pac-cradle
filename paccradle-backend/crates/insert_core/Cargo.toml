@@ -9,13 +9,16 @@ publish.workspace = true
 workspace = true
 
 [features]
-# Production file writers (M1-B): server only. The browser build never turns this on.
-export = []
+# Production file writers and the free test print and PNG preview (M1-B): server only.
+# The browser build never turns this on.
+export = ["dep:tiny-skia", "dep:ttf-parser"]
 
 [dependencies]
 i_overlay.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+tiny-skia = { workspace = true, optional = true }
+ttf-parser = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true

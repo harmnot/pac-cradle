@@ -63,6 +63,10 @@ scripts/in-docker.sh cargo run -p vision --release --bin measure -- crates/visio
 saw: `1-paper.jpg` (paper found), `2-flattened.jpg`, `3-mask.png`, `4-outline.jpg`.
 Trace mode takes `--pen-width-mm` (default 0.5).
 
+Both tools read photos the way a capture job does (M1-C1): JPEG, PNG or WebP only, at least
+1000 px on the long side and at most 40 million pixels, turned upright by their EXIF
+orientation. The accuracy report runs `vision::run`, the job's own entry point.
+
 ```bash
 scripts/in-docker.sh cargo run -p vision --release --bin accuracy
 ```

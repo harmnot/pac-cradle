@@ -301,12 +301,12 @@ Ask the user: tap the product, or switch to Trace mode
             "height_source": "user"
         }
     ],
-    "warnings": [
-        "Product looks tall: enter its height or use Trace mode for exact fit"
-    ],
+    "warnings": [{ "kind": "tall_product_looks_bigger" }],
     "level_used": "L1"
 }
 ```
+
+Warnings are codes (`kind`, plus any numbers) that the editor translates; failures carry a stable error code such as `CAPTURE_PAPER_NOT_FOUND` (M1-C1). The output also gives each product's `angle_deg`, `center_mm` and `area_mm2`, and the capture `mode`.
 
 ### 5.6 Accuracy targets and test plan
 
@@ -342,7 +342,7 @@ Libraries:
 
 - **`i_overlay`** for polygon offsets and booleans (picked in M1-A2: pure Rust, so it builds for WASM, and it's the engine inside `geo`). The C++ Clipper2 binding can't build for WASM.
 - No `kurbo`: paths are only lines and circular arcs, and the crate flattens arcs with a few lines of its own math (M1-A2).
-- For the exports: SVG, PDF and DXF (R12) are all written by hand (M1-B1 to B3). They need only lines, colours, layers and built-in-font text, so no crate (the vanilla-Rust rule). The free print-at-home test PDF (M1-B4) uses the same PDF writer.
+- For the exports: SVG, PDF and DXF (R12) are all written by hand (M1-B1 to B3). They need only lines, colours, layers and built-in-font text, so no crate (the vanilla-Rust rule). The free print-at-home test PDF (M1-B4) uses the same PDF writer. The free PNG preview (M1-B5) is the exception to "no crate": it's drawn with `tiny-skia` and `ttf-parser`, with the Geist font bundled, server only.
 
 ```rust
 // simplified data model (all units mm)
@@ -465,7 +465,7 @@ These are common ranges and my starting values. Users can edit everything, and t
 
 - **Production vectors are made only on the server**, after the entitlement check (§9.4).
 - The browser preview gets plain straight segments within 0.05 mm of the true lines, points to 0.01 mm, no arcs and no layers. It draws smooth when zoomed but isn't a production file. (0.5 mm rounding was tried first and made curves stair-stepped: M1-A10.)
-- Free PNG and PDF exports carry a watermark. The print-at-home test PDF draws the preview's lines, with no layers, and each tiled page holds only its own part of a piece (M1-B4).
+- Free PNG and PDF exports carry a watermark. The print-at-home test PDF draws the preview's lines, with no layers, and each tiled page holds only its own part of a piece (M1-B4). The PNG preview draws the same preview geometry as pixels (M1-B5).
 - Download links are short-lived signed URLs.
 
 Someone determined could still copy a preview. That's acceptable: most buyers want clean, layered production files.

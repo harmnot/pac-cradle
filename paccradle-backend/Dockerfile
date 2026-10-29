@@ -21,7 +21,9 @@ FROM debian:trixie-slim AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-# The OpenCV runtime libraries get added here once the API links the vision crate (M1-C1).
+# The OpenCV runtime libraries get added here once the API runs capture jobs with the
+# vision crate (M1-D5). Debian's libopencv-imgcodecs410 pulls in GDAL, OpenEXR and TIFF:
+# weigh a slimmer OpenCV build in M1-G1.
 COPY --from=build /app/target/release/paccradle-backend /usr/local/bin/paccradle-backend
 USER 65532:65532
 ENTRYPOINT ["/usr/local/bin/paccradle-backend"]

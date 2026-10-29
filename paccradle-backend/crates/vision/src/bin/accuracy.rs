@@ -10,9 +10,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use opencv::imgcodecs;
-use opencv::prelude::*;
-use vision::{AnalyzeOptions, CaptureMode, PaperSize, analyze};
+use vision::{CaptureInput, CaptureMode, PaperSize};
 
 const DEFAULT_SPIKE_DIR: &str = "crates/vision/spike";
 /// Products up to this height count as "flat or low" for photo mode (CLAUDE.md §5.6).
@@ -183,18 +181,14 @@ fn measure_row(
     photos_dir: &Path,
     row: &TruthRow,
 ) -> Result<(String, Vec<f64>, f64), Box<dyn std::error::Error>> {
-    let path = photos_dir.join(&row.photo);
-    let path_text = path.to_str().ok_or("photo path is not valid UTF-8")?;
-    let image = imgcodecs::imread(path_text, imgcodecs::IMREAD_COLOR)?;
-    if image.empty() {
-        return Err(format!("could not read {path_text}").into());
-    }
-    let options = AnalyzeOptions {
+    // The same path a capture job takes (M1-C1): file bytes in, §5.5 result out.
+    let bytes = std::fs::read(photos_dir.join(&row.photo))?;
+    let input = CaptureInput {
         paper: row.paper,
         mode: row.mode,
-        ..AnalyzeOptions::default()
+        pen_width_mm: vision::DEFAULT_PEN_WIDTH_MM,
     };
-    let result = analyze(&image, &options)?.result;
+    let result = vision::run((&input, &bytes))?;
     let product = result.products.first().ok_or("no product")?;
     let (l, w) = (product.bbox_mm.l, product.bbox_mm.w);
 

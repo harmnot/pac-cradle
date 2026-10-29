@@ -2,10 +2,18 @@
 //!
 //! Level 1 (OpenCV): find the A4/Letter paper, flatten it to 10 px/mm, cut out the
 //! product (photo mode) or the pen outline (trace mode), measure it in millimetres and
-//! score the confidence. This is the accuracy spike from milestone tasks M0-08 to M0-10;
-//! the API wraps it in a job in M1-C1.
+//! score the confidence. Built as the accuracy spike (M0-08 to M0-10), made the
+//! production crate in M1-C1.
+//!
+//! A capture job (M1-D5) calls [`run`]: the stored [`CaptureInput`] and the uploaded
+//! file's bytes in, the §5.5 [`VisionResult`] out, or a [`VisionError`] with a stable
+//! [`code`](VisionError::code). It's plain computation with no I/O, and it blocks for a
+//! second or so: call it from a blocking task, not on the async runtime.
+//! [`image::inspect`] checks an upload's format and size without decoding it.
 
 pub mod error;
+pub mod image;
+pub mod input;
 pub mod measure;
 pub mod paper;
 pub mod result;
@@ -16,8 +24,10 @@ use opencv::imgproc;
 use opencv::prelude::*;
 
 pub use error::VisionError;
+pub use image::{ImageFormat, ImageInfo, MAX_PIXELS, MIN_LONG_SIDE_PX, decode, inspect};
+pub use input::{CaptureInput, PEN_WIDTH_RANGE_MM};
 pub use paper::{PX_PER_MM, PaperSize};
-pub use result::{CaptureMode, Shape, VisionResult};
+pub use result::{CaptureMode, PhotoWarning, Shape, VisionResult};
 
 use measure::Measurement;
 use result::{BboxMm, HeightSource, Level, PaperResult, ProductResult, round2};
@@ -72,6 +82,14 @@ pub struct DebugImages {
 pub struct Analysis {
     pub result: VisionResult,
     pub debug: Option<DebugImages>,
+}
+
+/// Measures one capture: checks `input`, decodes the photo (refusing files that aren't
+/// JPEG, PNG or WebP, or have too many or too few pixels) and runs the Level 1 pipeline.
+pub fn run((input, image): (&CaptureInput, &[u8])) -> Result<VisionResult, VisionError> {
+    input.validate()?;
+    let photo = decode(image)?;
+    Ok(analyze(&photo, &input.options())?.result)
 }
 
 /// Runs the Level 1 pipeline on one photo (BGR, EXIF orientation already applied).
@@ -147,31 +165,24 @@ struct WarningInputs<'a> {
     confidence: f64,
 }
 
-/// User-facing hints about the photo (CLAUDE.md §5.5 `warnings`).
-fn warnings(inputs: &WarningInputs) -> Vec<String> {
+/// Hints about the photo (CLAUDE.md §5.5 `warnings`).
+fn warnings(inputs: &WarningInputs) -> Vec<PhotoWarning> {
     let mut list = Vec::new();
     if inputs.mode == CaptureMode::Photo {
-        list.push(
-            "From above, a tall product's top looks bigger than it is. If it is taller than about 20 mm, enter its height or use Trace mode for an exact fit."
-                .to_owned(),
-        );
+        list.push(PhotoWarning::TallProductLooksBigger);
     }
     if inputs.measured.touches_edge {
-        list.push(
-            "The product touches the paper edge: move it to the middle, at least 2 cm from the edges."
-                .to_owned(),
-        );
+        list.push(PhotoWarning::TouchesPaperEdge);
     }
     if inputs.extra_blobs > 0 {
-        list.push(format!(
-            "Found {} other object(s) on the paper: remove them, or tap the product.",
-            inputs.extra_blobs
-        ));
+        list.push(PhotoWarning::OtherObjects {
+            count: inputs.extra_blobs,
+        });
     }
     if inputs.confidence < LOW_CONFIDENCE {
-        list.push(
-            "Low confidence: check the outline, or retake the photo in softer light.".to_owned(),
-        );
+        list.push(PhotoWarning::LowConfidence {
+            confidence: round2(inputs.confidence),
+        });
     }
     list
 }

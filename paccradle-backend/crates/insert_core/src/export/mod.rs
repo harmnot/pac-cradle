@@ -9,19 +9,24 @@
 //! drawings people read (PDF, with labels and dimensions) use [`Spacing::DRAWING`].
 //! Writers: SVG (B1), PDF (B2), DXF (B3).
 //!
-//! The print-at-home test print (B4, [`TestPrint`]) is free and not a production file: it
-//! tiles every copy of every piece over A4 or Letter pages, from the preview's geometry,
-//! with fold steps and a watermark.
+//! Two free files aren't production files and draw the preview's geometry under a
+//! watermark: the print-at-home test print (B4, [`TestPrint`]), every copy of every piece
+//! tiled over A4 or Letter pages with fold steps; and the PNG preview (B5, [`Preview`]),
+//! a picture of the pieces and of the products in the insert, coloured by fit.
 
 mod dxf;
+mod marks;
 mod pdf;
+mod png;
 mod sheet;
 mod svg;
 mod test_print;
 
+pub use png::{Block, BlockKind, LegendItem, LegendMark, Line, PngError, Preview};
 pub use sheet::{Fold, LineKind, Sheet, SheetPiece, Spacing};
 pub use test_print::{Joins, Paper, Polyline, TestItem, TestPage, TestPrint, Tile, View};
 
+use crate::design::Design;
 use crate::packaging::Packaging;
 
 /// Decimals written for every coordinate: 0.1 µm, the geometry library's own grid.
@@ -35,6 +40,18 @@ fn num(value: f64) -> String {
         "-0" | "" => "0".to_owned(),
         _ => text.to_owned(),
     }
+}
+
+/// A share from 0 to 1 that looks random but comes out the same on every run, for row
+/// `row` of a watermark seeded by `seed` (a SplitMix64 hash). Shifts each row along by
+/// its own amount.
+fn jitter((seed, row): (u64, i64)) -> f64 {
+    let mut hash =
+        seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ (row as u64).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    hash ^= hash >> 31;
+    hash = hash.wrapping_mul(0x94D0_49BB_1331_11EB);
+    hash ^= hash >> 29;
+    (hash % 1000) as f64 / 1000.0
 }
 
 impl Packaging {
@@ -58,5 +75,11 @@ impl Packaging {
     /// [`TestPrint::to_pdf`]).
     pub fn to_test_print(&self, paper: Paper) -> Vec<u8> {
         TestPrint::of((self, paper)).to_pdf()
+    }
+
+    /// The free watermarked PNG preview of this packaging, generated from `design` (see
+    /// [`Preview::to_png`]).
+    pub fn to_png(&self, design: &Design) -> Result<Vec<u8>, PngError> {
+        Preview::of((self, design))?.to_png()
     }
 }

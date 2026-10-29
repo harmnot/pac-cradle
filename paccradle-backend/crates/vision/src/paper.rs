@@ -6,7 +6,7 @@ use std::str::FromStr;
 use opencv::core::{self, Mat, Point, Point2f, Size, TermCriteria, Vector};
 use opencv::imgproc;
 use opencv::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::VisionError;
 
@@ -31,12 +31,15 @@ const SUBPIX_MAX_ITERATIONS: i32 = 40;
 const SUBPIX_EPSILON: f64 = 0.01;
 const MAX_SUBPIX_SHIFT_PX: f32 = 8.0;
 
-/// Paper sheet sizes the app accepts (CLAUDE.md §3 step 2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+/// Paper sheet sizes the app accepts (CLAUDE.md §3 step 2). Written as `A4` and `Letter`
+/// (§5.5); read in either case.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PaperSize {
     /// ISO A4, 210 × 297 mm.
+    #[serde(alias = "a4")]
     A4,
     /// US Letter, 215.9 × 279.4 mm.
+    #[serde(alias = "letter")]
     Letter,
 }
 

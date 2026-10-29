@@ -1,5 +1,6 @@
-//! Spike CLI (M0-08 to M0-10): measures one photo and prints the result as JSON
-//! (CLAUDE.md §5.5).
+//! Measures one photo and prints the result as JSON (CLAUDE.md §5.5), with debug images
+//! on request. Built for the accuracy spike (M0-08 to M0-10); reads photos the way a
+//! capture job does (M1-C1).
 //!
 //! ```text
 //! measure <photo> [--paper a4|letter] [--mode photo|trace] [--pen-width-mm 0.5]
@@ -11,7 +12,6 @@ use std::process::ExitCode;
 
 use opencv::core::Mat;
 use opencv::imgcodecs;
-use opencv::prelude::*;
 use vision::{AnalyzeOptions, DebugImages, analyze};
 
 const USAGE: &str = "usage: measure <photo> [--paper a4|letter] [--mode photo|trace] \
@@ -75,14 +75,11 @@ fn parse_args(raw: Vec<String>) -> Result<Args, String> {
     })
 }
 
-/// Reads a photo as BGR; OpenCV applies the EXIF orientation (CLAUDE.md §5.3 step 1).
+/// Reads a photo the way a capture job does (M1-C1): JPEG, PNG or WebP only, within the
+/// pixel limits, upright by its EXIF orientation.
 fn read_photo(path: &Path) -> Result<Mat, Box<dyn std::error::Error>> {
-    let path_text = path.to_str().ok_or("photo path is not valid UTF-8")?;
-    let image = imgcodecs::imread(path_text, imgcodecs::IMREAD_COLOR)?;
-    if image.empty() {
-        return Err(format!("could not read {path_text}").into());
-    }
-    Ok(image)
+    let bytes = std::fs::read(path)?;
+    Ok(vision::decode(&bytes)?)
 }
 
 fn write_debug(dir: &Path, debug: &DebugImages) -> Result<(), Box<dyn std::error::Error>> {
