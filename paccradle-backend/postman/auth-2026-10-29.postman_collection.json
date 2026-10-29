@@ -1,0 +1,3648 @@
+{
+ "info": {
+  "name": "paccradle API: sign-in (2026-10-29)",
+  "description": "Change: M1-D3, sign-in (2026-10-29). Client and admin contracts move to **1.0.0-beta.2** (`api-version`). Merge into the main contract.\n\n**Sessions.** Every sign-in and refresh answers with a session body and sets the refresh cookie (`HttpOnly; SameSite=Strict; Secure` on HTTPS; `Path=/api/{surface}/v1/auth`). The web app keeps the access token in memory and sends `Authorization: Bearer <access_token>`; fetch with `credentials: 'include'` so the cookie travels. Access tokens last 15 minutes on the client (5 on the back office). Session responses are `no-store` and never compressed.\n\n**Accounts.** A visitor is a guest until they confirm an email with a link. The link signs them in; the web app then asks for a password (`next_steps: set_password`) and offers a passkey on devices that support one (`add_passkey`). Later sign-ins: passkey first; after 2 failed passkey tries, password; forgot password = ask for an email link, sign in, set a new password within 15 minutes.\n\n**Origin check.** Every `/auth` route refuses an `Origin` header other than the surface's web origin (`FORBIDDEN`). Sign-in routes share a per-address limit (`RATE_LIMIT_AUTH_PER_MINUTE`, default 20); refresh and sign-out keep the API-wide one.\n\n**New error codes:** `AUTH_INVALID_CREDENTIALS` (401), `AUTH_SESSION_EXPIRED` (401), `AUTH_LINK_INVALID` (400), `AUTH_ACCOUNT_REQUIRED` (403), `AUTH_REAUTH_REQUIRED` (403, `meta.fresh_minutes`), `AUTH_PASSWORD_REJECTED` (400, `meta.min_length`, `meta.max_length`), `AUTH_PASSKEY_REJECTED` (400), `AUTH_PASSKEY_ALREADY_REGISTERED` (409). The web app's fetch hook refreshes only on `AUTH_REQUIRED`.\n\n**Passkey JSON.** `public_key` and `credential` use the W3C WebAuthn JSON shapes (camelCase, base64url), unlike the rest of the API: pass them straight to and from the browser.",
+  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+ },
+ "variable": [
+  {
+   "key": "base_url",
+   "value": "http://127.0.0.1:7773"
+  },
+  {
+   "key": "web_origin",
+   "value": "http://localhost:3000"
+  },
+  {
+   "key": "admin_web_origin",
+   "value": "http://localhost:3001"
+  },
+  {
+   "key": "access_token",
+   "value": ""
+  },
+  {
+   "key": "refresh_token",
+   "value": ""
+  },
+  {
+   "key": "admin_access_token",
+   "value": ""
+  },
+  {
+   "key": "admin_refresh_token",
+   "value": ""
+  },
+  {
+   "key": "link_token",
+   "value": ""
+  },
+  {
+   "key": "credential_id",
+   "value": ""
+  }
+ ],
+ "item": [
+  {
+   "name": "Client: sign-in (/api/client/v1/auth)",
+   "item": [
+    {
+     "name": "Start a guest session",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/guest",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "guest"
+       ]
+      },
+      "description": "A visitor who hasn't signed up gets a guest account at once, so they can capture and design. Call it on the first action that needs a user, if `/auth/refresh` found no session. Answers 201 with a session; the refresh token is in the `paccradle_refresh` cookie (HttpOnly; send requests with `credentials: 'include'`). A guest's captures, products and designs move to their account when they sign up or sign in from this browser."
+     },
+     "response": [
+      {
+       "name": "201 Created",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/guest",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "guest"
+         ]
+        },
+        "description": "A visitor who hasn't signed up gets a guest account at once, so they can capture and design. Call it on the first action that needs a user, if `/auth/refresh` found no session. Answers 201 with a session; the refresh token is in the `paccradle_refresh` cookie (HttpOnly; send requests with `credentials: 'include'`). A guest's captures, products and designs move to their account when they sign up or sign in from this browser."
+       },
+       "status": "Created",
+       "code": 201,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_refresh=Q2hhbmdlZE9uRXZlcnlSZWZyZXNoX2V4YW1wbGVfdG9rZW4; Path=/api/client/v1/auth; Max-Age=2592000; HttpOnly; SameSite=Strict; Secure"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi4uLn0.c2lnbmF0dXJl\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"account\": {\n    \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n    \"email\": null,\n    \"role\": \"guest\",\n    \"has_password\": false,\n    \"passkey_count\": 0,\n    \"locale\": \"en\",\n    \"paper_default\": \"a4\",\n    \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n  },\n  \"next_steps\": []\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/guest",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "guest"
+         ]
+        },
+        "description": "A visitor who hasn't signed up gets a guest account at once, so they can capture and design. Call it on the first action that needs a user, if `/auth/refresh` found no session. Answers 201 with a session; the refresh token is in the `paccradle_refresh` cookie (HttpOnly; send requests with `credentials: 'include'`). A guest's captures, products and designs move to their account when they sign up or sign in from this browser."
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "retry-after",
+         "value": "12"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/guest",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "guest"
+         ]
+        },
+        "description": "A visitor who hasn't signed up gets a guest account at once, so they can capture and design. Call it on the first action that needs a user, if `/auth/refresh` found no session. Answers 201 with a session; the refresh token is in the `paccradle_refresh` cookie (HttpOnly; send requests with `credentials: 'include'`). A guest's captures, products and designs move to their account when they sign up or sign in from this browser."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Ask for an email link (sign up or sign in)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/email-link",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "email-link"
+       ]
+      },
+      "description": "One endpoint for **sign up**, **email me a link** and **forgot password**. An address with no account gets \"Confirm your email\" (the link makes the account; valid 24 hours); an address with one gets a sign-in link (valid 15 minutes). The answer is 202 with no body either way, so nobody learns whether an address has an account. The link is `{APP_WEB_URL}/auth/link#token=…`: the web app reads the token from the fragment and calls *Sign in with an email link*. Each new link for an address is sent, but once one is used the others stop working. At most 3 per address per 10 minutes.",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"ana@example.com\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "response": [
+      {
+       "name": "202 Accepted",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link"
+         ]
+        },
+        "description": "One endpoint for **sign up**, **email me a link** and **forgot password**. An address with no account gets \"Confirm your email\" (the link makes the account; valid 24 hours); an address with one gets a sign-in link (valid 15 minutes). The answer is 202 with no body either way, so nobody learns whether an address has an account. The link is `{APP_WEB_URL}/auth/link#token=…`: the web app reads the token from the fragment and calls *Sign in with an email link*. Each new link for an address is sent, but once one is used the others stop working. At most 3 per address per 10 minutes.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Accepted",
+       "code": 202,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": ""
+      },
+      {
+       "name": "400 Bad Request (INVALID_REQUEST)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link"
+         ]
+        },
+        "description": "One endpoint for **sign up**, **email me a link** and **forgot password**. An address with no account gets \"Confirm your email\" (the link makes the account; valid 24 hours); an address with one gets a sign-in link (valid 15 minutes). The answer is 202 with no body either way, so nobody learns whether an address has an account. The link is `{APP_WEB_URL}/auth/link#token=…`: the web app reads the token from the fragment and calls *Sign in with an email link*. Each new link for an address is sent, but once one is used the others stop working. At most 3 per address per 10 minutes.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Bad Request",
+       "code": 400,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"email\"\n    }\n  }\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link"
+         ]
+        },
+        "description": "One endpoint for **sign up**, **email me a link** and **forgot password**. An address with no account gets \"Confirm your email\" (the link makes the account; valid 24 hours); an address with one gets a sign-in link (valid 15 minutes). The answer is 202 with no body either way, so nobody learns whether an address has an account. The link is `{APP_WEB_URL}/auth/link#token=…`: the web app reads the token from the fragment and calls *Sign in with an email link*. Each new link for an address is sent, but once one is used the others stop working. At most 3 per address per 10 minutes.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 600 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 600\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link"
+         ]
+        },
+        "description": "One endpoint for **sign up**, **email me a link** and **forgot password**. An address with no account gets \"Confirm your email\" (the link makes the account; valid 24 hours); an address with one gets a sign-in link (valid 15 minutes). The answer is 202 with no body either way, so nobody learns whether an address has an account. The link is `{APP_WEB_URL}/auth/link#token=…`: the web app reads the token from the fragment and calls *Sign in with an email link*. Each new link for an address is sent, but once one is used the others stop working. At most 3 per address per 10 minutes.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Sign in with an email link",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_refresh={{refresh_token}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/email-link/sign-in",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "email-link",
+        "sign-in"
+       ]
+      },
+      "description": "Uses the token from the link (once). Confirms the address; makes the account if there is none (the browser's guest becomes it, keeping its work); otherwise signs in to it (a guest's work moves over). Send the guest's cookie if there is one. `next_steps` tells the web app what to offer: `set_password` when the account has none, `add_passkey` after any sign-in that didn't use a passkey (offer it only where `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` is true).",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"token\": \"{{link_token}}\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "response": [
+      {
+       "name": "200 OK (new account)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link",
+          "sign-in"
+         ]
+        },
+        "description": "Uses the token from the link (once). Confirms the address; makes the account if there is none (the browser's guest becomes it, keeping its work); otherwise signs in to it (a guest's work moves over). Send the guest's cookie if there is one. `next_steps` tells the web app what to offer: `set_password` when the account has none, `add_passkey` after any sign-in that didn't use a passkey (offer it only where `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` is true).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"token\": \"{{link_token}}\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_refresh=Q2hhbmdlZE9uRXZlcnlSZWZyZXNoX2V4YW1wbGVfdG9rZW4; Path=/api/client/v1/auth; Max-Age=2592000; HttpOnly; SameSite=Strict; Secure"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi4uLn0.c2lnbmF0dXJl\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"account\": {\n    \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n    \"email\": \"ana@example.com\",\n    \"role\": \"user\",\n    \"has_password\": false,\n    \"passkey_count\": 0,\n    \"locale\": \"en\",\n    \"paper_default\": \"a4\",\n    \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n  },\n  \"next_steps\": [\n    \"set_password\",\n    \"add_passkey\"\n  ]\n}"
+      },
+      {
+       "name": "400 Bad Request (AUTH_LINK_INVALID)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link",
+          "sign-in"
+         ]
+        },
+        "description": "Uses the token from the link (once). Confirms the address; makes the account if there is none (the browser's guest becomes it, keeping its work); otherwise signs in to it (a guest's work moves over). Send the guest's cookie if there is one. `next_steps` tells the web app what to offer: `set_password` when the account has none, `add_passkey` after any sign-in that didn't use a passkey (offer it only where `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` is true).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"token\": \"{{link_token}}\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Bad Request",
+       "code": 400,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_LINK_INVALID\",\n    \"message\": \"This link has expired or was already used. Ask for a new one.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link",
+          "sign-in"
+         ]
+        },
+        "description": "Uses the token from the link (once). Confirms the address; makes the account if there is none (the browser's guest becomes it, keeping its work); otherwise signs in to it (a guest's work moves over). Send the guest's cookie if there is one. `next_steps` tells the web app what to offer: `set_password` when the account has none, `add_passkey` after any sign-in that didn't use a passkey (offer it only where `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` is true).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"token\": \"{{link_token}}\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "retry-after",
+         "value": "12"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/email-link/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "email-link",
+          "sign-in"
+         ]
+        },
+        "description": "Uses the token from the link (once). Confirms the address; makes the account if there is none (the browser's guest becomes it, keeping its work); otherwise signs in to it (a guest's work moves over). Send the guest's cookie if there is one. `next_steps` tells the web app what to offer: `set_password` when the account has none, `add_passkey` after any sign-in that didn't use a passkey (offer it only where `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` is true).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"token\": \"{{link_token}}\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Sign in with a password",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_refresh={{refresh_token}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "password",
+        "sign-in"
+       ]
+      },
+      "description": "Email (any letter case) and password. Every mismatch (no account, no password set, wrong password) is the same 401 and takes the same time. At most 5 tries per address per minute, on top of the per-address-IP sign-in limit. The web app's fallback order: passkey first; after 2 failed passkey tries, the password form and \"Email me a sign-in link\" (forgot password).",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"ana@example.com\",\n  \"password\": \"a long enough passphrase\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "password",
+          "sign-in"
+         ]
+        },
+        "description": "Email (any letter case) and password. Every mismatch (no account, no password set, wrong password) is the same 401 and takes the same time. At most 5 tries per address per minute, on top of the per-address-IP sign-in limit. The web app's fallback order: passkey first; after 2 failed passkey tries, the password form and \"Email me a sign-in link\" (forgot password).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\",\n  \"password\": \"a long enough passphrase\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_refresh=Q2hhbmdlZE9uRXZlcnlSZWZyZXNoX2V4YW1wbGVfdG9rZW4; Path=/api/client/v1/auth; Max-Age=2592000; HttpOnly; SameSite=Strict; Secure"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi4uLn0.c2lnbmF0dXJl\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"account\": {\n    \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n    \"email\": \"ana@example.com\",\n    \"role\": \"user\",\n    \"has_password\": true,\n    \"passkey_count\": 0,\n    \"locale\": \"en\",\n    \"paper_default\": \"a4\",\n    \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n  },\n  \"next_steps\": [\n    \"add_passkey\"\n  ]\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_INVALID_CREDENTIALS)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "password",
+          "sign-in"
+         ]
+        },
+        "description": "Email (any letter case) and password. Every mismatch (no account, no password set, wrong password) is the same 401 and takes the same time. At most 5 tries per address per minute, on top of the per-address-IP sign-in limit. The web app's fallback order: passkey first; after 2 failed passkey tries, the password form and \"Email me a sign-in link\" (forgot password).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\",\n  \"password\": \"a long enough passphrase\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_INVALID_CREDENTIALS\",\n    \"message\": \"The email or password isn't right.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "password",
+          "sign-in"
+         ]
+        },
+        "description": "Email (any letter case) and password. Every mismatch (no account, no password set, wrong password) is the same 401 and takes the same time. At most 5 tries per address per minute, on top of the per-address-IP sign-in limit. The web app's fallback order: passkey first; after 2 failed passkey tries, the password form and \"Email me a sign-in link\" (forgot password).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\",\n  \"password\": \"a long enough passphrase\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "retry-after",
+         "value": "12"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "password",
+          "sign-in"
+         ]
+        },
+        "description": "Email (any letter case) and password. Every mismatch (no account, no password set, wrong password) is the same 401 and takes the same time. At most 5 tries per address per minute, on top of the per-address-IP sign-in limit. The web app's fallback order: passkey first; after 2 failed passkey tries, the password form and \"Email me a sign-in link\" (forgot password).",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"email\": \"ana@example.com\",\n  \"password\": \"a long enough passphrase\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Passkey sign-in: options",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in/options",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "passkey",
+        "sign-in",
+        "options"
+       ]
+      },
+      "description": "Starts a passkey sign-in (no email needed: the browser offers the passkeys it has for the site). Pass `public_key` to `PublicKeyCredential.parseRequestOptionsFromJSON()` and then to `navigator.credentials.get({ publicKey, mediation })`. The ceremony lasts 5 minutes and can be answered once."
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in",
+          "options"
+         ]
+        },
+        "description": "Starts a passkey sign-in (no email needed: the browser offers the passkeys it has for the site). Pass `public_key` to `PublicKeyCredential.parseRequestOptionsFromJSON()` and then to `navigator.credentials.get({ publicKey, mediation })`. The ceremony lasts 5 minutes and can be answered once."
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"public_key\": {\n    \"challenge\": \"lZ8qO2b3o6Xx0sW1y4u7i9p0aSdFgHjKlZxCvBnM1Q2\",\n    \"rpId\": \"paccradle.com\",\n    \"timeout\": 300000,\n    \"userVerification\": \"required\",\n    \"allowCredentials\": []\n  }\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in",
+          "options"
+         ]
+        },
+        "description": "Starts a passkey sign-in (no email needed: the browser offers the passkeys it has for the site). Pass `public_key` to `PublicKeyCredential.parseRequestOptionsFromJSON()` and then to `navigator.credentials.get({ publicKey, mediation })`. The ceremony lasts 5 minutes and can be answered once."
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "retry-after",
+         "value": "12"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in",
+          "options"
+         ]
+        },
+        "description": "Starts a passkey sign-in (no email needed: the browser offers the passkeys it has for the site). Pass `public_key` to `PublicKeyCredential.parseRequestOptionsFromJSON()` and then to `navigator.credentials.get({ publicKey, mediation })`. The ceremony lasts 5 minutes and can be answered once."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Passkey sign-in",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_refresh={{refresh_token}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "passkey",
+        "sign-in"
+       ]
+      },
+      "description": "Sends `credential.toJSON()` (W3C `AuthenticationResponseJSON`, camelCase inside) with the ceremony id. User verification (biometrics or PIN) is required. Every refusal is `AUTH_PASSKEY_REJECTED`; count it as a failed try.",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `AuthenticationResponseJSON`, camelCase inside) with the ceremony id. User verification (biometrics or PIN) is required. Every refusal is `AUTH_PASSKEY_REJECTED`; count it as a failed try.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_refresh=Q2hhbmdlZE9uRXZlcnlSZWZyZXNoX2V4YW1wbGVfdG9rZW4; Path=/api/client/v1/auth; Max-Age=2592000; HttpOnly; SameSite=Strict; Secure"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi4uLn0.c2lnbmF0dXJl\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"account\": {\n    \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n    \"email\": \"ana@example.com\",\n    \"role\": \"user\",\n    \"has_password\": true,\n    \"passkey_count\": 1,\n    \"locale\": \"en\",\n    \"paper_default\": \"a4\",\n    \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n  },\n  \"next_steps\": []\n}"
+      },
+      {
+       "name": "400 Bad Request (AUTH_PASSKEY_REJECTED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `AuthenticationResponseJSON`, camelCase inside) with the ceremony id. User verification (biometrics or PIN) is required. Every refusal is `AUTH_PASSKEY_REJECTED`; count it as a failed try.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Bad Request",
+       "code": 400,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_PASSKEY_REJECTED\",\n    \"message\": \"That passkey didn't work. Please try again.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "400 Bad Request (INVALID_REQUEST)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `AuthenticationResponseJSON`, camelCase inside) with the ceremony id. User verification (biometrics or PIN) is required. Every refusal is `AUTH_PASSKEY_REJECTED`; count it as a failed try.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Bad Request",
+       "code": 400,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"credential.response.signature\"\n    }\n  }\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `AuthenticationResponseJSON`, camelCase inside) with the ceremony id. User verification (biometrics or PIN) is required. Every refusal is `AUTH_PASSKEY_REJECTED`; count it as a failed try.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "retry-after",
+         "value": "12"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `AuthenticationResponseJSON`, camelCase inside) with the ceremony id. User verification (biometrics or PIN) is required. Every refusal is `AUTH_PASSKEY_REJECTED`; count it as a failed try.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Refresh",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_refresh={{refresh_token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/refresh",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "refresh"
+       ]
+      },
+      "description": "Swaps the refresh cookie for a new access token and a new cookie (the session lasts 30 days from the last refresh). Call it on start-up and when a request answers `AUTH_REQUIRED`. A cookie that was already swapped within 30 s (two tabs racing) gets an access token and no new cookie; one swapped longer ago ends the session (it may have been stolen). `AUTH_SESSION_EXPIRED` clears the cookie: show sign-in."
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/refresh",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "refresh"
+         ]
+        },
+        "description": "Swaps the refresh cookie for a new access token and a new cookie (the session lasts 30 days from the last refresh). Call it on start-up and when a request answers `AUTH_REQUIRED`. A cookie that was already swapped within 30 s (two tabs racing) gets an access token and no new cookie; one swapped longer ago ends the session (it may have been stolen). `AUTH_SESSION_EXPIRED` clears the cookie: show sign-in."
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_refresh=Q2hhbmdlZE9uRXZlcnlSZWZyZXNoX2V4YW1wbGVfdG9rZW4; Path=/api/client/v1/auth; Max-Age=2592000; HttpOnly; SameSite=Strict; Secure"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi4uLn0.c2lnbmF0dXJl\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"account\": {\n    \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n    \"email\": \"ana@example.com\",\n    \"role\": \"user\",\n    \"has_password\": true,\n    \"passkey_count\": 1,\n    \"locale\": \"en\",\n    \"paper_default\": \"a4\",\n    \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n  },\n  \"next_steps\": []\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_SESSION_EXPIRED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/refresh",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "refresh"
+         ]
+        },
+        "description": "Swaps the refresh cookie for a new access token and a new cookie (the session lasts 30 days from the last refresh). Call it on start-up and when a request answers `AUTH_REQUIRED`. A cookie that was already swapped within 30 s (two tabs racing) gets an access token and no new cookie; one swapped longer ago ends the session (it may have been stolen). `AUTH_SESSION_EXPIRED` clears the cookie: show sign-in."
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_refresh=; Path=/api/client/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict; Secure"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_SESSION_EXPIRED\",\n    \"message\": \"Your session has ended. Please sign in again.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/refresh",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "refresh"
+         ]
+        },
+        "description": "Swaps the refresh cookie for a new access token and a new cookie (the session lasts 30 days from the last refresh). Call it on start-up and when a request answers `AUTH_REQUIRED`. A cookie that was already swapped within 30 s (two tabs racing) gets an access token and no new cookie; one swapped longer ago ends the session (it may have been stolen). `AUTH_SESSION_EXPIRED` clears the cookie: show sign-in."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Sign out",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_refresh={{refresh_token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/auth/sign-out",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "auth",
+        "sign-out"
+       ]
+      },
+      "description": "Ends the cookie's session and clears the cookie. Always 204."
+     },
+     "response": [
+      {
+       "name": "204 No Content",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/sign-out",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "sign-out"
+         ]
+        },
+        "description": "Ends the cookie's session and clears the cookie. Always 204."
+       },
+       "status": "No Content",
+       "code": 204,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_refresh=; Path=/api/client/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict; Secure"
+        }
+       ],
+       "body": ""
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_refresh={{refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/auth/sign-out",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "auth",
+          "sign-out"
+         ]
+        },
+        "description": "Ends the cookie's session and clears the cookie. Always 204."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Client: account (/api/client/v1/me)",
+   "item": [
+    {
+     "name": "Me",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{access_token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/me",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "me"
+       ]
+      },
+      "description": "The signed-in user, a guest included. `no-store`."
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "GET",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me"
+         ]
+        },
+        "description": "The signed-in user, a guest included. `no-store`."
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n  \"email\": \"ana@example.com\",\n  \"role\": \"user\",\n  \"has_password\": true,\n  \"passkey_count\": 1,\n  \"locale\": \"en\",\n  \"paper_default\": \"a4\",\n  \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_REQUIRED)",
+       "originalRequest": {
+        "method": "GET",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me"
+         ]
+        },
+        "description": "The signed-in user, a guest included. `no-store`."
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REQUIRED\",\n    \"message\": \"Please sign in to continue.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Set or change the password",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{access_token}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/me/password",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "me",
+        "password"
+       ]
+      },
+      "description": "12 to 128 characters, no composition rules. Leave out `current_password` within 15 minutes of a sign-in by email link or passkey (that's how forgot-password ends); otherwise it's needed. Every other session of the user ends. Guests can't have a password: they sign up first.",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"password\": \"a long enough passphrase\",\n  \"current_password\": null\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "response": [
+      {
+       "name": "204 No Content",
+       "originalRequest": {
+        "method": "PUT",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/password",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "password"
+         ]
+        },
+        "description": "12 to 128 characters, no composition rules. Leave out `current_password` within 15 minutes of a sign-in by email link or passkey (that's how forgot-password ends); otherwise it's needed. Every other session of the user ends. Guests can't have a password: they sign up first.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"password\": \"a long enough passphrase\",\n  \"current_password\": null\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "No Content",
+       "code": 204,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": ""
+      },
+      {
+       "name": "400 Bad Request (AUTH_PASSWORD_REJECTED)",
+       "originalRequest": {
+        "method": "PUT",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/password",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "password"
+         ]
+        },
+        "description": "12 to 128 characters, no composition rules. Leave out `current_password` within 15 minutes of a sign-in by email link or passkey (that's how forgot-password ends); otherwise it's needed. Every other session of the user ends. Guests can't have a password: they sign up first.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"password\": \"a long enough passphrase\",\n  \"current_password\": null\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Bad Request",
+       "code": 400,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_PASSWORD_REJECTED\",\n    \"message\": \"Choose a password of 12 to 128 characters.\",\n    \"meta\": {\n      \"min_length\": 12,\n      \"max_length\": 128\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (AUTH_REAUTH_REQUIRED)",
+       "originalRequest": {
+        "method": "PUT",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/password",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "password"
+         ]
+        },
+        "description": "12 to 128 characters, no composition rules. Leave out `current_password` within 15 minutes of a sign-in by email link or passkey (that's how forgot-password ends); otherwise it's needed. Every other session of the user ends. Guests can't have a password: they sign up first.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"password\": \"a long enough passphrase\",\n  \"current_password\": null\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REAUTH_REQUIRED\",\n    \"message\": \"Enter your current password, or sign in again with a passkey or an email link.\",\n    \"meta\": {\n      \"fresh_minutes\": 15\n    }\n  }\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_INVALID_CREDENTIALS)",
+       "originalRequest": {
+        "method": "PUT",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/password",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "password"
+         ]
+        },
+        "description": "12 to 128 characters, no composition rules. Leave out `current_password` within 15 minutes of a sign-in by email link or passkey (that's how forgot-password ends); otherwise it's needed. Every other session of the user ends. Guests can't have a password: they sign up first.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"password\": \"a long enough passphrase\",\n  \"current_password\": null\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_INVALID_CREDENTIALS\",\n    \"message\": \"The email or password isn't right.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (AUTH_ACCOUNT_REQUIRED)",
+       "originalRequest": {
+        "method": "PUT",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/password",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "password"
+         ]
+        },
+        "description": "12 to 128 characters, no composition rules. Leave out `current_password` within 15 minutes of a sign-in by email link or passkey (that's how forgot-password ends); otherwise it's needed. Every other session of the user ends. Guests can't have a password: they sign up first.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"password\": \"a long enough passphrase\",\n  \"current_password\": null\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_ACCOUNT_REQUIRED\",\n    \"message\": \"Confirm your email to do this.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_REQUIRED)",
+       "originalRequest": {
+        "method": "PUT",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/password",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "password"
+         ]
+        },
+        "description": "12 to 128 characters, no composition rules. Leave out `current_password` within 15 minutes of a sign-in by email link or passkey (that's how forgot-password ends); otherwise it's needed. Every other session of the user ends. Guests can't have a password: they sign up first.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"password\": \"a long enough passphrase\",\n  \"current_password\": null\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REQUIRED\",\n    \"message\": \"Please sign in to continue.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Add a passkey: options",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{access_token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/me/passkeys/options",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "me",
+        "passkeys",
+        "options"
+       ]
+      },
+      "description": "Starts making a passkey for the signed-in account (not a guest). Pass `public_key` to `PublicKeyCredential.parseCreationOptionsFromJSON()` and then to `navigator.credentials.create({ publicKey })`. `excludeCredentials` lists the account's passkeys, so a device that has one says so (`InvalidStateError`: treat it as done)."
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys",
+          "options"
+         ]
+        },
+        "description": "Starts making a passkey for the signed-in account (not a guest). Pass `public_key` to `PublicKeyCredential.parseCreationOptionsFromJSON()` and then to `navigator.credentials.create({ publicKey })`. `excludeCredentials` lists the account's passkeys, so a device that has one says so (`InvalidStateError`: treat it as done)."
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"public_key\": {\n    \"rp\": {\n      \"id\": \"paccradle.com\",\n      \"name\": \"Paccradle\"\n    },\n    \"user\": {\n      \"id\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\",\n      \"name\": \"ana@example.com\",\n      \"displayName\": \"ana@example.com\"\n    },\n    \"challenge\": \"lZ8qO2b3o6Xx0sW1y4u7i9p0aSdFgHjKlZxCvBnM1Q2\",\n    \"pubKeyCredParams\": [\n      {\n        \"type\": \"public-key\",\n        \"alg\": -7\n      },\n      {\n        \"type\": \"public-key\",\n        \"alg\": -8\n      },\n      {\n        \"type\": \"public-key\",\n        \"alg\": -257\n      }\n    ],\n    \"timeout\": 300000,\n    \"excludeCredentials\": [],\n    \"authenticatorSelection\": {\n      \"residentKey\": \"required\",\n      \"requireResidentKey\": true,\n      \"userVerification\": \"required\"\n    },\n    \"attestation\": \"none\",\n    \"extensions\": {\n      \"credProps\": true\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (AUTH_ACCOUNT_REQUIRED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys",
+          "options"
+         ]
+        },
+        "description": "Starts making a passkey for the signed-in account (not a guest). Pass `public_key` to `PublicKeyCredential.parseCreationOptionsFromJSON()` and then to `navigator.credentials.create({ publicKey })`. `excludeCredentials` lists the account's passkeys, so a device that has one says so (`InvalidStateError`: treat it as done)."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_ACCOUNT_REQUIRED\",\n    \"message\": \"Confirm your email to do this.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_REQUIRED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys",
+          "options"
+         ]
+        },
+        "description": "Starts making a passkey for the signed-in account (not a guest). Pass `public_key` to `PublicKeyCredential.parseCreationOptionsFromJSON()` and then to `navigator.credentials.create({ publicKey })`. `excludeCredentials` lists the account's passkeys, so a device that has one says so (`InvalidStateError`: treat it as done)."
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REQUIRED\",\n    \"message\": \"Please sign in to continue.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Add a passkey",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{access_token}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/client/v1/me/passkeys",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "client",
+        "v1",
+        "me",
+        "passkeys"
+       ]
+      },
+      "description": "Sends `credential.toJSON()` (W3C `RegistrationResponseJSON`) with the ceremony id and an optional name (at most 100 characters). Attestation isn't checked (`attestation: \"none\"`). Unknown `transports` are dropped.",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {\n      \"credProps\": {\n        \"rk\": true\n      }\n    },\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIi4uLn0\",\n      \"attestationObject\": \"o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVi...\",\n      \"transports\": [\n        \"hybrid\",\n        \"internal\"\n      ]\n    }\n  },\n  \"name\": \"MacBook\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "response": [
+      {
+       "name": "201 Created",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `RegistrationResponseJSON`) with the ceremony id and an optional name (at most 100 characters). Attestation isn't checked (`attestation: \"none\"`). Unknown `transports` are dropped.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {\n      \"credProps\": {\n        \"rk\": true\n      }\n    },\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIi4uLn0\",\n      \"attestationObject\": \"o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVi...\",\n      \"transports\": [\n        \"hybrid\",\n        \"internal\"\n      ]\n    }\n  },\n  \"name\": \"MacBook\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Created",
+       "code": 201,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"id\": \"01a187a5-2b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"name\": \"MacBook\",\n  \"backed_up\": true,\n  \"created_at\": \"2026-10-29T12:32:05.000001Z\"\n}"
+      },
+      {
+       "name": "400 Bad Request (AUTH_PASSKEY_REJECTED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `RegistrationResponseJSON`) with the ceremony id and an optional name (at most 100 characters). Attestation isn't checked (`attestation: \"none\"`). Unknown `transports` are dropped.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {\n      \"credProps\": {\n        \"rk\": true\n      }\n    },\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIi4uLn0\",\n      \"attestationObject\": \"o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVi...\",\n      \"transports\": [\n        \"hybrid\",\n        \"internal\"\n      ]\n    }\n  },\n  \"name\": \"MacBook\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Bad Request",
+       "code": 400,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_PASSKEY_REJECTED\",\n    \"message\": \"That passkey didn't work. Please try again.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "409 Conflict (AUTH_PASSKEY_ALREADY_REGISTERED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `RegistrationResponseJSON`) with the ceremony id and an optional name (at most 100 characters). Attestation isn't checked (`attestation: \"none\"`). Unknown `transports` are dropped.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {\n      \"credProps\": {\n        \"rk\": true\n      }\n    },\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIi4uLn0\",\n      \"attestationObject\": \"o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVi...\",\n      \"transports\": [\n        \"hybrid\",\n        \"internal\"\n      ]\n    }\n  },\n  \"name\": \"MacBook\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Conflict",
+       "code": 409,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_PASSKEY_ALREADY_REGISTERED\",\n    \"message\": \"This passkey is already saved.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (AUTH_ACCOUNT_REQUIRED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `RegistrationResponseJSON`) with the ceremony id and an optional name (at most 100 characters). Attestation isn't checked (`attestation: \"none\"`). Unknown `transports` are dropped.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {\n      \"credProps\": {\n        \"rk\": true\n      }\n    },\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIi4uLn0\",\n      \"attestationObject\": \"o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVi...\",\n      \"transports\": [\n        \"hybrid\",\n        \"internal\"\n      ]\n    }\n  },\n  \"name\": \"MacBook\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_ACCOUNT_REQUIRED\",\n    \"message\": \"Confirm your email to do this.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_REQUIRED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{access_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/client/v1/me/passkeys",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "client",
+          "v1",
+          "me",
+          "passkeys"
+         ]
+        },
+        "description": "Sends `credential.toJSON()` (W3C `RegistrationResponseJSON`) with the ceremony id and an optional name (at most 100 characters). Attestation isn't checked (`attestation: \"none\"`). Unknown `transports` are dropped.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {\n      \"credProps\": {\n        \"rk\": true\n      }\n    },\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIi4uLn0\",\n      \"attestationObject\": \"o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVi...\",\n      \"transports\": [\n        \"hybrid\",\n        \"internal\"\n      ]\n    }\n  },\n  \"name\": \"MacBook\"\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REQUIRED\",\n    \"message\": \"Please sign in to continue.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Admin: sign-in and account (/api/admin/v1)",
+   "item": [
+    {
+     "name": "Admin passkey sign-in: options",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{admin_web_origin}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in/options",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "v1",
+        "auth",
+        "passkey",
+        "sign-in",
+        "options"
+       ]
+      },
+      "description": "The back office signs in with a passkey only: no password, no email link. An admin makes the passkey in the web app (same `WEBAUTHN_RP_ID`), and the role is granted in the database. Open to everyone, like every `/auth` route; every other admin path stays behind the guard."
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in",
+          "options"
+         ]
+        },
+        "description": "The back office signs in with a passkey only: no password, no email link. An admin makes the passkey in the web app (same `WEBAUTHN_RP_ID`), and the role is granted in the database. Open to everyone, like every `/auth` route; every other admin path stays behind the guard."
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"public_key\": {\n    \"challenge\": \"lZ8qO2b3o6Xx0sW1y4u7i9p0aSdFgHjKlZxCvBnM1Q2\",\n    \"rpId\": \"paccradle.com\",\n    \"timeout\": 300000,\n    \"userVerification\": \"required\",\n    \"allowCredentials\": []\n  }\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in",
+          "options"
+         ]
+        },
+        "description": "The back office signs in with a passkey only: no password, no email link. An admin makes the passkey in the web app (same `WEBAUTHN_RP_ID`), and the role is granted in the database. Open to everyone, like every `/auth` route; every other admin path stays behind the guard."
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "retry-after",
+         "value": "12"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in/options",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in",
+          "options"
+         ]
+        },
+        "description": "The back office signs in with a passkey only: no password, no email link. An admin makes the passkey in the web app (same `WEBAUTHN_RP_ID`), and the role is granted in the database. Open to everyone, like every `/auth` route; every other admin path stays behind the guard."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Admin passkey sign-in",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{admin_web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "v1",
+        "auth",
+        "passkey",
+        "sign-in"
+       ]
+      },
+      "description": "The passkey's owner must be an admin; anyone else gets `AUTH_PASSKEY_REJECTED`. The session lasts 12 hours from sign-in (refreshes don't extend it); access tokens last 5 minutes. The cookie is `paccradle_admin_refresh`, scoped to `/api/admin/v1/auth`.",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "The passkey's owner must be an admin; anyone else gets `AUTH_PASSKEY_REJECTED`. The session lasts 12 hours from sign-in (refreshes don't extend it); access tokens last 5 minutes. The cookie is `paccradle_admin_refresh`, scoped to `/api/admin/v1/auth`.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_admin_refresh=Q2hhbmdlZE9uRXZlcnlSZWZyZXNoX2V4YW1wbGVfdG9rZW4; Path=/api/admin/v1/auth; Max-Age=43200; HttpOnly; SameSite=Strict; Secure"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi4uLn0.c2lnbmF0dXJl\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 300,\n  \"account\": {\n    \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n    \"email\": \"ana@example.com\",\n    \"role\": \"admin\",\n    \"has_password\": true,\n    \"passkey_count\": 1,\n    \"locale\": \"en\",\n    \"paper_default\": \"a4\",\n    \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n  },\n  \"next_steps\": []\n}"
+      },
+      {
+       "name": "400 Bad Request (AUTH_PASSKEY_REJECTED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "The passkey's owner must be an admin; anyone else gets `AUTH_PASSKEY_REJECTED`. The session lasts 12 hours from sign-in (refreshes don't extend it); access tokens last 5 minutes. The cookie is `paccradle_admin_refresh`, scoped to `/api/admin/v1/auth`.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Bad Request",
+       "code": 400,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_PASSKEY_REJECTED\",\n    \"message\": \"That passkey didn't work. Please try again.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "429 Too Many Requests (RATE_LIMITED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "The passkey's owner must be an admin; anyone else gets `AUTH_PASSKEY_REJECTED`. The session lasts 12 hours from sign-in (refreshes don't extend it); access tokens last 5 minutes. The cookie is `paccradle_admin_refresh`, scoped to `/api/admin/v1/auth`.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Too Many Requests",
+       "code": 429,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "retry-after",
+         "value": "12"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/passkey/sign-in",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "passkey",
+          "sign-in"
+         ]
+        },
+        "description": "The passkey's owner must be an admin; anyone else gets `AUTH_PASSKEY_REJECTED`. The session lasts 12 hours from sign-in (refreshes don't extend it); access tokens last 5 minutes. The cookie is `paccradle_admin_refresh`, scoped to `/api/admin/v1/auth`.",
+        "body": {
+         "mode": "raw",
+         "raw": "{\n  \"ceremony_id\": \"01a187a5-1b2c-7d3e-8f40-5a6b7c8d9e0f\",\n  \"credential\": {\n    \"id\": \"{{credential_id}}\",\n    \"rawId\": \"{{credential_id}}\",\n    \"type\": \"public-key\",\n    \"authenticatorAttachment\": \"platform\",\n    \"clientExtensionResults\": {},\n    \"response\": {\n      \"clientDataJSON\": \"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0Ii4uLn0\",\n      \"authenticatorData\": \"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\n      \"signature\": \"MEUCIQ...\",\n      \"userHandle\": \"AaGHpQT6cZ2hp6wUpT4_ZQ\"\n    }\n  }\n}",
+         "options": {
+          "raw": {
+           "language": "json"
+          }
+         }
+        }
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Admin refresh",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{admin_web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/admin/v1/auth/refresh",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "v1",
+        "auth",
+        "refresh"
+       ]
+      },
+      "description": "Like the client's, until 12 hours after sign-in. A user who is no longer an admin gets `AUTH_SESSION_EXPIRED`."
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/refresh",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "refresh"
+         ]
+        },
+        "description": "Like the client's, until 12 hours after sign-in. A user who is no longer an admin gets `AUTH_SESSION_EXPIRED`."
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_admin_refresh=Q2hhbmdlZE9uRXZlcnlSZWZyZXNoX2V4YW1wbGVfdG9rZW4; Path=/api/admin/v1/auth; Max-Age=43190; HttpOnly; SameSite=Strict; Secure"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi4uLn0.c2lnbmF0dXJl\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 300,\n  \"account\": {\n    \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n    \"email\": \"ana@example.com\",\n    \"role\": \"admin\",\n    \"has_password\": true,\n    \"passkey_count\": 1,\n    \"locale\": \"en\",\n    \"paper_default\": \"a4\",\n    \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n  },\n  \"next_steps\": []\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_SESSION_EXPIRED)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/refresh",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "refresh"
+         ]
+        },
+        "description": "Like the client's, until 12 hours after sign-in. A user who is no longer an admin gets `AUTH_SESSION_EXPIRED`."
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_admin_refresh=; Path=/api/admin/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict; Secure"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_SESSION_EXPIRED\",\n    \"message\": \"Your session has ended. Please sign in again.\",\n    \"meta\": {}\n  }\n}"
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/refresh",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "refresh"
+         ]
+        },
+        "description": "Like the client's, until 12 hours after sign-in. A user who is no longer an admin gets `AUTH_SESSION_EXPIRED`."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Admin sign out",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Origin",
+        "value": "{{admin_web_origin}}"
+       },
+       {
+        "key": "Cookie",
+        "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/admin/v1/auth/sign-out",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "v1",
+        "auth",
+        "sign-out"
+       ]
+      },
+      "description": "Always 204."
+     },
+     "response": [
+      {
+       "name": "204 No Content",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/sign-out",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "sign-out"
+         ]
+        },
+        "description": "Always 204."
+       },
+       "status": "No Content",
+       "code": 204,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "set-cookie",
+         "value": "paccradle_admin_refresh=; Path=/api/admin/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict; Secure"
+        }
+       ],
+       "body": ""
+      },
+      {
+       "name": "403 Forbidden (FORBIDDEN)",
+       "originalRequest": {
+        "method": "POST",
+        "header": [
+         {
+          "key": "Origin",
+          "value": "{{admin_web_origin}}"
+         },
+         {
+          "key": "Cookie",
+          "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/auth/sign-out",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "auth",
+          "sign-out"
+         ]
+        },
+        "description": "Always 204."
+       },
+       "status": "Forbidden",
+       "code": 403,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You don't have access to this.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    },
+    {
+     "name": "Admin me",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{admin_access_token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{base_url}}/api/admin/v1/me",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "v1",
+        "me"
+       ]
+      },
+      "description": "Behind the guard: an admin access token from the back office's own sign-in. Client tokens, even an admin's, get `AUTH_REQUIRED`. Every admin write (POST, PUT, PATCH, DELETE) is recorded in `admin_audit_log` before it runs."
+     },
+     "response": [
+      {
+       "name": "200 OK",
+       "originalRequest": {
+        "method": "GET",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{admin_access_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/me",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "me"
+         ]
+        },
+        "description": "Behind the guard: an admin access token from the back office's own sign-in. Client tokens, even an admin's, get `AUTH_REQUIRED`. Every admin write (POST, PUT, PATCH, DELETE) is recorded in `admin_audit_log` before it runs."
+       },
+       "status": "OK",
+       "code": 200,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        },
+        {
+         "key": "cache-control",
+         "value": "no-store"
+        }
+       ],
+       "body": "{\n  \"id\": \"01a187a5-04fa-719d-a1a7-ac14a53e3f65\",\n  \"email\": \"ana@example.com\",\n  \"role\": \"admin\",\n  \"has_password\": true,\n  \"passkey_count\": 1,\n  \"locale\": \"en\",\n  \"paper_default\": \"a4\",\n  \"created_at\": \"2026-10-29T12:31:40.123456Z\"\n}"
+      },
+      {
+       "name": "401 Unauthorized (AUTH_REQUIRED)",
+       "originalRequest": {
+        "method": "GET",
+        "header": [
+         {
+          "key": "Authorization",
+          "value": "Bearer {{admin_access_token}}"
+         }
+        ],
+        "url": {
+         "raw": "{{base_url}}/api/admin/v1/me",
+         "host": [
+          "{{base_url}}"
+         ],
+         "path": [
+          "api",
+          "admin",
+          "v1",
+          "me"
+         ]
+        },
+        "description": "Behind the guard: an admin access token from the back office's own sign-in. Client tokens, even an admin's, get `AUTH_REQUIRED`. Every admin write (POST, PUT, PATCH, DELETE) is recorded in `admin_audit_log` before it runs."
+       },
+       "status": "Unauthorized",
+       "code": 401,
+       "_postman_previewlanguage": "json",
+       "header": [
+        {
+         "key": "content-type",
+         "value": "application/json"
+        },
+        {
+         "key": "x-request-id",
+         "value": "01a187a5-04fa-719d-a1a7-ac14a53e3f64"
+        }
+       ],
+       "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REQUIRED\",\n    \"message\": \"Please sign in to continue.\",\n    \"meta\": {}\n  }\n}"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -28,8 +28,8 @@ don't deploy.
    `migrations` and `src`.
 4. **Deploy**: the image goes to the VPS over SSH and `paccradle-deploy` swaps
    the container: stop the old one, start the new one, wait for
-   `/api/v1/ready`. If that fails, the previous version starts again and the
-   job fails. Then a public smoke test calls `/api/v1/health` through Nginx
+   `/readyz`. If that fails, the previous version starts again and the
+   job fails. Then a public smoke test calls `/healthz` through Nginx
    and TLS.
 5. **Tag the release** (production only): git tag `v<version>` on the commit.
 6. **Telegram**: a summary on success, a short alert on failure (below).
@@ -42,7 +42,10 @@ cancels a deploy halfway. Migrations run when the new container starts
 
 - **Production** uses the version in `Cargo.toml` as is, e.g. `1.4.0`
   (semver: patch for fixes, minor for new endpoints or fields, major for
-  breaking API changes). Each production release needs a new version:
+  breaking API changes). This is the release's version, shown by `/healthz`.
+  The API contract has its own semver per surface (client, admin): the URL
+  holds its major (`/api/client/v1`), the `api-version` header the full one
+  (`src/shared/api_surface.rs`). Each production release needs a new version:
   pushing another commit to `main` with a version that is already tagged
   fails at **Resolve version** with "Bump the version". After editing
   `Cargo.toml`, run `cargo check` so `Cargo.lock` is updated too (the build
@@ -69,14 +72,19 @@ docker inspect paccradle-api:1.4.0 --format '{{json .Config.Labels}}' | jq
 1. **The VPS**: follow [`deploy/vps/README.md`](deploy/vps/README.md) (steps 1 to 7),
    including both API env files, `/etc/paccradle/env/api.production.env` and
    `/etc/paccradle/env/api.development.env` (templates in [`deploy/env/`](deploy/env)).
+   Since M1-D3 production also needs `AUTH_JWT_SECRET` (`openssl rand -base64 48`;
+   the template's placeholder is refused), the SMTP settings and `EMAIL_FROM`, and
+   `WEBAUTHN_RP_ID` set to the domain the web app and the back office share
+   (`paccradle.com`). Never change `WEBAUTHN_RP_ID` after launch: saved passkeys
+   would stop working.
 2. **Commit `.sqlx`**: the image and CI compile with `SQLX_OFFLINE=true`, so
    every query's cache file must be in git (`git add .sqlx`). Run
    `cargo sqlx prepare -- --all-targets` after changing a query.
 3. **The `development` branch**: `git switch -c development && git push -u origin development`.
 4. **GitHub environments, secrets and variables** (below).
 5. **Paddle webhooks**: point the live notification destination at
-   `https://api.paccradle.com/api/v1/webhooks/paddle` and the sandbox one at
-   `https://api-dev.paccradle.com/api/v1/webhooks/paddle`.
+   `https://api.paccradle.com/api/webhooks/v1/paddle` and the sandbox one at
+   `https://api-dev.paccradle.com/api/webhooks/v1/paddle`.
 
 ### GitHub: environments, secrets, variables
 

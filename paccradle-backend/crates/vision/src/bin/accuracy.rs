@@ -10,7 +10,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use vision::{CaptureInput, CaptureMode, PaperSize};
+use vision::{CaptureInput, CaptureMode, PaperSize, PhotoWarning};
 
 const DEFAULT_SPIKE_DIR: &str = "crates/vision/spike";
 /// Products up to this height count as "flat or low" for photo mode (CLAUDE.md §5.6).
@@ -74,6 +74,8 @@ struct Outcome {
     /// Absolute errors in mm (one per compared dimension); empty when the photo failed.
     errors: Vec<f64>,
     confidence: Option<f64>,
+    /// The tall-product warning's bound, per side, for a photo with a height (M1-C4).
+    reach_mm: Option<f64>,
 }
 
 fn main() -> ExitCode {
@@ -162,60 +164,78 @@ fn parse_row(line: &str) -> Result<TruthRow, String> {
 
 fn evaluate(photos_dir: &Path, row: TruthRow) -> Outcome {
     match measure_row(photos_dir, &row) {
-        Ok((measured, errors, confidence)) => Outcome {
+        Ok(measured) => Outcome {
             row,
-            measured,
-            errors,
-            confidence: Some(confidence),
+            measured: measured.text,
+            errors: measured.errors,
+            confidence: Some(measured.confidence),
+            reach_mm: measured.reach_mm,
         },
         Err(error) => Outcome {
             row,
             measured: format!("failed: {error}"),
             errors: Vec::new(),
             confidence: None,
+            reach_mm: None,
         },
     }
 }
 
-fn measure_row(
-    photos_dir: &Path,
-    row: &TruthRow,
-) -> Result<(String, Vec<f64>, f64), Box<dyn std::error::Error>> {
-    // The same path a capture job takes (M1-C1): file bytes in, §5.5 result out.
+/// One photo's measurement against its truth.
+struct Measured {
+    text: String,
+    errors: Vec<f64>,
+    confidence: f64,
+    reach_mm: Option<f64>,
+}
+
+fn measure_row(photos_dir: &Path, row: &TruthRow) -> Result<Measured, Box<dyn std::error::Error>> {
+    // The same path a capture job takes (M1-C1): file bytes in, §5.5 result out. The height
+    // is typed, as in the app (M1-C4); the focal length isn't read from the files, so the
+    // camera's lens is assumed.
     let bytes = std::fs::read(photos_dir.join(&row.photo))?;
     let input = CaptureInput {
         paper: row.paper,
         mode: row.mode,
         pen_width_mm: vision::DEFAULT_PEN_WIDTH_MM,
+        tap_point_px: None,
+        height_mm: row.height_mm,
+        focal_length_35mm: None,
     };
     let result = vision::run((&input, &bytes))?;
     let product = result.products.first().ok_or("no product")?;
+    let reach_mm = result.warnings.iter().find_map(|warning| match warning {
+        PhotoWarning::OutlineMayBeBigger { up_to_mm, .. } => Some(*up_to_mm),
+        _ => None,
+    });
     let (l, w) = (product.bbox_mm.l, product.bbox_mm.w);
-
-    // Round truth: compare the diameter (or both box sides if the shape wasn't seen as round).
-    if let Some(true_diameter) = row.diameter_mm {
-        return Ok(match product.diameter_mm {
-            Some(diameter) => (
-                format!("Ø {diameter:.2}"),
-                vec![(diameter - true_diameter).abs()],
-                product.confidence,
-            ),
-            None => (
+    let (text, errors) = match (row.diameter_mm, product.diameter_mm) {
+        // Round truth: compare the diameter (or both box sides if the shape wasn't seen as round).
+        (Some(true_diameter), Some(diameter)) => (
+            format!("Ø {diameter:.2}"),
+            vec![(diameter - true_diameter).abs()],
+        ),
+        (Some(true_diameter), None) => (
+            format!("{l:.2} × {w:.2}"),
+            vec![(l - true_diameter).abs(), (w - true_diameter).abs()],
+        ),
+        (None, _) => {
+            let (true_l, true_w) = (
+                row.length_mm.unwrap_or_default(),
+                row.width_mm.unwrap_or_default(),
+            );
+            (
                 format!("{l:.2} × {w:.2}"),
-                vec![(l - true_diameter).abs(), (w - true_diameter).abs()],
-                product.confidence,
-            ),
-        });
-    }
-    let (true_l, true_w) = (
-        row.length_mm.unwrap_or_default(),
-        row.width_mm.unwrap_or_default(),
-    );
-    Ok((
-        format!("{l:.2} × {w:.2}"),
-        vec![(l - true_l).abs(), (w - true_w).abs()],
-        product.confidence,
-    ))
+                vec![(l - true_l).abs(), (w - true_w).abs()],
+            )
+        }
+    };
+    Ok(Measured {
+        text,
+        errors,
+        confidence: product.confidence,
+        reach_mm,
+    })
 }
 
 fn truth_text(row: &TruthRow) -> String {
@@ -293,9 +313,10 @@ fn render_report(outcomes: &[Outcome]) -> Result<String, std::fmt::Error> {
     writeln!(out, "## Per photo\n")?;
     writeln!(
         out,
-        "| Photo | Object | Mode | Truth (mm) | Measured (mm) | Max error | Confidence |"
+        "| Photo | Object | Mode | Truth (mm) | Measured (mm) | Max error | Confidence | \
+         Tall-product bound per side |"
     )?;
-    writeln!(out, "| --- | --- | --- | --- | --- | --- | --- |")?;
+    writeln!(out, "| --- | --- | --- | --- | --- | --- | --- | --- |")?;
     for outcome in outcomes {
         let max_error = outcome
             .errors
@@ -308,9 +329,12 @@ fn render_report(outcomes: &[Outcome]) -> Result<String, std::fmt::Error> {
         let confidence = outcome
             .confidence
             .map_or("–".to_owned(), |c| format!("{c:.2}"));
+        let reach = outcome
+            .reach_mm
+            .map_or("–".to_owned(), |r| format!("{r:.1}"));
         writeln!(
             out,
-            "| {} | {} | {:?} | {} | {} | {max_error} | {confidence} |",
+            "| {} | {} | {:?} | {} | {} | {max_error} | {confidence} | {reach} |",
             outcome.row.photo,
             outcome.row.object,
             outcome.row.mode,
@@ -318,5 +342,12 @@ fn render_report(outcomes: &[Outcome]) -> Result<String, std::fmt::Error> {
             outcome.measured,
         )?;
     }
+    writeln!(
+        out,
+        "\nThe tall-product bound (M1-C4) is how far, per side, the outline may reach past the \
+         product's edge, from the typed height and the camera worked out from the paper (lens \
+         assumed: 24 mm). A size error can be up to twice it. Check that it covers the tall \
+         products' errors."
+    )?;
     Ok(out)
 }

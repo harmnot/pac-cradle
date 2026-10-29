@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE admin_audit_log SET status = $2, finished_at = now()\n                WHERE id = $1 AND status IS NULL\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f28374420a98aa7ac62baf5ae207bef8d1f6335cbeb84afce572a0045166baa3"
+}

@@ -1,0 +1,420 @@
+{
+  "info": {
+    "name": "paccradle API: skeleton, surfaces and versioning (2026-10-29)",
+    "description": "Change: M1-D1, API skeleton (2026-10-29). New: the URL scheme, versioning, shared headers, the error body, and the first routes. Merge into the main contract.\n\n## URL scheme\nEvery route sits on one surface, each with its own routes, CORS origin, sign-in and contract version:\n\n| Surface | Prefix | Caller | Version |\n|---|---|---|---|\n| client | `/api/client/v1` | the web app's users | 1.0.0-beta.1 |\n| admin | `/api/admin/v1` | the back office (signed-in admins only) | 1.0.0-beta.1 |\n| probes | `/healthz`, `/readyz` | deploy scripts, uptime checks | not versioned |\n\nPaths are lower case, plural nouns for collections, `snake_case` for JSON fields and query parameters (e.g. `/api/client/v1/designs/{design_id}/exports`). Paddle's webhook will sit at `/api/webhooks/v1/paddle` (M1-F).\n\n## Versioning (semver, per surface)\n- The URL holds the major version; the `api-version` response header holds the full one.\n- Patch: a fix, no shape change. Minor: something callers can ignore (new endpoint, optional field, response field, error code). Major: anything that can break a caller; it gets a new prefix (`/v2`) and the old one keeps running until callers move.\n- `1.0.0-beta.N` until the public launch (M2): the web app is the only caller, so the contract may still change; each change bumps N and gets a dated file like this one.\n\n## Headers on every response\n- `x-request-id`: UUID v7 made by the API (one sent by the caller is ignored). Show it in error messages.\n- `api-version`: the surface's contract version (not on probes).\n- `retry-after`: seconds, on 429.\n- Bodies are gzip or brotli compressed when the request allows it, except responses that set a cookie.\n\n## Request headers\n- `Accept-Language`: language of error messages. English only for now; anything else falls back to English.\n- CORS: the client surface answers only `APP_WEB_URL`, the admin surface only `ADMIN_WEB_URL`; credentials allowed; preflights cached 10 minutes.\n\n## Errors\nEvery 4xx/5xx body: `{ \"error\": { \"code\", \"message\", \"meta\" } }`. Branch on `code`; `message` is in the caller's language; `meta` holds the message's values (often `{}`).\n\n| Code | Status | Meta |\n|---|---|---|\n| INVALID_REQUEST | 400 (or 422 from a body that doesn't fit) | |\n| AUTH_REQUIRED | 401 | |\n| FORBIDDEN | 403 | |\n| ROUTE_NOT_FOUND | 404 | |\n| METHOD_NOT_ALLOWED | 405, `allow` header lists the methods | |\n| PAYLOAD_TOO_LARGE | 413 (JSON bodies: 1 MiB) | |\n| UNSUPPORTED_MEDIA_TYPE | 415 | |\n| RATE_LIMITED | 429, with `retry-after` | `retry_after_seconds` |\n| INTERNAL_ERROR | 500 | |\n| SERVICE_UNAVAILABLE | 503 | |\n| REQUEST_TIMEOUT | 503 (after 30 s) | `timeout_seconds` |\n\n## Limits\n600 requests per minute per client address across the API (`RATE_LIMIT_PER_MINUTE`), on top of Nginx's own.\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:7773"
+    }
+  ],
+  "item": [
+    {
+      "name": "Probes",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/healthz",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "healthz"
+              ]
+            },
+            "description": "The process is up. Not versioned, no `api-version` header. `version` is the release version from Cargo.toml."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/healthz",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "healthz"
+                  ]
+                },
+                "description": "The process is up. Not versioned, no `api-version` header. `version` is the release version from Cargo.toml."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18753-3697-7322-9ef3-be8f6ec306eb"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\",\n  \"version\": \"0.1.0\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/readyz",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "readyz"
+              ]
+            },
+            "description": "The API can serve requests; the deploy waits for it. From M1-D2 it also pings Postgres and answers 503 SERVICE_UNAVAILABLE when that fails."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/readyz",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "readyz"
+                  ]
+                },
+                "description": "The API can serve requests; the deploy waits for it. From M1-D2 it also pings Postgres and answers 503 SERVICE_UNAVAILABLE when that fails."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18753-3697-7322-9ef3-be8f6ec306eb"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\",\n  \"version\": \"0.1.0\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Client v1",
+      "item": [
+        {
+          "name": "Version",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/version",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "version"
+              ]
+            },
+            "description": "The client surface and its full contract version (the same as the `api-version` header). No sign-in."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept-Language",
+                    "value": "en"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/version",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "version"
+                  ]
+                },
+                "description": "The client surface and its full contract version (the same as the `api-version` header). No sign-in."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.1"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18753-3697-7322-9ef3-be8f6ec306eb"
+                }
+              ],
+              "body": "{\n  \"surface\": \"client\",\n  \"version\": \"1.0.0-beta.1\"\n}"
+            },
+            {
+              "name": "429 Too Many Requests",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept-Language",
+                    "value": "en"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/version",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "version"
+                  ]
+                },
+                "description": "The client surface and its full contract version (the same as the `api-version` header). No sign-in."
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.1"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18753-3697-7322-9ef3-be8f6ec306eb"
+                },
+                {
+                  "key": "retry-after",
+                  "value": "12"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 12 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 12\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unknown path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/nowhere",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "nowhere"
+              ]
+            },
+            "description": ""
+          },
+          "response": [
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/nowhere",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "nowhere"
+                  ]
+                },
+                "description": ""
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.1"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18753-3697-7322-9ef3-be8f6ec306eb"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"ROUTE_NOT_FOUND\",\n    \"message\": \"There is nothing at this address.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin v1",
+      "item": [
+        {
+          "name": "Version",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/version",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "version"
+              ]
+            },
+            "description": "The admin surface's version. Like every admin path, it answers 401 AUTH_REQUIRED until admin sign-in exists (M1-D3); unknown admin paths answer the same, so admin routes stay hidden."
+          },
+          "response": [
+            {
+              "name": "401 Unauthorized (until M1-D3)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept-Language",
+                    "value": "en"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/v1/version",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "v1",
+                    "version"
+                  ]
+                },
+                "description": "The admin surface's version. Like every admin path, it answers 401 AUTH_REQUIRED until admin sign-in exists (M1-D3); unknown admin paths answer the same, so admin routes stay hidden."
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.1"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18753-3697-7322-9ef3-be8f6ec306eb"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REQUIRED\",\n    \"message\": \"Please sign in to continue.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "200 OK (signed-in admin, from M1-D3)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept-Language",
+                    "value": "en"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/v1/version",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "v1",
+                    "version"
+                  ]
+                },
+                "description": "The admin surface's version. Like every admin path, it answers 401 AUTH_REQUIRED until admin sign-in exists (M1-D3); unknown admin paths answer the same, so admin routes stay hidden."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.1"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18753-3697-7322-9ef3-be8f6ec306eb"
+                }
+              ],
+              "body": "{\n  \"surface\": \"admin\",\n  \"version\": \"1.0.0-beta.1\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

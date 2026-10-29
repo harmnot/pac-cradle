@@ -1,0 +1,101 @@
+{
+  "info": {
+    "name": "paccradle API: readiness checks the database (2026-10-29)",
+    "description": "Change: M1-D2, database (2026-10-29). `GET /readyz` now pings Postgres and can answer 503. Nothing else changed; probes aren't versioned, so no surface version moves. Merge into the main contract.\n\n| Status | When | Body |\n|---|---|---|\n| 200 | Postgres answered within 2 s | `{ status: \"ok\", version }` |\n| 503 | Postgres is down, refuses connections or is slower than 2 s | `SERVICE_UNAVAILABLE`, `meta.dependency = \"database\"` |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:7773"
+    }
+  ],
+  "item": [
+    {
+      "name": "Probes",
+      "item": [
+        {
+          "name": "Ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/readyz",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "readyz"
+              ]
+            },
+            "description": "Ready to serve requests: answers 200 only while Postgres answers within 2 s. The deploy waits for it before switching containers. `/healthz` stays a liveness check and never touches the database."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/readyz",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "readyz"
+                  ]
+                },
+                "description": "Ready to serve requests: answers 200 only while Postgres answers within 2 s. The deploy waits for it before switching containers. `/healthz` stays a liveness check and never touches the database."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18773-38f5-7713-912b-029506ec427c"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\",\n  \"version\": \"0.1.0\"\n}"
+            },
+            {
+              "name": "503 Service Unavailable (database down)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/readyz",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "readyz"
+                  ]
+                },
+                "description": "Ready to serve requests: answers 200 only while Postgres answers within 2 s. The deploy waits for it before switching containers. `/healthz` stays a liveness check and never touches the database."
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18773-38f5-7713-912b-029506ec427c"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"SERVICE_UNAVAILABLE\",\n    \"message\": \"The service is unavailable right now. Please try again in a few seconds.\",\n    \"meta\": {\n      \"dependency\": \"database\"\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

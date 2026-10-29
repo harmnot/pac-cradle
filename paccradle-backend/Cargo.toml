@@ -38,8 +38,36 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+# Password hashes (M1-D3): Argon2id, OWASP's first choice; nothing in std or ring is memory-hard.
+argon2 = { version = "0.6.0", default-features = false, features = ["alloc", "password-hash"] }
+axum = { version = "0.8.9", default-features = false, features = ["http1", "http2", "json", "query", "tokio", "tower-log", "tracing", "matched-path"] }
 # The API makes the production files, so it turns on insert_core's exporters.
 insert_core = { path = "crates/insert_core", features = ["export"] }
+# Sign-in emails over SMTP (M1-D3): any provider, Mailpit locally. TLS through rustls + ring,
+# which sqlx already builds.
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
+# Crypto for sign-in (M1-D3): random tokens, SHA-256, HMAC for access tokens, and the passkey
+# signatures (P-256, Ed25519, RSA). Already in the build through sqlx's rustls.
+ring = "0.17.14"
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Postgres with compile-time checked queries (`.sqlx/` holds them for builds without a database)
+# and embedded migrations. rustls for managed databases that require TLS (DEC-06 is open).
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "macros", "migrate", "json", "uuid", "time"] }
+thiserror = { workspace = true }
+# timestamptz in Rust (M1-D3 reads session times first), RFC 3339 in JSON.
+time = { version = "0.3.47", features = ["serde-well-known"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
+tower = "0.5.3"
+tower-http = { version = "0.7.1", features = ["catch-panic", "compression-br", "compression-gzip", "cors", "request-id", "set-header", "trace"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+# UUID v7 for request IDs now and database IDs from M1-D2 (backend rules).
+uuid = { version = "1.29.0", features = ["v7", "serde"] }
+
+[dev-dependencies]
+# oneshot() drives the router in tests without opening a port.
+tower = { version = "0.5.3", features = ["util"] }
 
 # The browser build of insert_core_wasm (scripts/build-wasm.sh): smaller over faster.
 [profile.wasm-release]
@@ -61,4 +89,9 @@ opt-level = 3
 [profile.dev.package.miniz_oxide]
 opt-level = 3
 [profile.dev.package.ttf-parser]
+opt-level = 3
+# Password hashing takes about a second per hash unoptimised; tests hash many.
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
 opt-level = 3

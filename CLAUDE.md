@@ -190,7 +190,7 @@ A plain top photo is therefore fine for **flat or low** products and wrong for *
 | Fix                               | How                                                                                                                                                                         | Accuracy        | Phase |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----- |
 | **A. Trace mode** (U1)            | The pen outline lies on the paper plane, so there is no parallax. Detect the line, take its inner edge, and add back half the pen width (setting, default 0.5 mm).          | Best            | MVP   |
-| **B. Lay down + type height**     | Bottles lie on their side, which lowers the height. The user types the height from a ruler. Warn when height ÷ camera distance is too big.                                  | Good for most   | MVP   |
+| **B. Lay down + type height**     | Bottles lie on their side, which lowers the height. The user types the height from a ruler. Warn when height ÷ camera distance is too big: M1-C4 places the camera from the paper's corners and the EXIF focal length, and warns how far the outline may reach past the edge. | Good for most   | MVP   |
 | **C. Pose-aware correction** (U7) | Estimate the camera position from the 4 paper corners and the camera's focal length from the photo's EXIF data. Then project the product outline back onto its true height. | Good, automatic | v1    |
 
 ### 5.3 Level 1: classic OpenCV (free, fast)
@@ -307,6 +307,10 @@ Ask the user: tap the product, or switch to Trace mode
 ```
 
 Warnings are codes (`kind`, plus any numbers) that the editor translates; failures carry a stable error code such as `CAPTURE_PAPER_NOT_FOUND` (M1-C1). The output also gives each product's `angle_deg`, `center_mm` and `area_mm2`, and the capture `mode`.
+
+Each product also carries `contour_px`: the same outline in photo pixels, the frame of `corners_px`. The editor draws it over the photo and drags its points. It also carries `contour_source`: `detected`, or `user` after the user edits the outline (M1-C3). Taps and edited outlines come back in photo pixels too (§8.3 `correct`).
+
+The result also carries `camera` (M1-C4): the lens's height above the paper and the point below it, worked out from the paper's corners and the EXIF focal length (a 24 mm lens is assumed without one). Once the user types the height, the photo-mode warning becomes `{ "kind": "outline_may_be_bigger", "height_mm": 95, "up_to_mm": 7.8 }` (a 50 mm wide bottle, phone 40 cm above it): how far, per side, the outline may reach past the product's real edge. Under 0.5 mm there's no warning.
 
 ### 5.6 Accuracy targets and test plan
 
@@ -500,43 +504,96 @@ Phone / Desktop browser
 | ------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Web framework | Axum + Tokio + tower-http (CORS, compression, body limit, tracing)                    | Use the latest stable versions                            |
 | Database      | PostgreSQL + `sqlx`                                                                   | A small managed Postgres or one on the VPS                |
-| Jobs          | A Postgres job table (`FOR UPDATE SKIP LOCKED`) or a Rust queue crate                 | Vision and export run as jobs, not inside the web request |
+| Jobs          | A Postgres `jobs` table (`FOR UPDATE SKIP LOCKED`), worker in the API process (M1-D2) | Vision and export run as jobs, not inside the web request |
 | Vision        | `opencv` crate (needs system OpenCV + clang), `Candle`                          | Build in Docker with OpenCV runtime libraries             |
 | Files         | S3-compatible storage (e.g. Cloudflare R2)                                            | Signed URLs; delete photos automatically                  |
-| Auth          | Email magic link (your own) **or** a hosted auth service                              | Hosted auth saves 1–2 weeks **(estimate)**                |
-| Emails        | A transactional email API                                                             | Magic links and receipts. Paddle also emails receipts.    |
+| Auth          | Own (DEC-07, built in M1-D3): an email link confirms the address, then a password and passkeys; the back office signs in with a passkey only | JWT access token + rotating refresh cookie; details in `paccradle-backend/.claude/rules/backend-architecture.md` §8 |
+| Emails        | SMTP to a transactional provider (SMTP2GO planned); Mailpit locally                   | Sign-in links. Paddle emails the receipts.                |
 | Monitoring    | `tracing` logs + error tracking (e.g. Sentry) + product analytics (Plausible script) | Track the funnel in §13                                   |
 | Hosting       | 1 VPS (4 vCPU / 8 GB) + CDN; frontend on static hosting                               | Add a GPU only if SAM 2 on CPU is too slow                |
 
 ### 8.3 API endpoints (v1)
 
+The API has separate **surfaces**, each with its own routes, sign-in, CORS origin and semver contract version (decided in M1-D1). The URL carries the major version; every response carries the full one in the `api-version` header. Breaking changes get a new major prefix (`/v2`) next to the old one. Details: `paccradle-backend/.claude/rules/backend-architecture.md` §4.8.
+
+| Surface  | Prefix              | Who calls it                          |
+| -------- | ------------------- | ------------------------------------- |
+| client   | `/api/client/v1`    | the web app's users                   |
+| admin    | `/api/admin/v1`     | the back office (signed-in admins)    |
+| webhooks | `/api/webhooks/v1`  | Paddle                                |
+| probes   | `/healthz`, `/readyz` | deploy scripts (not versioned)      |
+
 ```text
-POST   /api/v1/captures                 multipart image + {paper, mode, exif}  → {capture_id}
-GET    /api/v1/captures/{id}            → {status, paper, products[], warnings[], level_used}
-POST   /api/v1/captures/{id}/correct    {tap_point | edited_contour}           → re-run measure
-POST   /api/v1/designs                  {products, insert, material, box}      → {design_id}
-GET    /api/v1/designs/{id}   PATCH /api/v1/designs/{id}
-POST   /api/v1/designs/{id}/exports     {formats, preset}  → 200 {export_id} | 402 {checkout}
-GET    /api/v1/exports/{id}             → {status, files:[{format, signed_url}]}
-POST   /api/v1/paddle/webhook           (raw body, signature checked)
-GET    /api/v1/me                       → {plan, credits, unlocked_designs, subscription}
-POST   /api/v1/billing/portal           → Paddle customer portal link
-POST   /api/v1/handoff                  → {token, qr_url}     GET /api/v1/handoff/{token}/events (SSE)
+# client: /api/client/v1
+POST   /auth/guest                      → 201 session (a guest, so visitors can start at once)
+POST   /auth/email-link                 {email} → 202 (confirm-your-email or sign-in link; same answer either way)
+POST   /auth/email-link/sign-in         {token} → session (confirms the address; makes the account or signs in)
+POST   /auth/password/sign-in           {email, password} → session
+POST   /auth/passkey/sign-in/options    → {ceremony_id, public_key}      POST /auth/passkey/sign-in  {ceremony_id, credential} → session
+POST   /auth/refresh                    (refresh cookie) → session        POST /auth/sign-out → 204
+GET    /me                              PUT /me/password {password, current_password?}
+POST   /me/passkeys/options             POST /me/passkeys {ceremony_id, credential, name?}
+POST   /captures                        multipart image + {paper, mode, exif}  → {capture_id}
+GET    /captures/{capture_id}           → {status, paper, products[], warnings[], level_used}
+POST   /captures/{capture_id}/correct   {tap_point_px | edited_contour_px | height_mm} → re-run measure (tap), measure as drawn (edit) or recheck the tall-product warning (height)
+POST   /designs                         {products, insert, material, box}      → {design_id}
+GET    /designs/{design_id}   PATCH /designs/{design_id}
+POST   /designs/{design_id}/exports     {formats, preset}  → 200 {export_id} | 402 {checkout}
+GET    /exports/{export_id}             → {status, files:[{format, signed_url}]}
+GET    /me                              → {id, email, role, has_password, passkey_count, …}; billing adds {plan, credits, unlocked_designs, subscription} (F5)
+POST   /billing/portal                  → Paddle customer portal link
+POST   /handoff                         → {token, qr_url}     GET /handoff/{token}/events (SSE)
+GET    /shares/{slug}                   public share data for the web app's /s/{slug} page
+GET    /version                         → {surface, version}
+
+# admin: /api/admin/v1 (back office; every path answers 401 unless the caller is a signed-in admin, except /auth/…)
+POST   /auth/passkey/sign-in/options    POST /auth/passkey/sign-in    POST /auth/refresh    POST /auth/sign-out
+GET    /me                              GET /version → {surface, version}
+       (support, credits and refunds, jobs and accuracy reviews come later)
+
+# webhooks: /api/webhooks/v1
+POST   /paddle                          (raw body, signature checked)
+
+# probes
+GET    /healthz   GET /readyz           → {status, version}
+
+# web app (Next.js), not the API
 GET    /s/{slug}                        public view-only 3D share page
 ```
 
 ### 8.4 Database tables
 
+Built in M1-D2 (`paccradle-backend/migrations/`). Every table has a UUID v7 `id`, `timestamptz` times and `updated_at` kept by a trigger; enum-like columns are checked text; a user's rows go when the user is deleted.
+
 ```text
-users(id, email, locale, paper_default, created_at)
-captures(id, user_id, storage_key, exif jsonb, mode, paper, result jsonb, confidence, level_used, created_at, purge_after)
-products(id, user_id, capture_id, name, contour_mm jsonb, bbox_mm jsonb, shape, height_mm, profile jsonb)
-designs(id, user_id, spec jsonb, version, share_slug, created_at, updated_at)
-design_unlocks(design_id, user_id, source[purchase|credit|pro], unlocked_at, edits_until)
-credit_ledger(id, user_id, delta, reason, paddle_txn_id, created_at)      -- balance = SUM(delta)
-subscriptions(id, user_id, paddle_subscription_id, plan, status, current_period_end, updated_at)
-paddle_events(event_id PK, type, received_at, processed_at, payload jsonb) -- idempotency
-exports(id, design_id, design_version, formats, status, files jsonb, created_at)
+users(id, email?, locale, paper_default, role[user|admin], email_confirmed_at?, password_hash?, created_at, updated_at)
+                                                                       -- no email = guest; an email is stored only once confirmed; unique whatever its case
+captures(id, user_id, status, mode, paper, input jsonb, exif jsonb, storage_key?, result jsonb?, error_code?,
+         confidence?, level_used?, created_at, updated_at, purge_after) -- storage_key cleared once the photo is deleted
+products(id, user_id, capture_id?, name, shape, contour_mm jsonb, bbox_mm jsonb, height_mm?, profile jsonb?, created_at, updated_at)
+designs(id, user_id, name, spec jsonb, version, share_slug?, created_at, updated_at)
+exports(id, design_id, design_version, formats text[], status, files jsonb, error_code?, created_at, updated_at)
+design_unlocks(id, design_id unique, user_id, source[purchase|credit|pro], paddle_transaction_id?, unlocked_at, edits_until)
+credit_ledger(id, user_id, delta, reason[purchase|spend|refund|chargeback|adjustment], design_id?, paddle_transaction_id?,
+              note?, created_at)                                       -- append-only; balance = SUM(delta); a purchase counts once
+subscriptions(id, user_id, paddle_subscription_id unique, plan, status, current_period_end?, paddle_updated_at, …)
+paddle_events(id, event_id unique, event_type, occurred_at, payload jsonb, received_at, processed_at?) -- idempotency
+jobs(id, kind, payload jsonb, status[queued|running|done|dead], attempts, max_attempts, run_at, locked_until?,
+     last_error?, finished_at?, …)                                     -- job queue + outbox (FOR UPDATE SKIP LOCKED)
+```
+
+Sign-in tables, built in M1-D3 (`…_auth.sql`):
+
+```text
+sessions(id, user_id, surface[client|admin], method[guest|email_link|password|passkey], refresh_token_hash unique,
+         previous_refresh_token_hash?, rotated_at?, authenticated_at, expires_at, revoked_at?, …)  -- SHA-256 hashes only
+email_links(id, email, purpose[sign_up|sign_in], locale, token_hash?, expires_at?, used_at?, created_at)
+                                                                       -- the send job makes the token; the queue never holds it
+passkeys(id, user_id, credential_id unique, public_key (COSE), algorithm[-7|-8|-257], sign_count, transports[],
+         backup_eligible, backed_up, aaguid?, name, last_used_at?, …)
+passkey_challenges(id, purpose[sign_in|register], surface, user_id?, challenge, expires_at)  -- single use, 5 minutes
+admin_audit_log(id, admin_id?, admin_email, session_id, request_id, method, route?, path, status?, created_at,
+                finished_at?)                                          -- every admin write; append-only (trigger)
 ```
 
 ### 8.5 Security and privacy
@@ -545,6 +602,7 @@ exports(id, design_id, design_version, formats, status, files jsonb, created_at)
 - **Photos:** remove GPS data from EXIF, delete photos after 30 days, and keep only outlines and sizes. Let users delete their data.
 - **Paid files:** sent only through signed URLs that expire in minutes.
 - **Code:** no user-supplied code ever runs on the server.
+- **Sign-in:** tokens are stored as SHA-256 and passwords as Argon2id; the refresh token lives in an `HttpOnly; SameSite=Strict` cookie, so the web app and the API must share a site (`app.` and `api.paccradle.com`). Email-link and password sign-ins never reveal whether an account exists.
 
 ### 8.6 Monthly running cost at the start (estimate)
 
@@ -732,7 +790,7 @@ Example (not a forecast): 60 Pro subscribers + 80 single exports a month ≈ 60 
 ## 15. Decisions for you
 
 1. **Name and domain.** "paccradle" is only a working name.
-2. **Auth:** your own magic links in Axum, or a hosted auth service, which saves time.
+2. **Auth:** decided 2026-10-29 and built in M1-D3: own sign-in in Axum. An email link confirms the address (sign-up, and forgot password), then a password and a passkey on devices that support one; the back office signs in with a passkey only. See DEC-07 in [MILESTONES.md](MILESTONES.md).
 3. **First 3 insert styles:** partition grid, cutout card and cradle are my suggestion.
 4. **Height capture in the MVP:** type it, or the lay-down photo.
 5. **Backup AI model:** decided 2026-10-28. Hugging Face (`Qwen3-VL-8B-Instruct`) first, then the Gemini free tier (skipped for visitors in the EEA, the UK and Switzerland), then fal.ai (Moondream 3). All three are vision-language models, not image generators. No Claude API. See §5.4 and DEC-13 in [MILESTONES.md](MILESTONES.md).

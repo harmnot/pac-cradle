@@ -167,7 +167,7 @@ jobs:
         run: ssh vps load < "$RUNNER_TEMP/image.tar.gz" 2>&1 | tee "$RUNNER_TEMP/load.log"
 
       # Stops the running container, starts the new one and waits for
-      # /api/v1/ready; if that fails it puts the previous version back.
+      # /readyz; if that fails it puts the previous version back.
       - name: Deploy on the VPS
         id: deploy
         env:
@@ -184,8 +184,8 @@ jobs:
           DEPLOY_URL: ${{ vars.DEPLOY_URL }}
         run: |
           curl -fsS --retry 5 --retry-delay 3 --retry-all-errors --max-time 10 \
-            -o /dev/null "$DEPLOY_URL/api/v1/health" \
-            || { echo "ERROR: $DEPLOY_URL/api/v1/health is not answering through Nginx" | tee "$RUNNER_TEMP/smoke.log"; exit 1; }
+            -o /dev/null "$DEPLOY_URL/healthz" \
+            || { echo "ERROR: $DEPLOY_URL/healthz is not answering through Nginx" | tee "$RUNNER_TEMP/smoke.log"; exit 1; }
 
       - name: Summarise the failure
         id: failure

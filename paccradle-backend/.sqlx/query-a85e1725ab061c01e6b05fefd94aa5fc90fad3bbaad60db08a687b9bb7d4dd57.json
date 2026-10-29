@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE email_links SET used_at = now()\n                WHERE lower(email) = lower($1) AND used_at IS NULL\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a85e1725ab061c01e6b05fefd94aa5fc90fad3bbaad60db08a687b9bb7d4dd57"
+}

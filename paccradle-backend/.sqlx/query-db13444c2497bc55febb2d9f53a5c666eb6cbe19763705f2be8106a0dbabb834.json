@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                WITH released AS (\n                    UPDATE jobs\n                    SET status = CASE WHEN attempts >= max_attempts THEN 'dead' ELSE 'queued' END,\n                        finished_at = CASE WHEN attempts >= max_attempts THEN now() END,\n                        run_at = now(),\n                        locked_until = NULL,\n                        last_error = $1\n                    WHERE status = 'running' AND locked_until < now()\n                    RETURNING status\n                )\n                SELECT count(*) FILTER (WHERE status = 'queued') AS \"requeued!\",\n                       count(*) FILTER (WHERE status = 'dead') AS \"dead!\"\n                FROM released\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "requeued!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "dead!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "db13444c2497bc55febb2d9f53a5c666eb6cbe19763705f2be8106a0dbabb834"
+}

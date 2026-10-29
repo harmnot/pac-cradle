@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT count(*) AS \"locked!\"\n                FROM (SELECT pg_advisory_xact_lock(hashtextextended(lower($1), 0))) AS lock\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "locked!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "aab704b19f1b4ad475707a38f2c94aab326197d4bcb86acaa2a0911a2e1745fe"
+}

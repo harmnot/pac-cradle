@@ -1,12 +1,13 @@
 //! Cut the product (photo mode) or the traced outline (trace mode) out of the
 //! flattened paper (CLAUDE.md §5.2 fix A, §5.3 steps 4–5).
 
-use opencv::core::{self, Mat, Point, Rect, Scalar, Size, Vec4i, Vector};
+use opencv::core::{self, Mat, Point, Point2f, Rect, Scalar, Size, Vec4i, Vector};
 use opencv::imgproc;
 use opencv::prelude::*;
 
 use crate::error::VisionError;
 use crate::paper::{PX_PER_MM, mm_to_px, to_gray};
+use crate::result::CaptureMode;
 
 /// Band at the paper edge that is ignored (shadows, paper curl, cut edge).
 pub const EDGE_IGNORE_MM: f64 = 3.0;
@@ -18,7 +19,7 @@ const LIGHTNESS_WEIGHT: f64 = 0.5;
 /// Lowest colour distance (Lab units) that counts as "not paper", even if Otsu picks less.
 const MIN_COLOR_DISTANCE: f64 = 12.0;
 /// Smallest product or traced outline accepted, in mm².
-const MIN_OBJECT_AREA_MM2: f64 = 25.0;
+pub const MIN_OBJECT_AREA_MM2: f64 = 25.0;
 /// Other blobs larger than this share of the product count as extra objects.
 const EXTRA_BLOB_SHARE: f64 = 0.05;
 /// Mask clean-up kernels (pixels at 10 px/mm).
@@ -31,6 +32,40 @@ const GRABCUT_ITERATIONS: i32 = 3;
 const TRACE_BLOCK_PX: i32 = 51;
 const TRACE_DARKER_BY: f64 = 15.0;
 const TRACE_CLOSE_KERNEL_PX: i32 = 5;
+/// How far outside an outline a tap may land and still pick it: about a fingertip's miss
+/// on a phone showing the whole sheet.
+const TAP_REACH_MM: f64 = 10.0;
+
+/// Which outline to keep when there are several.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Pick {
+    /// The biggest. The others big enough to matter count as extra objects.
+    Largest,
+    /// The one under the user's tap, in flattened-paper pixels, or failing that the nearest
+    /// within 10 mm of it (CLAUDE.md §3 step 4). The others don't count: the user picked.
+    At(Point2f),
+}
+
+impl Pick {
+    /// The error when nothing fits: `otherwise` for the largest, nothing at the tap for a tap.
+    fn missing(self, otherwise: VisionError) -> VisionError {
+        match self {
+            Pick::Largest => otherwise,
+            Pick::At(_) => VisionError::NothingAtTap,
+        }
+    }
+}
+
+/// How to cut the product out of the flattened paper.
+#[derive(Debug, Clone, Copy)]
+pub struct Settings {
+    pub mode: CaptureMode,
+    pub pick: Pick,
+    /// Photo mode: refine the first mask with GrabCut.
+    pub refine_with_grabcut: bool,
+    /// Trace mode: the pen line's width, in mm.
+    pub pen_width_mm: f64,
+}
 
 /// A product mask on the flattened paper (255 = product) and how many other objects were seen.
 pub struct Segmented {
@@ -40,8 +75,17 @@ pub struct Segmented {
     pub extra_blobs: usize,
 }
 
+/// Cuts the product (photo mode) or the traced outline (trace mode) out of the flattened
+/// paper.
+pub fn cut_out(flat: &Mat, settings: &Settings) -> Result<Segmented, VisionError> {
+    match settings.mode {
+        CaptureMode::Photo => product_mask(flat, settings),
+        CaptureMode::Trace => trace_mask(flat, settings),
+    }
+}
+
 /// Photo mode: pixels whose colour differs from the paper, cleaned up and refined with GrabCut.
-pub fn product_mask(flat: &Mat, refine: bool) -> Result<Segmented, VisionError> {
+fn product_mask(flat: &Mat, settings: &Settings) -> Result<Segmented, VisionError> {
     let distance = color_distance(flat)?;
     let mut foreground = Mat::default();
     let otsu = imgproc::threshold(
@@ -64,12 +108,13 @@ pub fn product_mask(flat: &Mat, refine: bool) -> Result<Segmented, VisionError> 
     let opened = morph(&inside, imgproc::MORPH_OPEN, OPEN_KERNEL_PX)?;
     let cleaned = morph(&opened, imgproc::MORPH_CLOSE, CLOSE_KERNEL_PX)?;
 
-    let first = largest_blob(&cleaned)?.ok_or(VisionError::ProductNotFound)?;
-    if !refine {
+    let missing = || settings.pick.missing(VisionError::ProductNotFound);
+    let first = blob(&cleaned, settings.pick)?.ok_or_else(missing)?;
+    if !settings.refine_with_grabcut {
         return Ok(first);
     }
     let refined = refine_with_grabcut(flat, &first.mask)?;
-    let product = largest_blob(&refined)?.ok_or(VisionError::ProductNotFound)?;
+    let product = blob(&refined, settings.pick)?.ok_or_else(missing)?;
     Ok(Segmented {
         mask: product.mask,
         extra_blobs: first.extra_blobs,
@@ -78,7 +123,7 @@ pub fn product_mask(flat: &Mat, refine: bool) -> Result<Segmented, VisionError> 
 
 /// Trace mode: finds the closed pen line, takes its inner edge, then adds back half the pen
 /// width so the outline matches the product edge (CLAUDE.md §5.2 fix A).
-pub fn trace_mask(flat: &Mat, pen_width_mm: f64) -> Result<Segmented, VisionError> {
+fn trace_mask(flat: &Mat, settings: &Settings) -> Result<Segmented, VisionError> {
     let mut ink = Mat::default();
     imgproc::adaptive_threshold(
         &to_gray(flat)?,
@@ -111,23 +156,24 @@ pub fn trace_mask(flat: &Mat, pen_width_mm: f64) -> Result<Segmented, VisionErro
             holes.push((index, imgproc::contour_area_def(&contour)?));
         }
     }
-    let (inside_index, inside_area) = pick_largest(&holes).ok_or(VisionError::TraceNotFound)?;
-    if inside_area < min_area_px() {
-        return Err(VisionError::TraceNotFound);
-    }
+    let loops = Found {
+        contours,
+        candidates: holes,
+    };
+    let inside = loops
+        .choose(settings.pick)?
+        .ok_or_else(|| settings.pick.missing(VisionError::TraceNotFound))?;
 
     // The filled hole contour includes one ring of ink pixels; erode it back to the hole itself.
-    let filled = fill_contour(&contours, inside_index, line.size()?)?;
+    let filled = fill_contour(&loops.contours, inside.index, line.size()?)?;
     let cross = imgproc::get_structuring_element_def(imgproc::MORPH_CROSS, Size::new(3, 3))?;
     let mut inner = Mat::default();
     imgproc::erode_def(&filled, &mut inner, &cross)?;
-    let mask = grow(&inner, pen_width_mm / 2.0 * PX_PER_MM)?;
-
-    let extra_blobs = holes
-        .iter()
-        .filter(|(index, area)| *index != inside_index && *area > EXTRA_BLOB_SHARE * inside_area)
-        .count();
-    Ok(Segmented { mask, extra_blobs })
+    let mask = grow(&inner, settings.pen_width_mm / 2.0 * PX_PER_MM)?;
+    Ok(Segmented {
+        mask,
+        extra_blobs: inside.extra_blobs,
+    })
 }
 
 /// Per-pixel colour distance from the paper (Lab, lightness weighted down), as 8-bit.
@@ -230,8 +276,8 @@ fn pick_largest(areas: &[(usize, f64)]) -> Option<(usize, f64)> {
     areas.iter().copied().max_by(|a, b| a.1.total_cmp(&b.1))
 }
 
-/// Keeps only the largest blob; counts other blobs big enough to matter.
-fn largest_blob(mask: &Mat) -> Result<Option<Segmented>, VisionError> {
+/// Keeps only the blob `pick` chooses.
+fn blob(mask: &Mat, pick: Pick) -> Result<Option<Segmented>, VisionError> {
     let mut contours = Vector::<Vector<Point>>::new();
     imgproc::find_contours_def(
         mask,
@@ -239,24 +285,83 @@ fn largest_blob(mask: &Mat) -> Result<Option<Segmented>, VisionError> {
         imgproc::RETR_EXTERNAL,
         imgproc::CHAIN_APPROX_NONE,
     )?;
-    let mut areas = Vec::new();
+    let mut candidates = Vec::new();
     for (index, contour) in contours.iter().enumerate() {
-        areas.push((index, imgproc::contour_area_def(&contour)?));
+        candidates.push((index, imgproc::contour_area_def(&contour)?));
     }
-    let Some((index, area)) = pick_largest(&areas) else {
+    let blobs = Found {
+        contours,
+        candidates,
+    };
+    let Some(chosen) = blobs.choose(pick)? else {
         return Ok(None);
     };
-    if area < min_area_px() {
-        return Ok(None);
-    }
-    let extra_blobs = areas
-        .iter()
-        .filter(|(other, other_area)| *other != index && *other_area > EXTRA_BLOB_SHARE * area)
-        .count();
     Ok(Some(Segmented {
-        mask: fill_contour(&contours, index, mask.size()?)?,
-        extra_blobs,
+        mask: fill_contour(&blobs.contours, chosen.index, mask.size()?)?,
+        extra_blobs: chosen.extra_blobs,
     }))
+}
+
+/// Outlines found in a mask, and the ones that may be the product with their areas in px.
+struct Found {
+    contours: Vector<Vector<Point>>,
+    candidates: Vec<(usize, f64)>,
+}
+
+/// The outline kept, and how many other objects count against it.
+struct Chosen {
+    index: usize,
+    extra_blobs: usize,
+}
+
+impl Found {
+    fn choose(&self, pick: Pick) -> Result<Option<Chosen>, VisionError> {
+        match pick {
+            Pick::Largest => Ok(self.largest()),
+            Pick::At(tap) => self.at(tap),
+        }
+    }
+
+    /// The biggest candidate, if it's big enough; others over 5 % of its area count as
+    /// extra objects.
+    fn largest(&self) -> Option<Chosen> {
+        let (index, area) = pick_largest(&self.candidates)?;
+        if area < min_area_px() {
+            return None;
+        }
+        let extra_blobs = self
+            .candidates
+            .iter()
+            .filter(|(other, other_area)| *other != index && *other_area > EXTRA_BLOB_SHARE * area)
+            .count();
+        Some(Chosen { index, extra_blobs })
+    }
+
+    /// The smallest big-enough candidate holding the tap (a pen loop inside another is the
+    /// nearer one); failing that, the nearest within reach.
+    fn at(&self, tap: Point2f) -> Result<Option<Chosen>, VisionError> {
+        let reach_px = TAP_REACH_MM * PX_PER_MM;
+        let mut holding: Option<(usize, f64)> = None;
+        let mut nearest: Option<(usize, f64)> = None;
+        for &(index, area) in &self.candidates {
+            if area < min_area_px() {
+                continue;
+            }
+            // Distance to the outline in px: positive inside, negative outside.
+            let distance = imgproc::point_polygon_test(&self.contours.get(index)?, tap, true)?;
+            if distance >= 0.0 {
+                if holding.is_none_or(|(_, smallest)| area < smallest) {
+                    holding = Some((index, area));
+                }
+            } else if distance >= -reach_px && nearest.is_none_or(|(_, best)| distance > best) {
+                nearest = Some((index, distance));
+            }
+        }
+        Ok(holding.or(nearest).map(|(index, _)| Chosen {
+            index,
+            extra_blobs: 0,
+        }))
+    }
 }
 
 fn fill_contour(

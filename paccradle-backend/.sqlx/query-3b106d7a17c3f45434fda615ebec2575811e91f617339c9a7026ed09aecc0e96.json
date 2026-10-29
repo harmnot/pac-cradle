@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE sessions\n                SET previous_refresh_token_hash = refresh_token_hash,\n                    refresh_token_hash = $3,\n                    rotated_at = now(),\n                    expires_at = CASE\n                        WHEN $4::float8 IS NULL THEN expires_at\n                        ELSE now() + make_interval(secs => $4)\n                    END\n                WHERE id = $1 AND refresh_token_hash = $2 AND revoked_at IS NULL\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Bytea",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3b106d7a17c3f45434fda615ebec2575811e91f617339c9a7026ed09aecc0e96"
+}

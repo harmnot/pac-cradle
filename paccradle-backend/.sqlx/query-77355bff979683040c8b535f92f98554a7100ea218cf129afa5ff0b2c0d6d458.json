@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO passkey_challenges (id, purpose, surface, user_id, challenge, expires_at)\n                VALUES ($1, $2, $3, $4, $5, now() + make_interval(secs => $6))\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid",
+        "Bytea",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "77355bff979683040c8b535f92f98554a7100ea218cf129afa5ff0b2c0d6d458"
+}

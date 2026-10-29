@@ -1,14 +1,15 @@
 //! Find the A4/Letter sheet in a photo and flatten it to a top-down view
-//! (CLAUDE.md §5.3 steps 1–3).
+//! (CLAUDE.md §5.3 steps 1–3); map points between the two.
 
 use std::str::FromStr;
 
-use opencv::core::{self, Mat, Point, Point2f, Size, TermCriteria, Vector};
+use opencv::core::{self, Mat, Point, Point2d, Point2f, Size, TermCriteria, Vector};
 use opencv::imgproc;
 use opencv::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::error::VisionError;
+use crate::result::PaperResult;
 
 /// Resolution of the flattened paper image: 10 px per mm, so 1 px = 0.1 mm.
 pub const PX_PER_MM: f64 = 10.0;
@@ -109,21 +110,99 @@ pub fn find_paper(image: &Mat) -> Result<PaperQuad, VisionError> {
     })
 }
 
-/// Warps the paper to a top-down portrait view at 10 px/mm (A4 becomes 2100 × 2970 px).
-pub fn flatten(image: &Mat, quad: &PaperQuad, paper: PaperSize) -> Result<Mat, VisionError> {
-    let size = paper.size_px();
-    let (width, height) = (size.width as f32, size.height as f32);
-    let source = Vector::<Point2f>::from_iter(quad.corners);
-    let target = Vector::<Point2f>::from_iter([
-        Point2f::new(0.0, 0.0),
-        Point2f::new(width, 0.0),
-        Point2f::new(width, height),
-        Point2f::new(0.0, height),
-    ]);
-    let transform = imgproc::get_perspective_transform_def(&source, &target)?;
-    let mut flat = Mat::default();
-    imgproc::warp_perspective_def(image, &mut flat, &transform, size)?;
-    Ok(flat)
+/// Maps the photo onto the flattened paper (10 px/mm) and back, through the sheet's 4
+/// corners.
+///
+/// Taps and edited outlines come in photo pixels (M1-C3), and outlines go back out in
+/// photo pixels, so the editor draws and drags them over the photo with no maths of its
+/// own; everything measured stays on the flattened paper.
+pub struct PaperMapping {
+    paper: PaperSize,
+    to_paper: Mat,
+    to_photo: Mat,
+}
+
+impl PaperMapping {
+    /// The mapping for the sheet whose corners are `quad`.
+    pub fn new(quad: &PaperQuad, paper: PaperSize) -> Result<Self, VisionError> {
+        let size = paper.size_px();
+        let (width, height) = (size.width as f32, size.height as f32);
+        let photo = Vector::<Point2f>::from_iter(quad.corners);
+        let flat = Vector::<Point2f>::from_iter([
+            Point2f::new(0.0, 0.0),
+            Point2f::new(width, 0.0),
+            Point2f::new(width, height),
+            Point2f::new(0.0, height),
+        ]);
+        Ok(Self {
+            paper,
+            to_paper: imgproc::get_perspective_transform_def(&photo, &flat)?,
+            to_photo: imgproc::get_perspective_transform_def(&flat, &photo)?,
+        })
+    }
+
+    /// The mapping for a sheet found earlier, as stored in its result.
+    pub fn from_result(paper: &PaperResult) -> Result<Self, VisionError> {
+        let corners = paper
+            .corners_px
+            .map(|[x, y]| Point2f::new(x as f32, y as f32));
+        Self::new(&PaperQuad { corners }, paper.size)
+    }
+
+    /// Warps the photo to a top-down portrait view at 10 px/mm (A4 becomes 2100 × 2970 px).
+    pub fn flatten(&self, image: &Mat) -> Result<Mat, VisionError> {
+        let mut flat = Mat::default();
+        imgproc::warp_perspective_def(image, &mut flat, &self.to_paper, self.paper.size_px())?;
+        Ok(flat)
+    }
+
+    /// Photo pixels to flattened-paper pixels.
+    pub fn to_paper_px(&self, points: &[[f64; 2]]) -> Result<Vec<[f64; 2]>, VisionError> {
+        project((points, &self.to_paper))
+    }
+
+    /// Flattened-paper pixels to photo pixels.
+    pub fn to_photo_px(&self, points: &[[f64; 2]]) -> Result<Vec<[f64; 2]>, VisionError> {
+        project((points, &self.to_photo))
+    }
+
+    /// Where a photo point lands on the flattened paper, or `None` when it's off the sheet.
+    pub fn paper_point(&self, point: [f64; 2]) -> Result<Option<[f64; 2]>, VisionError> {
+        let mapped = self.to_paper_px(&[point])?;
+        Ok(mapped
+            .first()
+            .copied()
+            .filter(|&point| self.on_paper(point)))
+    }
+
+    /// The transform from the paper, in mm, to photo pixels: a 3 × 3 matrix, by rows.
+    pub fn photo_from_paper_mm(&self) -> Result<[[f64; 3]; 3], VisionError> {
+        let mut matrix = [[0.0; 3]; 3];
+        for (row, values) in (0_i32..).zip(matrix.iter_mut()) {
+            for (column, value) in (0_i32..).zip(values.iter_mut()) {
+                // The x and y columns take flattened-paper pixels, 10 to the mm.
+                let scale = if column < 2 { PX_PER_MM } else { 1.0 };
+                *value = *self.to_photo.at_2d::<f64>(row, column)? * scale;
+            }
+        }
+        Ok(matrix)
+    }
+
+    /// True when a point in flattened-paper pixels lies on the sheet, edges included.
+    pub fn on_paper(&self, [x, y]: [f64; 2]) -> bool {
+        let size = self.paper.size_px();
+        (0.0..=f64::from(size.width)).contains(&x) && (0.0..=f64::from(size.height)).contains(&y)
+    }
+}
+
+fn project((points, transform): (&[[f64; 2]], &Mat)) -> Result<Vec<[f64; 2]>, VisionError> {
+    if points.is_empty() {
+        return Ok(Vec::new());
+    }
+    let source = Vector::<Point2d>::from_iter(points.iter().map(|&[x, y]| Point2d::new(x, y)));
+    let mut target = Vector::<Point2d>::new();
+    core::perspective_transform(&source, &mut target, transform)?;
+    Ok(target.iter().map(|point| [point.x, point.y]).collect())
 }
 
 /// Converts a BGR image to grayscale.

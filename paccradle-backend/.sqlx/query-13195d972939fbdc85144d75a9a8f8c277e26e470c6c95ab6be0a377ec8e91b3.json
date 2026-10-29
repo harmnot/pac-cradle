@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO users (id, email, email_confirmed_at, locale)\n                VALUES ($1, $2, CASE WHEN $2::text IS NULL THEN NULL ELSE now() END, $3)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "13195d972939fbdc85144d75a9a8f8c277e26e470c6c95ab6be0a377ec8e91b3"
+}

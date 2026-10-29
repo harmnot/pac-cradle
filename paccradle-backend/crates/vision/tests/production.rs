@@ -10,7 +10,7 @@ mod common;
 
 use std::error::Error;
 
-use common::{Drawing, TOLERANCE_MM, UPRIGHT_QUAD, assert_close, paper_image, photograph};
+use common::{Drawing, TOLERANCE_MM, UPRIGHT_QUAD, assert_close, encode, paper_image, photograph};
 use opencv::core::{self, Mat, Scalar, Size, Vector};
 use opencv::imgcodecs;
 use opencv::prelude::*;
@@ -31,18 +31,6 @@ fn disc_photo() -> opencv::Result<Mat> {
     photograph(&paper_image(PaperSize::A4, &drawing)?, UPRIGHT_QUAD)
 }
 
-/// The image encoded as `extension` (".jpg", ".png", ".webp"), at high quality.
-fn encode((image, extension): (&Mat, &str)) -> opencv::Result<Vec<u8>> {
-    let params = match extension {
-        ".jpg" => Vector::from_slice(&[imgcodecs::IMWRITE_JPEG_QUALITY, 95]),
-        ".webp" => Vector::from_slice(&[imgcodecs::IMWRITE_WEBP_QUALITY, 95]),
-        _ => Vector::new(),
-    };
-    let mut bytes = Vector::<u8>::new();
-    imgcodecs::imencode(extension, image, &mut bytes, &params)?;
-    Ok(bytes.to_vec())
-}
-
 fn plain((width, height): (i32, i32)) -> opencv::Result<Mat> {
     Mat::new_size_with_default(
         Size::new(width, height),
@@ -56,6 +44,9 @@ fn photo_input() -> CaptureInput {
         paper: PaperSize::A4,
         mode: CaptureMode::Photo,
         pen_width_mm: vision::DEFAULT_PEN_WIDTH_MM,
+        tap_point_px: None,
+        height_mm: None,
+        focal_length_35mm: None,
     }
 }
 
@@ -275,6 +266,9 @@ fn the_input_reads_from_json_and_is_checked_first() -> TestResult {
             paper: PaperSize::A4,
             mode: CaptureMode::Trace,
             pen_width_mm: 0.5,
+            tap_point_px: None,
+            height_mm: None,
+            focal_length_35mm: None,
         }
     );
     let input: CaptureInput =
@@ -336,6 +330,12 @@ fn the_result_has_the_documented_shape_and_reads_back() -> TestResult {
                 .iter()
                 .all(|point| point.as_array().map(Vec::len) == Some(2))
     );
+    // The same outline in photo pixels, for the editor (M1-C3).
+    assert_eq!(
+        product["contour_px"].as_array().map(Vec::len),
+        Some(contour.len())
+    );
+    assert_eq!(product["contour_source"], "detected");
     assert!(product["height_mm"].is_null());
     assert_eq!(product["height_source"], "user");
     assert_eq!(value["level_used"], "L1");
@@ -375,6 +375,11 @@ fn error_codes_are_stable_and_say_whose_to_fix() {
         (VisionError::PaperNotFound, "CAPTURE_PAPER_NOT_FOUND"),
         (VisionError::ProductNotFound, "CAPTURE_PRODUCT_NOT_FOUND"),
         (VisionError::TraceNotFound, "CAPTURE_TRACE_NOT_FOUND"),
+        (VisionError::NothingAtTap, "CAPTURE_NOTHING_AT_TAP"),
+        (
+            VisionError::OutlineCrossesItself,
+            "CAPTURE_OUTLINE_CROSSES_ITSELF",
+        ),
     ];
     for (error, code) in errors {
         assert_eq!(error.code(), code);

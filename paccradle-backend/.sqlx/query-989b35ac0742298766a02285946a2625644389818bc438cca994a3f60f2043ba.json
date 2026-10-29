@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO admin_audit_log\n                    (id, admin_id, admin_email, session_id, request_id, method, route, path)\n                SELECT $1, users.id, users.email, $3, $4, $5, $6, $7\n                FROM users\n                WHERE users.id = $2 AND users.email IS NOT NULL\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "989b35ac0742298766a02285946a2625644389818bc438cca994a3f60f2043ba"
+}

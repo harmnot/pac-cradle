@@ -1,5 +1,5 @@
-//! Measure a product mask in millimetres and score the confidence
-//! (CLAUDE.md §5.3 steps 6–8).
+//! Measure a product mask, or an outline the user edited, in millimetres, and score the
+//! confidence (CLAUDE.md §5.3 steps 6–8).
 
 use std::f64::consts::PI;
 
@@ -32,7 +32,7 @@ const WEAK_EDGE_PENALTY: f64 = 0.2;
 
 /// Sizes and outline of one product, in millimetres on the flattened paper.
 #[derive(Debug, Clone)]
-pub struct Measurement {
+pub struct Outline {
     pub shape: Shape,
     /// Long and short side of the rotated bounding box.
     pub length_mm: f64,
@@ -42,12 +42,31 @@ pub struct Measurement {
     pub angle_deg: f64,
     pub center_mm: [f64; 2],
     pub area_mm2: f64,
-    /// Simplified outline relative to its own top-left corner.
+    /// The outline's points, in mm from its own top-left corner ([`origin_mm`](Self::origin_mm)).
     pub contour_mm: Vec<[f64; 2]>,
+    /// Where `contour_mm`'s (0, 0) lies on the paper, in mm from the paper's top-left corner.
+    pub origin_mm: [f64; 2],
     /// Area ÷ convex hull area (1 = no dents).
     pub solidity: f64,
     /// 4π·area ÷ perimeter² (1 = perfect circle).
     pub circularity: f64,
+}
+
+impl Outline {
+    /// The outline's points on the flattened paper, in px.
+    pub fn paper_px(&self) -> Vec<[f64; 2]> {
+        let [origin_x, origin_y] = self.origin_mm;
+        self.contour_mm
+            .iter()
+            .map(|[x, y]| [(x + origin_x) * PX_PER_MM, (y + origin_y) * PX_PER_MM])
+            .collect()
+    }
+}
+
+/// A detected outline, and what the photo says about it.
+#[derive(Debug, Clone)]
+pub struct Measurement {
+    pub outline: Outline,
     /// Mean gradient strength along the outline (sharp edges score higher).
     pub edge_strength: f64,
     pub touches_edge: bool,
@@ -56,72 +75,134 @@ pub struct Measurement {
 /// Measures the largest outline in `mask`; `flat` is the flattened photo (for edge strength).
 pub fn measure(mask: &Mat, flat: &Mat) -> Result<Measurement, VisionError> {
     let contour = largest_contour(mask)?.ok_or(VisionError::ProductNotFound)?;
-
-    let rect = imgproc::min_area_rect(&contour)?;
-    let side_a = f64::from(rect.size.width) + PIXEL_EDGE_CORRECTION_PX;
-    let side_b = f64::from(rect.size.height) + PIXEL_EDGE_CORRECTION_PX;
-    let (length_px, width_px) = (side_a.max(side_b), side_a.min(side_b));
-
-    let area_px = f64::from(core::count_non_zero(mask)?);
     let mut simplified = Vector::<Point>::new();
     imgproc::approx_poly_dp(&contour, &mut simplified, SIMPLIFY_EPSILON_PX, true)?;
-    let perimeter_px = imgproc::arc_length(&simplified, true)?;
-    let circularity = 4.0 * PI * area_px / perimeter_px.powi(2);
-
-    let mut hull = Vector::<Point>::new();
-    imgproc::convex_hull_def(&contour, &mut hull)?;
-    let hull_area = imgproc::contour_area_def(&hull)?;
-    let solidity = if hull_area > 0.0 {
-        imgproc::contour_area_def(&contour)? / hull_area
-    } else {
-        0.0
-    };
-
-    let mut circle_center = Point2f::default();
-    let mut circle_radius = 0.0_f32;
-    imgproc::min_enclosing_circle(&contour, &mut circle_center, &mut circle_radius)?;
-
-    let shape = classify(ShapeStats {
-        circularity,
-        aspect: length_px / width_px,
-        fill: area_px / (length_px * width_px),
-    });
-    let diameter_mm = (shape == Shape::Round)
-        .then(|| (2.0 * f64::from(circle_radius) + PIXEL_EDGE_CORRECTION_PX) / PX_PER_MM);
-
-    let bounds = imgproc::bounding_rect(&contour)?;
-    let contour_mm = simplified
+    let kept: Vec<[f64; 2]> = simplified
         .iter()
-        .map(|p| {
-            [
-                f64::from(p.x - bounds.x) / PX_PER_MM,
-                f64::from(p.y - bounds.y) / PX_PER_MM,
-            ]
-        })
+        .map(|p| [f64::from(p.x), f64::from(p.y)])
         .collect();
+    let bounds = imgproc::bounding_rect(&contour)?;
+    let outline = Shaping {
+        all: &Vector::from_iter(contour.iter().map(|p| Point2f::new(p.x as f32, p.y as f32))),
+        kept: &kept,
+        area_px: f64::from(core::count_non_zero(mask)?),
+        edge_correction_px: PIXEL_EDGE_CORRECTION_PX,
+        origin_px: [f64::from(bounds.x), f64::from(bounds.y)],
+    }
+    .outline()?;
+
     let edge_band_px = mm_to_px(EDGE_IGNORE_MM) + EDGE_TOUCH_MARGIN_PX;
     let touches_edge = bounds.x <= edge_band_px
         || bounds.y <= edge_band_px
         || bounds.x + bounds.width >= mask.cols() - edge_band_px
         || bounds.y + bounds.height >= mask.rows() - edge_band_px;
-
     Ok(Measurement {
-        shape,
-        length_mm: length_px / PX_PER_MM,
-        width_mm: width_px / PX_PER_MM,
-        diameter_mm,
-        angle_deg: f64::from(rect.angle),
-        center_mm: [
-            f64::from(rect.center.x) / PX_PER_MM,
-            f64::from(rect.center.y) / PX_PER_MM,
-        ],
-        area_mm2: area_px / (PX_PER_MM * PX_PER_MM),
-        contour_mm,
-        solidity,
-        circularity,
+        outline,
         edge_strength: edge_strength(flat, &contour)?,
         touches_edge,
     })
+}
+
+/// Measures an outline given as points on the flattened paper, in px, exactly as drawn:
+/// nothing is simplified, and no half pixel is added at the edges, because the points are
+/// the edge (M1-C3). Expects at least 3 points enclosing some area.
+pub fn measure_points(points_px: &[[f64; 2]]) -> Result<Outline, VisionError> {
+    let all = Vector::<Point2f>::from_iter(
+        points_px
+            .iter()
+            .map(|&[x, y]| Point2f::new(x as f32, y as f32)),
+    );
+    let lowest = |axis: usize| {
+        points_px
+            .iter()
+            .map(|point| point[axis])
+            .fold(f64::INFINITY, f64::min)
+    };
+    Shaping {
+        all: &all,
+        kept: points_px,
+        area_px: imgproc::contour_area_def(&all)?,
+        edge_correction_px: 0.0,
+        origin_px: [lowest(0), lowest(1)],
+    }
+    .outline()
+}
+
+/// What an outline is measured from, in flattened-paper px.
+struct Shaping<'a> {
+    /// Every point: the rotated box, hull and enclosing circle use them all.
+    all: &'a Vector<Point2f>,
+    /// The points returned as the outline, which give the perimeter too.
+    kept: &'a [[f64; 2]],
+    area_px: f64,
+    /// Added to each side and the diameter: half a pixel at each edge for mask outlines,
+    /// which run through the centres of the product's edge pixels.
+    edge_correction_px: f64,
+    /// Top-left corner the returned points are measured from.
+    origin_px: [f64; 2],
+}
+
+impl Shaping<'_> {
+    fn outline(&self) -> Result<Outline, VisionError> {
+        let rect = imgproc::min_area_rect(self.all)?;
+        let side_a = f64::from(rect.size.width) + self.edge_correction_px;
+        let side_b = f64::from(rect.size.height) + self.edge_correction_px;
+        let (length_px, width_px) = (side_a.max(side_b), side_a.min(side_b));
+        let circularity = 4.0 * PI * self.area_px / closed_length(self.kept).powi(2);
+
+        let mut hull = Vector::<Point2f>::new();
+        imgproc::convex_hull_def(self.all, &mut hull)?;
+        let hull_area = imgproc::contour_area_def(&hull)?;
+        let solidity = if hull_area > 0.0 {
+            imgproc::contour_area_def(self.all)? / hull_area
+        } else {
+            0.0
+        };
+
+        let mut circle_center = Point2f::default();
+        let mut circle_radius = 0.0_f32;
+        imgproc::min_enclosing_circle(self.all, &mut circle_center, &mut circle_radius)?;
+
+        let shape = classify(ShapeStats {
+            circularity,
+            aspect: length_px / width_px,
+            fill: self.area_px / (length_px * width_px),
+        });
+        let diameter_mm = (shape == Shape::Round)
+            .then(|| (2.0 * f64::from(circle_radius) + self.edge_correction_px) / PX_PER_MM);
+        let [origin_x, origin_y] = self.origin_px;
+        let contour_mm = self
+            .kept
+            .iter()
+            .map(|[x, y]| [(x - origin_x) / PX_PER_MM, (y - origin_y) / PX_PER_MM])
+            .collect();
+
+        Ok(Outline {
+            shape,
+            length_mm: length_px / PX_PER_MM,
+            width_mm: width_px / PX_PER_MM,
+            diameter_mm,
+            angle_deg: f64::from(rect.angle),
+            center_mm: [
+                f64::from(rect.center.x) / PX_PER_MM,
+                f64::from(rect.center.y) / PX_PER_MM,
+            ],
+            area_mm2: self.area_px / (PX_PER_MM * PX_PER_MM),
+            contour_mm,
+            origin_mm: [origin_x / PX_PER_MM, origin_y / PX_PER_MM],
+            solidity,
+            circularity,
+        })
+    }
+}
+
+/// Length of a closed polyline.
+fn closed_length(points: &[[f64; 2]]) -> f64 {
+    points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .map(|([ax, ay], [bx, by])| (bx - ax).hypot(by - ay))
+        .sum()
 }
 
 /// Scores how much to trust a measurement, from 0 to 1 (CLAUDE.md §5.3 step 8).
@@ -134,8 +215,9 @@ pub fn confidence(measurement: &Measurement, extra_blobs: usize) -> f64 {
         score -= TOUCH_PENALTY;
     }
     score -= EXTRA_BLOB_PENALTY * extra_blobs.min(MAX_COUNTED_EXTRA_BLOBS) as f64;
-    if measurement.solidity < SOLID_ENOUGH {
-        score -= SOLID_ENOUGH - measurement.solidity;
+    let solidity = measurement.outline.solidity;
+    if solidity < SOLID_ENOUGH {
+        score -= SOLID_ENOUGH - solidity;
     }
     if measurement.edge_strength < WEAK_EDGE_GRADIENT {
         score -= WEAK_EDGE_PENALTY;

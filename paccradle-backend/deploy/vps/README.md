@@ -194,7 +194,7 @@ Nginx so the new certificate is served. Check with:
 sudo certbot certificates
 sudo certbot renew --dry-run
 curl -sI http://api.paccradle.com | head -n 3          # 301 to https://
-curl -sI https://api.paccradle.com/api/v1/health       # 502/503 until the API is deployed
+curl -sI https://api.paccradle.com/healthz       # 502/503 until the API is deployed
 ```
 
 What the TLS setup gives you (expect an **A+** at https://www.ssllabs.com/ssltest/):
@@ -296,7 +296,7 @@ docker image ls --filter label=com.paccradle.app \
 
 How a deploy works: the running container stops (the API gets 35 s to finish
 requests and jobs), the new one starts on the same port, and `paccradle-deploy`
-waits up to `HEALTH_TIMEOUT_SECONDS` for `/api/v1/ready` (API) or `/healthz`
+waits up to `HEALTH_TIMEOUT_SECONDS` for `/readyz` (API) or `/healthz`
 (static sites). If it doesn't pass, the previous container starts again and
 the deploy fails, so Telegram gets an alert. The swap takes a few seconds;
 meanwhile the API answers a JSON `503` with `Retry-After: 5`. The last
@@ -364,6 +364,6 @@ restores the previous files if the test fails. Domains or ports changed in
 | certbot: challenge failed | DNS not pointing here yet, port 80 blocked, or an `AAAA` record pointing elsewhere |
 | deploy: `image ... is not on this server` | the upload step failed; read its log in the workflow run |
 | deploy: `... has quoted values` | remove the quotes in `/etc/paccradle/env/api.<env>.env` |
-| deploy: `... failed its health check; rolled back` | `sudo -u deploy paccradle-logs app api production`; for the API, `/api/v1/ready` fails when PostgreSQL is unreachable (`DATABASE_URL`) |
+| deploy: `... failed its health check; rolled back` | `sudo -u deploy paccradle-logs app api production`; for the API, `/readyz` fails when PostgreSQL is unreachable (`DATABASE_URL`) |
 | `502`/`503` from a site | `sudo -u deploy paccradle-deploy status`; then the site's error log (`sudo paccradle-logs errors api`) |
 | SSH from CI: `Host key verification failed` | the VPS host key changed (reinstall?): check it, then update `VPS_SSH_KNOWN_HOSTS` |

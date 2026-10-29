@@ -76,7 +76,12 @@ per group against the §5.6 targets, and one line per photo.
 
 ## Known limits of the spike
 
-- No EXIF focal length yet (only needed for pose correction in v1, M3-03).
-- Photo mode can't see height: tall products read too big from above (CLAUDE.md §5.2).
+- The tools don't read the EXIF focal length from the files: the camera is placed with an
+  assumed 24 mm lens (`measure --focal-35mm F` takes the real one). In the app the browser
+  sends it (M1-C4).
+- Photo mode can't see height: tall products read too big from above (CLAUDE.md §5.2). With
+  the height typed (`height_mm` in `truth.csv`, or `measure --height-mm H`), the warning says
+  how far the outline may reach past the edge, per side; the report shows it next to the error.
+  It's a bound, not a correction (that's M3-03).
 - On generated test photos the error is about ±0.25 mm (photo mode reads slightly big,
   trace mode slightly small). Calibrate on real photos before changing anything.

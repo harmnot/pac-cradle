@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE email_links\n                SET token_hash = $2, expires_at = now() + make_interval(secs => $3)\n                WHERE id = $1 AND used_at IS NULL\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c8dca9e73876f450fc43358ff5605b67828433b90c76718d21f3d12a946342a1"
+}

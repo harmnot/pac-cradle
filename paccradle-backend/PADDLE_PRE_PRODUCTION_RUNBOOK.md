@@ -4,9 +4,9 @@ This runbook documents the exact CLI flow to prepare Paddle for RepVane before p
 
 `PADDLE_WEBHOOK_SECRET` in this repo must be the webhook destination secret key (`pdl_ntfset_...`) for:
 
-`https://<your-api-host>/api/v1/webhooks/paddle`
+`https://<your-api-host>/api/webhooks/v1/paddle`
 
-That value is used by the backend to verify `Paddle-Signature` on `/api/v1/webhooks/paddle`.
+That value is used by the backend to verify `Paddle-Signature` on `/api/webhooks/v1/paddle`.
 
 ## 1) Prepare API keys
 
@@ -47,7 +47,7 @@ cat > /tmp/repvane-paddle-webhook-sandbox.json <<'JSON'
 {
   "description": "RepVane API Sandbox Webhook",
   "type": "url",
-  "destination": "https://<sandbox-api-host>/api/v1/webhooks/paddle",
+  "destination": "https://<sandbox-api-host>/api/webhooks/v1/paddle",
   "traffic_source": "all",
   "subscribed_events": [
     "transaction.completed",
@@ -91,7 +91,7 @@ cat > /tmp/repvane-paddle-webhook-production.json <<'JSON'
 {
   "description": "RepVane API Production Webhook",
   "type": "url",
-  "destination": "https://api.repvane.com/api/v1/webhooks/paddle",
+  "destination": "https://api.repvane.com/api/webhooks/v1/paddle",
   "traffic_source": "all",
   "subscribed_events": [
     "transaction.completed",
@@ -186,7 +186,7 @@ Notes:
 
 After updating `.env` and restarting backend:
 
-1. Ensure API route is reachable: `POST /api/v1/webhooks/paddle`
+1. Ensure API route is reachable: `POST /api/webhooks/v1/paddle`
 2. Send a Paddle simulation or test event to confirm signature verification passes.
 3. Confirm webhook rows are stored once (deduplicated by provider event id).
 
@@ -194,7 +194,7 @@ After updating `.env` and restarting backend:
 
 Use this when you already have a full Paddle event JSON and want to test backend webhook handling locally.
 
-> Send to `POST /api/v1/webhooks/paddle`, **not** to `/pay?_ptxn=...` (that URL is frontend checkout page only).
+> Send to `POST /api/webhooks/v1/paddle`, **not** to `/pay?_ptxn=...` (that URL is frontend checkout page only).
 
 ```bash
 # 1) Save the exact event payload (raw JSON from Paddle)
@@ -218,7 +218,7 @@ SIG=$(printf '%s:%s' "$TS" "$(cat /tmp/paddle-event.json)" \
   | awk '{print $NF}')
 
 # 4) POST to backend webhook endpoint
-curl -i -X POST 'http://localhost:8080/api/v1/webhooks/paddle' \
+curl -i -X POST 'http://localhost:8080/api/webhooks/v1/paddle' \
   -H 'Content-Type: application/json' \
   -H "Paddle-Signature: ts=${TS};h1=${SIG}" \
   --data-binary @/tmp/paddle-event.json

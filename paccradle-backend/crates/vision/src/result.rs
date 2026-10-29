@@ -42,11 +42,22 @@ pub enum Shape {
     Freeform,
 }
 
-/// Where the height came from. Photos can't see height yet (DEC-09: the user types it).
+/// Where the height came from. Photos can't see height yet (DEC-09: the user types it,
+/// M1-C4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HeightSource {
     /// Typed by the user.
+    User,
+}
+
+/// Where a product's outline came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ContourSource {
+    /// Found in the photo, at the user's tap if they gave one.
+    Detected,
+    /// Edited by the user and measured as drawn (M1-C3).
     User,
 }
 
@@ -62,9 +73,35 @@ pub enum Level {
 pub struct VisionResult {
     pub mode: CaptureMode,
     pub paper: PaperResult,
+    /// Where the camera was, from the paper's corners and the lens; `None` when the corners
+    /// don't give a believable camera.
+    pub camera: Option<CameraEstimate>,
     pub products: Vec<ProductResult>,
     pub warnings: Vec<PhotoWarning>,
     pub level_used: Level,
+}
+
+/// Where the camera was when the photo was taken (M1-C4). A tall product's top looks
+/// bigger the nearer it is to the camera (CLAUDE.md §5.2), so the tall-product warning
+/// needs both numbers.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct CameraEstimate {
+    /// Height of the lens above the paper, in mm.
+    pub height_mm: f64,
+    /// The point on the paper's plane straight below the lens, in mm from the paper's
+    /// top-left corner. It lies off the sheet when the phone was tilted a lot.
+    pub foot_mm: [f64; 2],
+    pub focal_source: FocalSource,
+}
+
+/// Where the lens's focal length came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FocalSource {
+    /// The photo's EXIF, sent by the browser.
+    Exif,
+    /// Not known: a wide phone lens is assumed (`camera::ASSUMED_FOCAL_LENGTH_35MM`).
+    Assumed,
 }
 
 /// Something to tell the user about the photo (CLAUDE.md §5.5 `warnings`). The API and
@@ -72,8 +109,12 @@ pub struct VisionResult {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PhotoWarning {
-    /// Photo mode: from above, a tall product's top looks bigger than it is (§5.2).
+    /// Photo mode, height not known: from above, a tall product's top looks bigger than it
+    /// is (§5.2).
     TallProductLooksBigger,
+    /// Photo mode, height known: the outline may reach up to `up_to_mm` past the product's
+    /// real edge, on the side away from the camera (M1-C4).
+    OutlineMayBeBigger { height_mm: f64, up_to_mm: f64 },
     /// The product touches the paper's edge.
     TouchesPaperEdge,
     /// Other objects lie on the paper.
@@ -82,12 +123,31 @@ pub enum PhotoWarning {
     LowConfidence { confidence: f64 },
 }
 
+impl PhotoWarning {
+    /// True for the warnings about a tall product's top looking bigger.
+    pub fn is_parallax(&self) -> bool {
+        matches!(
+            self,
+            PhotoWarning::TallProductLooksBigger | PhotoWarning::OutlineMayBeBigger { .. }
+        )
+    }
+}
+
 impl fmt::Display for PhotoWarning {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PhotoWarning::TallProductLooksBigger => formatter.write_str(
-                "From above, a tall product's top looks bigger than it is. If it is taller than \
-                 about 20 mm, enter its height or use Trace mode for an exact fit.",
+                "From above, a tall product's top looks bigger than it is. Use Trace mode for an \
+                 exact fit, or enter its height to see by how much.",
+            ),
+            PhotoWarning::OutlineMayBeBigger {
+                height_mm,
+                up_to_mm,
+            } => write!(
+                formatter,
+                "At {height_mm} mm tall, the product's top looks bigger from above: its outline \
+                 may reach up to {up_to_mm} mm past the real edge. Use Trace mode for an exact \
+                 fit, or take the photo from higher up, straight above the product."
             ),
             PhotoWarning::TouchesPaperEdge => formatter.write_str(
                 "The product touches the paper edge: move it to the middle, at least 2 cm from \
@@ -125,7 +185,7 @@ pub struct BboxMm {
 pub struct ProductResult {
     pub id: String,
     pub shape: Shape,
-    /// 0–1, see `measure::confidence`.
+    /// 0–1, see `measure::confidence`; 1 for an outline the user edited.
     pub confidence: f64,
     pub bbox_mm: BboxMm,
     /// Smallest enclosing circle, for round products only.
@@ -137,6 +197,12 @@ pub struct ProductResult {
     pub area_mm2: f64,
     /// Simplified outline (ε ≈ 0.2 mm), in mm from the outline's top-left corner.
     pub contour_mm: Vec<[f64; 2]>,
+    /// The same points in photo pixels (the frame of `corners_px`), lying over the product
+    /// in the photo: the editor draws them and lets the user drag them (M1-E3). An edited
+    /// outline comes back in this frame.
+    pub contour_px: Vec<[f64; 2]>,
+    pub contour_source: ContourSource,
+    /// Typed by the user (DEC-09), once they have.
     pub height_mm: Option<f64>,
     pub height_source: HeightSource,
 }

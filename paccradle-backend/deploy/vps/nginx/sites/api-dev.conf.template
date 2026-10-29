@@ -41,7 +41,8 @@ server {
     add_header X-Robots-Tag "noindex, nofollow" always;
 
     client_max_body_size 1m;
-    # Off on purpose: compressing token-carrying responses over TLS invites BREACH.
+    # Off here: the API compresses itself and skips responses that set a cookie
+    # (token-carrying responses), since compressing those over TLS invites BREACH.
     gzip off;
 
     limit_req zone=paccradle_api burst=150 nodelay;

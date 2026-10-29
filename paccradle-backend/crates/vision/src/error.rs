@@ -49,6 +49,14 @@ pub enum VisionError {
         "no closed pen outline found: trace all the way around the product, then remove it before the photo"
     )]
     TraceNotFound,
+    /// Nothing big enough lies under the user's tap, or within 10 mm of it.
+    #[error(
+        "nothing found where you tapped: tap the middle of the product, or use Trace mode if it's close to the paper's colour"
+    )]
+    NothingAtTap,
+    /// An edited outline crosses or touches itself.
+    #[error("the outline crosses itself: move the points so the line goes round the product once")]
+    OutlineCrossesItself,
     /// An OpenCV call failed.
     #[error("image processing failed: {0}")]
     OpenCv(#[from] opencv::Error),
@@ -67,6 +75,8 @@ impl VisionError {
             VisionError::PaperNotFound => "CAPTURE_PAPER_NOT_FOUND",
             VisionError::ProductNotFound => "CAPTURE_PRODUCT_NOT_FOUND",
             VisionError::TraceNotFound => "CAPTURE_TRACE_NOT_FOUND",
+            VisionError::NothingAtTap => "CAPTURE_NOTHING_AT_TAP",
+            VisionError::OutlineCrossesItself => "CAPTURE_OUTLINE_CROSSES_ITSELF",
             VisionError::OpenCv(_) => "CAPTURE_PROCESSING_FAILED",
         }
     }

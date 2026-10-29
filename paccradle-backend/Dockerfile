@@ -14,6 +14,8 @@ RUN apt-get update \
 WORKDIR /app
 
 FROM toolchain AS build
+# Queries are checked against the committed .sqlx/ cache: building needs no database.
+ENV SQLX_OFFLINE=true
 COPY . .
 RUN cargo build --release --workspace --locked
 

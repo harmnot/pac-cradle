@@ -10,8 +10,21 @@
 //! [`code`](VisionError::code). It's plain computation with no I/O, and it blocks for a
 //! second or so: call it from a blocking task, not on the async runtime.
 //! [`image::inspect`] checks an upload's format and size without decoding it.
+//!
+//! Manual corrections (CLAUDE.md §3 step 4, M1-C3): a tap on the product
+//! ([`CaptureInput::tap_point_px`]) re-runs [`run`] and keeps the outline under the tap;
+//! [`accept_edit`] measures an outline the user edited exactly as drawn, from the stored
+//! result alone. Both speak photo pixels, the frame of `corners_px` and `contour_px`.
+//!
+//! Height (CLAUDE.md §5.2 fix B, DEC-09, M1-C4): the user types it, through
+//! [`CaptureInput::height_mm`] or [`set_height`]. With the camera worked out from the paper's
+//! corners and the lens ([`camera`]), the tall-product warning says how far the outline may
+//! reach past the product's real edge, or goes away when that's too little to matter.
 
+pub mod camera;
+pub mod edit;
 pub mod error;
+pub mod height;
 pub mod image;
 pub mod input;
 pub mod measure;
@@ -19,18 +32,24 @@ pub mod paper;
 pub mod result;
 pub mod segment;
 
-use opencv::core::{Mat, Point, Scalar, Vector};
+use opencv::core::{Mat, Point, Point2f, Scalar, Vector};
 use opencv::imgproc;
 use opencv::prelude::*;
 
+pub use edit::{MAX_EDIT_POINTS, accept_edit};
 pub use error::VisionError;
+pub use height::{PARALLAX_WARN_MM, set_height};
 pub use image::{ImageFormat, ImageInfo, MAX_PIXELS, MIN_LONG_SIDE_PX, decode, inspect};
-pub use input::{CaptureInput, PEN_WIDTH_RANGE_MM};
+pub use input::{CaptureInput, FOCAL_LENGTH_RANGE_MM, HEIGHT_RANGE_MM, PEN_WIDTH_RANGE_MM};
 pub use paper::{PX_PER_MM, PaperSize};
-pub use result::{CaptureMode, PhotoWarning, Shape, VisionResult};
+pub use result::{
+    CameraEstimate, CaptureMode, ContourSource, FocalSource, PhotoWarning, Shape, VisionResult,
+};
 
-use measure::Measurement;
+use measure::{Measurement, Outline};
+use paper::PaperMapping;
 use result::{BboxMm, HeightSource, Level, PaperResult, ProductResult, round2};
+use segment::Pick;
 
 /// Default pen width for trace mode (CLAUDE.md §5.2 fix A).
 pub const DEFAULT_PEN_WIDTH_MM: f64 = 0.5;
@@ -50,6 +69,12 @@ pub struct AnalyzeOptions {
     pub pen_width_mm: f64,
     /// Photo mode only: refine the first mask with GrabCut.
     pub refine_with_grabcut: bool,
+    /// Where the user tapped the product, in photo pixels: keep the outline under it.
+    pub tap_point_px: Option<[f64; 2]>,
+    /// The product's height, typed by the user, in mm.
+    pub height_mm: Option<f64>,
+    /// The lens's focal length in 35 mm terms, in mm, from the photo's EXIF.
+    pub focal_length_35mm: Option<f64>,
     /// Keep intermediate images for debugging.
     pub collect_debug: bool,
 }
@@ -61,6 +86,9 @@ impl Default for AnalyzeOptions {
             mode: CaptureMode::Photo,
             pen_width_mm: DEFAULT_PEN_WIDTH_MM,
             refine_with_grabcut: true,
+            tap_point_px: None,
+            height_mm: None,
+            focal_length_35mm: None,
             collect_debug: false,
         }
     }
@@ -95,15 +123,20 @@ pub fn run((input, image): (&CaptureInput, &[u8])) -> Result<VisionResult, Visio
 /// Runs the Level 1 pipeline on one photo (BGR, EXIF orientation already applied).
 pub fn analyze(image: &Mat, options: &AnalyzeOptions) -> Result<Analysis, VisionError> {
     let quad = paper::find_paper(image)?;
-    let flat = paper::flatten(image, &quad, options.paper)?;
-    let segmented = match options.mode {
-        CaptureMode::Photo => segment::product_mask(&flat, options.refine_with_grabcut)?,
-        CaptureMode::Trace => segment::trace_mask(&flat, options.pen_width_mm)?,
+    let mapping = PaperMapping::new(&quad, options.paper)?;
+    let flat = mapping.flatten(image)?;
+    let settings = segment::Settings {
+        mode: options.mode,
+        pick: pick_for((options.tap_point_px, image, &mapping))?,
+        refine_with_grabcut: options.refine_with_grabcut,
+        pen_width_mm: options.pen_width_mm,
     };
+    let segmented = segment::cut_out(&flat, &settings)?;
     let measured = measure::measure(&segmented.mask, &flat)?;
     let confidence = measure::confidence(&measured, segmented.extra_blobs);
+    let contour_px = mapping.to_photo_px(&measured.outline.paper_px())?;
 
-    let result = VisionResult {
+    let mut result = VisionResult {
         mode: options.mode,
         paper: PaperResult {
             size: options.paper,
@@ -112,15 +145,22 @@ pub fn analyze(image: &Mat, options: &AnalyzeOptions) -> Result<Analysis, Vision
                 .map(|p| [round2(f64::from(p.x)), round2(f64::from(p.y))]),
             px_per_mm: PX_PER_MM,
         },
+        camera: camera::estimate((&mapping, image.size()?, options.focal_length_35mm))?,
         warnings: warnings(&WarningInputs {
-            mode: options.mode,
             measured: &measured,
             extra_blobs: segmented.extra_blobs,
             confidence,
         }),
-        products: vec![product_result(&measured, confidence)],
+        products: vec![product_result(ProductParts {
+            outline: &measured.outline,
+            contour_px,
+            confidence,
+            source: ContourSource::Detected,
+            height_mm: options.height_mm,
+        })],
         level_used: Level::L1,
     };
+    height::update_parallax_warning(&mut result)?;
 
     let debug = if options.collect_debug {
         Some(DebugImages {
@@ -135,42 +175,73 @@ pub fn analyze(image: &Mat, options: &AnalyzeOptions) -> Result<Analysis, Vision
     Ok(Analysis { result, debug })
 }
 
-fn product_result(measured: &Measurement, confidence: f64) -> ProductResult {
+/// What to keep on the paper: the largest outline, or the one at the user's tap.
+fn pick_for(
+    (tap, image, mapping): (Option<[f64; 2]>, &Mat, &PaperMapping),
+) -> Result<Pick, VisionError> {
+    let Some([x, y]) = tap else {
+        return Ok(Pick::Largest);
+    };
+    let in_photo =
+        (0.0..f64::from(image.cols())).contains(&x) && (0.0..f64::from(image.rows())).contains(&y);
+    if !in_photo {
+        return Err(VisionError::InvalidInput {
+            field: "tap_point_px",
+            value: format!("[{x}, {y}]"),
+            allowed: input::TAP_ALLOWED,
+        });
+    }
+    // A tap on the table has nothing to pick: products lie on the paper.
+    let [paper_x, paper_y] = mapping
+        .paper_point([x, y])?
+        .ok_or(VisionError::NothingAtTap)?;
+    Ok(Pick::At(Point2f::new(paper_x as f32, paper_y as f32)))
+}
+
+/// What one product of the result is made from.
+pub(crate) struct ProductParts<'a> {
+    pub outline: &'a Outline,
+    /// The outline in photo pixels.
+    pub contour_px: Vec<[f64; 2]>,
+    pub confidence: f64,
+    pub source: ContourSource,
+    pub height_mm: Option<f64>,
+}
+
+/// The MVP's single product, rounded for output.
+pub(crate) fn product_result(parts: ProductParts) -> ProductResult {
+    let outline = parts.outline;
+    let rounded = |points: &[[f64; 2]]| points.iter().map(|point| point.map(round2)).collect();
     ProductResult {
         id: "p1".to_owned(),
-        shape: measured.shape,
-        confidence: round2(confidence),
+        shape: outline.shape,
+        confidence: round2(parts.confidence),
         bbox_mm: BboxMm {
-            l: round2(measured.length_mm),
-            w: round2(measured.width_mm),
+            l: round2(outline.length_mm),
+            w: round2(outline.width_mm),
         },
-        diameter_mm: measured.diameter_mm.map(round2),
-        angle_deg: round2(measured.angle_deg),
-        center_mm: measured.center_mm.map(round2),
-        area_mm2: round2(measured.area_mm2),
-        contour_mm: measured
-            .contour_mm
-            .iter()
-            .map(|point| point.map(round2))
-            .collect(),
-        height_mm: None,
+        diameter_mm: outline.diameter_mm.map(round2),
+        angle_deg: round2(outline.angle_deg),
+        center_mm: outline.center_mm.map(round2),
+        area_mm2: round2(outline.area_mm2),
+        contour_mm: rounded(&outline.contour_mm),
+        contour_px: rounded(&parts.contour_px),
+        contour_source: parts.source,
+        height_mm: parts.height_mm.map(round2),
         height_source: HeightSource::User,
     }
 }
 
 struct WarningInputs<'a> {
-    mode: CaptureMode,
     measured: &'a Measurement,
     extra_blobs: usize,
     confidence: f64,
 }
 
-/// Hints about the photo (CLAUDE.md §5.5 `warnings`).
+/// Hints about the photo (CLAUDE.md §5.5 `warnings`). The tall-product warning comes from
+/// [`height::update_parallax_warning`].
 fn warnings(inputs: &WarningInputs) -> Vec<PhotoWarning> {
     let mut list = Vec::new();
-    if inputs.mode == CaptureMode::Photo {
-        list.push(PhotoWarning::TallProductLooksBigger);
-    }
     if inputs.measured.touches_edge {
         list.push(PhotoWarning::TouchesPaperEdge);
     }
