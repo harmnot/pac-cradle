@@ -1,0 +1,125 @@
+/* Taps land on the catcher; the drawing above it lets them through. */
+.catcher {
+  fill: transparent;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+
+.layer[data-sending="true"] .catcher {
+  cursor: progress;
+}
+
+.reticle,
+.pin {
+  pointer-events: none;
+}
+
+/* The reticle: a cream ring with four ticks, shadowed so it reads on any photo. */
+.reticle circle,
+.reticle path {
+  fill: none;
+  stroke: var(--swatch-cream);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1.5px rgb(30 20 10 / 0.8));
+}
+
+.reticle {
+  animation: reticle-in 180ms var(--ease-out-expo);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The pin: a terracotta dot that drops in, ringed in cream. */
+.dot {
+  fill: var(--color-terracotta);
+  stroke: var(--swatch-cream);
+  stroke-width: 3px;
+  filter: drop-shadow(0 2px 3px rgb(30 20 10 / 0.5));
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: drop 520ms var(--ease-spring) backwards;
+}
+
+/* Ripples spread from the pin while vision measures there. */
+.ripple {
+  fill: none;
+  stroke: var(--swatch-cream);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.pin[data-state="sending"] .ripple {
+  animation: ripple 1600ms var(--ease-out-expo) infinite;
+}
+
+.pin[data-state="sending"] .rippleLate {
+  animation-delay: 800ms;
+}
+
+/* Off the paper: the pin turns red, shakes, and fades. */
+.pin[data-state="refused"] .dot {
+  fill: var(--color-fit-collide);
+  animation:
+    drop 520ms var(--ease-spring) backwards,
+    shake 420ms var(--ease-out-expo) 200ms,
+    fade 600ms var(--ease-out-expo) 1600ms forwards;
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    scale: 2.6;
+  }
+}
+
+@keyframes ripple {
+  from {
+    opacity: 0.95;
+    scale: 1;
+  }
+
+  to {
+    opacity: 0;
+    scale: 5;
+  }
+}
+
+@keyframes shake {
+  25% {
+    translate: calc(var(--px) * -5) 0;
+  }
+
+  50% {
+    translate: calc(var(--px) * 5) 0;
+  }
+
+  75% {
+    translate: calc(var(--px) * -2.5) 0;
+  }
+}
+
+@keyframes fade {
+  to {
+    opacity: 0.35;
+  }
+}
+
+@keyframes reticle-in {
+  from {
+    opacity: 0;
+    scale: 1.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle,
+  .dot,
+  .pin[data-state="sending"] .ripple,
+  .pin[data-state="refused"] .dot {
+    animation: none;
+  }
+}

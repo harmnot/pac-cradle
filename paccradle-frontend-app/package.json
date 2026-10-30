@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "build:wasm": "../paccradle-backend/scripts/build-wasm.sh"
+    "build:wasm": "../paccradle-backend/scripts/build-wasm.sh",
+    "test": "vitest run"
   },
   "dependencies": {
+    "exifr": "^7.1.3",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -20,6 +22,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.5"
   }
 }

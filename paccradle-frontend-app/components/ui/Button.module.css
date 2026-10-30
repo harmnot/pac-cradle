@@ -112,3 +112,58 @@
   border-color: var(--color-text);
   background: var(--color-surface);
 }
+
+.fullWidth {
+  width: 100%;
+}
+
+/* Text-only action: no fill, an underline that draws in on hover. */
+.quiet {
+  min-height: 2.25rem;
+  padding-inline: var(--space-1);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-medium);
+}
+
+.quiet::after {
+  inset: auto var(--space-1) 0.45rem;
+  height: 1.5px;
+  background: var(--color-terracotta);
+  translate: none;
+  scale: 0 1;
+  transform-origin: right center;
+  transition: scale 450ms var(--ease-out-expo);
+}
+
+.quiet:hover:not(:disabled) {
+  translate: none;
+  box-shadow: none;
+  color: var(--color-text);
+}
+
+.quiet:hover:not(:disabled)::after {
+  translate: none;
+  scale: 1 1;
+  transform-origin: left center;
+}
+
+/* Busy: a ring that spins in front of the label. */
+.spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 700ms linear infinite;
+}
+
+.button[aria-busy="true"] {
+  cursor: progress;
+}
+
+@keyframes button-spin {
+  to {
+    rotate: 1turn;
+  }
+}

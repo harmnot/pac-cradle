@@ -1,0 +1,122 @@
+.inbox {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.envelope {
+  width: 9rem;
+  margin-bottom: var(--space-2);
+  overflow: visible;
+}
+
+/* The flap opens, the letter rises out of the envelope, then a seal stamps on. */
+.letter {
+  animation: letter-rise 900ms var(--ease-out-expo) 520ms backwards;
+}
+
+.paper {
+  fill: var(--color-surface);
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
+}
+
+.lines {
+  fill: none;
+  stroke: var(--color-kraft-deep);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.body {
+  fill: var(--color-kraft);
+  stroke: var(--color-kraft-deep);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.flap {
+  fill: color-mix(in srgb, var(--color-kraft) 85%, var(--color-ink));
+  stroke: var(--color-kraft-deep);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: flap-open 600ms var(--ease-in-out) backwards;
+}
+
+.seal {
+  fill: var(--color-terracotta);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seal-stamp 520ms var(--ease-spring) 1200ms backwards;
+}
+
+.check {
+  fill: none;
+  stroke: var(--color-on-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 420ms var(--ease-out-expo) 1550ms forwards;
+}
+
+.text {
+  color: var(--color-text-muted);
+}
+
+.email {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+}
+
+.hint {
+  max-width: 34ch;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+@keyframes letter-rise {
+  from {
+    translate: 0 30px;
+  }
+}
+
+@keyframes flap-open {
+  from {
+    scale: 1 -1;
+  }
+}
+
+@keyframes seal-stamp {
+  from {
+    opacity: 0;
+    scale: 1.8;
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check {
+    stroke-dashoffset: 0;
+  }
+}

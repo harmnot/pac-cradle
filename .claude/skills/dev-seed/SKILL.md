@@ -62,7 +62,7 @@ It signs Ada in with the seeded passkey through the API's real passkey sign-in, 
 
 **Postman**: import `paccradle-backend/postman/dev-seed-2026-10-30.postman_environment.json` and `…postman_collection.json`. "Sign in as …" saves `access_token`, `refresh_token` and `design_id` for every other collection. For the back office, paste the cookie value from `admin-token` into `admin_refresh_token` and send "Back office: refresh".
 
-**In a browser** (once the web app's sign-in exists, M1-E1): sign in with the email and password. For the back office in a real browser, sign in to the web app as Ada and add a passkey there (the seeded one lives only in `dev_seed.rs`). The admin surface also needs `ADMIN_WEB_URL` (e.g. `http://localhost:3001`) in `.env`.
+**In a browser** (M1-E1): run `scripts/dev-api.sh` and `pnpm dev` in `paccradle-frontend-app/` (`NEXT_PUBLIC_API_URL=http://localhost:7773`: `localhost`, not `127.0.0.1`), open http://localhost:3000/sign-in, choose "Continue with password" and use the email and password above. The app offers a passkey right after (the accounts have none): "Not now" skips it; a passkey you add stays on the account until the next seed. Email links go to Mailpit (http://localhost:8025). For the back office in a real browser, add a passkey as Ada in the web app (the seeded one lives only in `dev_seed.rs`); the admin surface also needs `ADMIN_WEB_URL` (e.g. `http://localhost:3001`) in `.env`.
 
 ## Changing the accounts
 

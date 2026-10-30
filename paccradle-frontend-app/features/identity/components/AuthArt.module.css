@@ -1,0 +1,278 @@
+.panel {
+  position: relative;
+  isolation: isolate;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-6);
+  overflow: hidden;
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background-color: var(--swatch-kraft);
+  background-image: var(--texture-grain), radial-gradient(120% 90% at 85% 0%, rgb(255 255 255 / 0.28), transparent 60%);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-lift);
+  view-transition-name: auth-art;
+  animation: panel-in 1100ms var(--ease-out-expo) backwards;
+}
+
+/* A twine tie across the top corner, like the brand's wrapped parcels; clear of the words. */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 2.6rem -4.5rem auto auto;
+  z-index: -1;
+  width: 15rem;
+  height: 14px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--swatch-rust) 0 6px,
+    color-mix(in srgb, var(--swatch-rust) 70%, var(--swatch-twine)) 6px 9px
+  );
+  opacity: 0.7;
+  rotate: 45deg;
+  box-shadow: 0 2px 6px rgb(60 40 20 / 0.25);
+}
+
+@media (min-width: 60rem) {
+  .panel {
+    display: flex;
+  }
+}
+
+.band {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--swatch-cream);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  box-shadow: var(--shadow-soft);
+}
+
+.drawing {
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  overflow: visible;
+}
+
+/* Cut and crease lines draw in: cut solid ink, crease dashed rust. */
+.card,
+.hole,
+.crease,
+.dimension path {
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1600ms var(--ease-out-expo) forwards;
+}
+
+.card {
+  fill: color-mix(in srgb, var(--swatch-cream) 55%, transparent);
+  stroke: var(--color-ink);
+  stroke-width: 2;
+  animation-delay: 200ms;
+}
+
+.crease {
+  stroke: var(--swatch-rust);
+  stroke-width: 1.6;
+  animation:
+    draw 1400ms var(--ease-out-expo) 700ms forwards,
+    dash-in 1ms linear 2100ms forwards;
+}
+
+.hole {
+  fill: color-mix(in srgb, var(--swatch-forest) 14%, transparent);
+  stroke: var(--color-ink);
+  stroke-width: 2;
+  animation-delay: calc(900ms + var(--slot) * 180ms);
+}
+
+/* The bottles drop in from above once the card is cut, then breathe. */
+.bottle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bottle-drop 900ms var(--ease-spring) calc(1500ms + var(--slot) * 200ms) backwards;
+}
+
+.bottleBody {
+  fill: var(--swatch-sage);
+  stroke: var(--swatch-forest);
+  stroke-width: 1.5;
+}
+
+.bottleCap {
+  fill: var(--swatch-cream);
+  stroke: var(--swatch-forest);
+  stroke-width: 1.5;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--color-fit-ok);
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-pulse 2600ms var(--ease-out-expo) calc(2300ms + var(--slot) * 240ms) infinite;
+}
+
+.dimension path {
+  stroke: var(--color-ink);
+  stroke-width: 1.4;
+  animation-delay: 1700ms;
+}
+
+.dimension text,
+.chip text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  fill: var(--color-ink);
+}
+
+.dimension text {
+  animation: fade-in 600ms var(--ease-out-expo) 2100ms backwards;
+}
+
+.chip {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chip-in 800ms var(--ease-spring) 2500ms backwards;
+}
+
+.chip rect {
+  fill: var(--swatch-cream);
+  stroke: color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+.chip circle {
+  fill: var(--color-fit-ok);
+}
+
+.copy {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.title {
+  max-width: 18ch;
+  font-size: var(--text-2xl);
+}
+
+.points {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.points li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  animation: fade-in 700ms var(--ease-out-expo) backwards;
+}
+
+.points li:nth-child(1) {
+  animation-delay: 900ms;
+}
+
+.points li:nth-child(2) {
+  animation-delay: 1050ms;
+}
+
+.points li:nth-child(3) {
+  animation-delay: 1200ms;
+}
+
+.points li::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--swatch-rust);
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Once drawn, the crease becomes the dashed line a dieline uses. */
+@keyframes dash-in {
+  to {
+    stroke-dasharray: 0.02 0.012;
+  }
+}
+
+@keyframes bottle-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-60px) scale(1.15);
+  }
+}
+
+@keyframes ring-pulse {
+  0% {
+    opacity: 0;
+    scale: 0.92;
+  }
+
+  30% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    scale: 1.12;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+    rotate: -1.5deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .hole,
+  .crease,
+  .dimension path {
+    stroke-dashoffset: 0;
+  }
+
+  .crease {
+    stroke-dasharray: 0.02 0.012;
+  }
+
+  .ring {
+    opacity: 0.8;
+  }
+}

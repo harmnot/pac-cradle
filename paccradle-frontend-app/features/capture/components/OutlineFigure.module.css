@@ -1,0 +1,244 @@
+.figure {
+  position: relative;
+  width: 100%;
+  max-height: 70vh;
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  box-shadow: var(--shadow-card);
+  animation: figure-in 800ms var(--ease-out-expo) backwards;
+}
+
+.photo,
+.overlay,
+.placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.photo {
+  object-fit: contain;
+  transition:
+    filter var(--duration-slow) var(--ease-out-expo),
+    opacity var(--duration-slow) var(--ease-out-expo);
+}
+
+.figure[data-measuring="true"] .photo {
+  filter: saturate(0.6) brightness(0.92);
+}
+
+.figure[data-dimmed="true"] .photo {
+  filter: grayscale(0.7) brightness(0.85);
+  opacity: 0.75;
+}
+
+/* Under a tool the photo steps back a little, so the points and the pin stand out. */
+.figure[data-tool="adjust"] .photo {
+  filter: saturate(0.75) brightness(0.88);
+}
+
+.figure[data-tool="tap"] .photo {
+  filter: none;
+  opacity: 1;
+}
+
+/* While the points move, the editor draws the outline: the measured one steps aside. */
+.figure[data-tool="adjust"] .outline,
+.figure[data-tool="adjust"] .outlineSettled {
+  opacity: 0;
+}
+
+/* A tool's frame: a ring of light round the figure while it is on. */
+.figure:not([data-tool="none"]) {
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--color-accent),
+    var(--shadow-lift);
+  transition: box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+
+.placeholder {
+  background:
+    radial-gradient(60% 50% at 50% 50%, var(--swatch-cream), transparent 70%),
+    var(--color-surface-muted);
+}
+
+.overlay {
+  overflow: visible;
+}
+
+/* The paper's edge found on the photo, dashed sage. */
+.paperLine {
+  fill: none;
+  stroke: var(--color-fit-ok);
+  stroke-width: calc(var(--unit) * 3);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    draw 900ms var(--ease-out-expo) forwards,
+    dashes 1ms linear 900ms forwards;
+}
+
+/* Without a photo: the sheet itself, in cream. */
+.paperSheet {
+  fill: var(--swatch-cream);
+  stroke: var(--color-kraft-deep);
+  stroke-width: calc(var(--unit) * 2);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 900ms var(--ease-out-expo) forwards;
+}
+
+/* The product's outline: drawn round in terracotta, then filled softly. */
+.outline {
+  fill: color-mix(in srgb, var(--color-terracotta) 0%, transparent);
+  stroke: var(--color-terracotta);
+  stroke-width: calc(var(--unit) * 4);
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    draw 1300ms var(--ease-out-expo) 500ms forwards,
+    fill-in 700ms var(--ease-out-expo) 1500ms forwards;
+}
+
+/* An outline the user just drew: there at once, with a short sage glow as it is saved. */
+.outlineSettled {
+  fill: color-mix(in srgb, var(--color-terracotta) 16%, transparent);
+  stroke: var(--color-terracotta);
+  stroke-width: calc(var(--unit) * 4);
+  stroke-linejoin: round;
+  animation: settle 1100ms var(--ease-out-expo);
+}
+
+/* A green beam sweeping down while vision measures. */
+.beam {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-fit-ok) 22%, transparent) 44%,
+    color-mix(in srgb, var(--color-fit-ok) 65%, transparent) 50%,
+    transparent 56%
+  );
+  background-size: 100% 240%;
+  animation: beam 1600ms var(--ease-in-out) infinite;
+  pointer-events: none;
+}
+
+/* Corner brackets that breathe in and out round the photo. */
+.brackets {
+  position: absolute;
+  inset: var(--space-4);
+  pointer-events: none;
+  animation: breathe 1600ms var(--ease-in-out) infinite alternate;
+}
+
+.brackets span {
+  position: absolute;
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--color-surface);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.3));
+}
+
+.brackets span:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: var(--radius-md);
+}
+
+.brackets span:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-left: 0;
+  border-bottom: 0;
+  border-top-right-radius: var(--radius-md);
+}
+
+.brackets span:nth-child(3) {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.brackets span:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-bottom-left-radius: var(--radius-md);
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dashes {
+  to {
+    stroke-dasharray: 0.012 0.008;
+  }
+}
+
+@keyframes fill-in {
+  to {
+    fill: color-mix(in srgb, var(--color-terracotta) 16%, transparent);
+  }
+}
+
+@keyframes settle {
+  from {
+    stroke: var(--color-fit-ok);
+    stroke-width: calc(var(--unit) * 9);
+    fill: color-mix(in srgb, var(--color-fit-ok) 30%, transparent);
+  }
+}
+
+@keyframes beam {
+  from {
+    background-position: 0 120%;
+  }
+
+  to {
+    background-position: 0 -20%;
+  }
+}
+
+@keyframes breathe {
+  to {
+    inset: var(--space-6);
+  }
+}
+
+@keyframes figure-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outlineSettled {
+    animation: none;
+  }
+
+  .paperLine,
+  .paperSheet,
+  .outline {
+    stroke-dashoffset: 0;
+  }
+
+  .outline {
+    fill: color-mix(in srgb, var(--color-terracotta) 16%, transparent);
+  }
+}

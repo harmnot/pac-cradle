@@ -1,0 +1,5 @@
+.fallback {
+  display: grid;
+  gap: var(--space-4);
+  width: min(100%, 27rem);
+}

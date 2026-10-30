@@ -35,7 +35,7 @@
 | Analytics          | Plausible script tag + custom events through `lib/analytics.ts` |
 | API types          | Hand-written in `features/<domain>/types.ts` from the dated Postman contracts in `paccradle-backend/postman/` |
 | Payments UI        | Paddle.js checkout overlay |
-| Testing            | Vitest + React Testing Library; Playwright for end-to-end (dev-only) |
+| Testing            | Vitest (installed in M1-E1: `pnpm test`, Node environment, logic in `lib/` and `features/*/`; `*.test.ts` next to the code) + React Testing Library later; Playwright for end-to-end (dev-only, not installed yet) |
 | Quality            | ESLint + Prettier, `tsc --noEmit` in CI |
 | Node               | Version from `.nvmrc` (`nvm use`) |
 

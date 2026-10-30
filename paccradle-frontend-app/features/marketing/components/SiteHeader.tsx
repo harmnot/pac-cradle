@@ -32,6 +32,11 @@ export function SiteHeader() {
               {t("nav.pricing")}
             </Link>
           </li>
+          <li className={styles.medium}>
+            <Link href="/sign-in" className={styles.link}>
+              {t("nav.signIn")}
+            </Link>
+          </li>
           <li>
             <LinkButton href="/#join" withArrow>
               {t("nav.join")}

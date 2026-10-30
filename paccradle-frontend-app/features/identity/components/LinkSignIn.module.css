@@ -1,0 +1,44 @@
+.working {
+  display: grid;
+  place-items: center;
+  padding-block: var(--space-6);
+}
+
+/* Three paper swatches circling, like samples on a turntable. */
+.orbit {
+  position: relative;
+  width: 5.5rem;
+  height: 5.5rem;
+  animation: orbit 2400ms linear infinite;
+}
+
+.orbit span {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: -0.625rem;
+  border-radius: 6px;
+  box-shadow: var(--shadow-soft);
+}
+
+.orbit span:nth-child(1) {
+  background: var(--swatch-terracotta);
+  translate: 0 -2.2rem;
+}
+
+.orbit span:nth-child(2) {
+  background: var(--swatch-sage);
+  translate: 1.9rem 1.1rem;
+}
+
+.orbit span:nth-child(3) {
+  background: var(--swatch-kraft);
+  translate: -1.9rem 1.1rem;
+}
+
+@keyframes orbit {
+  to {
+    rotate: 1turn;
+  }
+}

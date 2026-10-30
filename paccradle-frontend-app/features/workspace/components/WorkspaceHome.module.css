@@ -1,0 +1,348 @@
+.home {
+  display: grid;
+  gap: var(--space-7);
+  width: min(100% - 2 * var(--page-gutter), var(--content-width));
+  margin-inline: auto;
+  padding-block: var(--space-7) var(--space-9);
+}
+
+.hello {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 46rem;
+}
+
+.eyebrow,
+.startBadge {
+  color: var(--color-terracotta);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  animation: rise 700ms var(--ease-out-expo) backwards;
+}
+
+.title {
+  font-size: var(--text-3xl);
+  animation: rise 900ms var(--ease-out-expo) 80ms backwards;
+}
+
+.lead {
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  animation: rise 900ms var(--ease-out-expo) 160ms backwards;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  animation: rise 900ms var(--ease-out-expo) 240ms backwards;
+}
+
+/* Plan, credits and unlocked designs: three label tiles. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  animation: rise 800ms var(--ease-out-expo) calc(200ms + var(--reveal-delay, 0ms)) backwards;
+  transition:
+    translate var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+
+.stat:hover {
+  translate: 0 var(--lift);
+  box-shadow: var(--shadow-card);
+}
+
+.statIcon {
+  color: var(--color-sage-deep);
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-variation-settings: var(--display-variation);
+  line-height: var(--leading-tight);
+}
+
+.statLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The new-insert card: forest green with a kraft band of steps. */
+.start {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: var(--space-6);
+  overflow: hidden;
+  padding: var(--space-7) var(--space-6);
+  border-radius: var(--radius-xl);
+  background-color: var(--swatch-forest);
+  background-image:
+    var(--texture-grain),
+    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--swatch-sage) 55%, transparent), transparent 70%);
+  color: var(--color-on-forest);
+  box-shadow: var(--shadow-lift);
+  animation: rise 1000ms var(--ease-out-expo) 260ms backwards;
+}
+
+@media (min-width: 52rem) {
+  .start {
+    grid-template-columns: 1.2fr 1fr;
+    align-items: center;
+  }
+}
+
+.startText {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.startText h2 {
+  font-size: var(--text-2xl);
+}
+
+.startText p:last-child {
+  color: var(--color-on-forest-muted);
+}
+
+.startBadge {
+  justify-self: start;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--swatch-cream);
+  color: var(--swatch-rust);
+}
+
+.startSteps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.startSteps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--swatch-kraft);
+  color: var(--color-ink);
+  font-weight: var(--weight-medium);
+  rotate: -1deg;
+  animation: tag-in 900ms var(--ease-spring) backwards;
+}
+
+.startSteps li:nth-child(2) {
+  rotate: 0.8deg;
+  animation-delay: 120ms;
+}
+
+.startSteps li:nth-child(3) {
+  rotate: -0.4deg;
+  animation-delay: 240ms;
+}
+
+.recent {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sectionTitle {
+  font-size: var(--text-xl);
+}
+
+.designs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.design {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  animation: rise 700ms var(--ease-out-expo) var(--reveal-delay, 0ms) backwards;
+  transition:
+    translate var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo),
+    border-color var(--duration-normal) var(--ease-out-expo);
+}
+
+.design:hover {
+  translate: 0 var(--lift);
+  border-color: var(--color-kraft-deep);
+  box-shadow: var(--shadow-card);
+}
+
+/* The name links to the design; the whole card answers the click. */
+.designLink {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.designLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.designLink:focus-visible {
+  outline: none;
+}
+
+.designLink:focus-visible::after {
+  outline: 3px solid color-mix(in srgb, var(--color-terracotta) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.designIcon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  background: var(--color-kraft-soft);
+  color: var(--color-terracotta-deep);
+}
+
+.designText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Names wrap to two lines before they are cut. */
+.designText strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.updated {
+  font-size: var(--text-xs);
+}
+
+.badge {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.paid {
+  background: var(--color-sage-soft);
+  color: var(--color-sage-deep);
+}
+
+.changed {
+  background: var(--color-terracotta-soft);
+  color: var(--color-terracotta-deep);
+}
+
+.more {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.emptyArt {
+  width: 7.5rem;
+  fill: none;
+  stroke: var(--color-kraft-deep);
+  stroke-width: 2;
+}
+
+.emptyArt * {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1200ms var(--ease-out-expo) forwards;
+}
+
+.emptyArt circle {
+  stroke: var(--color-crease);
+  animation-delay: 400ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+}
+
+@keyframes tag-in {
+  from {
+    opacity: 0;
+    translate: 24px 0;
+    rotate: 6deg;
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emptyArt * {
+    stroke-dashoffset: 0;
+  }
+}
+
+.startAction {
+  margin-top: var(--space-3);
+}

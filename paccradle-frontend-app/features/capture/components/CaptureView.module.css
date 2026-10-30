@@ -1,0 +1,249 @@
+.page {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  width: min(100% - 2 * var(--page-gutter), var(--content-width));
+  margin-inline: auto;
+  padding-block: var(--space-5) var(--space-9);
+}
+
+/* Photo on the left, what it says on the right; stacked on phones. */
+.layout {
+  display: grid;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.side {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.eyebrow {
+  color: var(--color-terracotta);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  animation: rise 700ms var(--ease-out-expo) backwards;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  animation: rise 800ms var(--ease-out-expo) 60ms backwards;
+}
+
+.lead {
+  color: var(--color-text-muted);
+  animation: rise 800ms var(--ease-out-expo) 120ms backwards;
+}
+
+/* Measuring: one line at a time, each sliding up. */
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  animation: line-in 500ms var(--ease-out-expo);
+}
+
+.dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--color-fit-ok);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-fit-ok) 50%, transparent);
+  animation: ping 1200ms var(--ease-out-expo) infinite;
+}
+
+/* A measured product: the size large, its facts in kraft tiles, the confidence ring. */
+.product {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  animation: rise 800ms var(--ease-out-expo) 200ms backwards;
+}
+
+.productName {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.size {
+  font-family: var(--font-mono);
+  font-size: clamp(1.8rem, 2vw + 1.2rem, 2.4rem);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.facts div {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-kraft-soft);
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.facts dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.confidence {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.confidence svg {
+  width: 2.75rem;
+  height: 2.75rem;
+  rotate: -90deg;
+}
+
+.confidence strong {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.ringTrack,
+.ring {
+  fill: none;
+  stroke-width: 4;
+}
+
+.ringTrack {
+  stroke: var(--color-surface-muted);
+}
+
+/* The ring fills to the confidence. */
+.ring {
+  stroke: var(--color-fit-ok);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 - var(--confidence));
+  animation: ring-fill 1100ms var(--ease-out-expo) 300ms backwards;
+}
+
+/* The way on: choose the insert, on a kraft label. */
+.next {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-kraft-soft);
+  animation: rise 800ms var(--ease-out-expo) 320ms backwards;
+}
+
+.nextLead {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.warnings {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.failIcon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--color-terracotta-soft);
+  color: var(--color-error);
+  animation: wobble 700ms var(--ease-spring) backwards;
+}
+
+.missing {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  width: min(100% - 2 * var(--page-gutter), 40rem);
+  margin-inline: auto;
+  padding-block: var(--space-8);
+}
+
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+@keyframes ping {
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes line-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@keyframes wobble {
+  from {
+    opacity: 0;
+    rotate: -12deg;
+    scale: 0.6;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}

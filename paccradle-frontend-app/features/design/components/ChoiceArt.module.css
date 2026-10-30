@@ -1,0 +1,145 @@
+.art {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Board lines draw themselves in, then fill. */
+.art [pathLength] {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: art-draw 1000ms var(--ease-out-expo) 80ms forwards;
+}
+
+.board,
+.strip {
+  fill: color-mix(in srgb, var(--swatch-cream) 92%, transparent);
+  fill-rule: evenodd;
+  stroke: var(--color-kraft-deep);
+  stroke-width: 1.1;
+}
+
+.strip {
+  fill: color-mix(in srgb, var(--swatch-cream) 82%, transparent);
+}
+
+.edge {
+  fill: var(--swatch-twine);
+  stroke: var(--color-kraft-deep);
+  stroke-width: 0.8;
+}
+
+.floor {
+  fill: color-mix(in srgb, var(--swatch-kraft) 22%, transparent);
+  stroke: color-mix(in srgb, var(--color-kraft-deep) 50%, transparent);
+  stroke-width: 0.8;
+}
+
+.kraft {
+  fill: color-mix(in srgb, var(--swatch-kraft) 70%, var(--swatch-cream));
+  stroke: var(--color-kraft-deep);
+  stroke-width: 1;
+}
+
+.kraftFront {
+  fill: color-mix(in srgb, var(--swatch-kraft) 88%, transparent);
+  stroke: var(--color-kraft-deep);
+  stroke-width: 1.1;
+}
+
+.lid {
+  fill: color-mix(in srgb, var(--swatch-kraft) 80%, var(--swatch-cream));
+  stroke: var(--color-kraft-deep);
+  stroke-width: 1.1;
+  transform-box: fill-box;
+}
+
+.ghost {
+  stroke: var(--color-crease);
+  stroke-width: 1;
+  stroke-dasharray: 3 2.5;
+  opacity: 0.8;
+}
+
+/* Products pop in once their board is drawn. */
+.jar {
+  animation: art-pop 600ms var(--ease-spring) backwards;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.jarSide,
+.jarTop,
+.jarBase {
+  fill: var(--swatch-sage);
+  stroke: var(--swatch-forest);
+  stroke-width: 0.9;
+}
+
+.jarTop {
+  fill: var(--swatch-sage-light);
+}
+
+.jarBase {
+  stroke: none;
+}
+
+/* Board cross-sections, to scale. */
+.section {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.solid {
+  fill: var(--swatch-twine);
+  stroke: var(--color-kraft-deep);
+  stroke-width: 0.6;
+}
+
+.section[data-board="chipboard"] .solid {
+  fill: color-mix(in srgb, var(--swatch-forest) 22%, var(--swatch-twine));
+}
+
+.liner {
+  fill: var(--color-kraft-deep);
+}
+
+.flute {
+  fill: none;
+  stroke: var(--swatch-kraft);
+  stroke-width: 1.2;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: art-draw 1400ms var(--ease-out-expo) 120ms forwards;
+}
+
+@keyframes art-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes art-pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+    translate: 0 -6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .art [pathLength],
+  .flute {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .jar {
+    animation: none;
+  }
+}

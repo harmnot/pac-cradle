@@ -1,0 +1,73 @@
+.insert {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Why the tagged style is suggested: one line on a sage band. */
+.why {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-sage-soft);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  animation: lift-in 600ms var(--ease-out-expo) backwards;
+}
+
+.why svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-terracotta);
+}
+
+.layouts {
+  display: grid;
+  gap: var(--space-2);
+  animation: lift-in 600ms var(--ease-out-expo) backwards;
+}
+
+.layoutsTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.layoutArt {
+  width: auto;
+  height: 1.1rem;
+  max-width: 3.5rem;
+}
+
+.layoutArt rect {
+  fill: transparent;
+  stroke: var(--color-kraft-deep);
+  stroke-width: 0.8;
+}
+
+.layoutArt rect[data-filled="true"] {
+  fill: var(--swatch-sage);
+  stroke: var(--swatch-forest);
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+@keyframes lift-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .why,
+  .layouts {
+    animation: none;
+  }
+}

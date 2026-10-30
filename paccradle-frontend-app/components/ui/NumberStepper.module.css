@@ -1,0 +1,85 @@
+.stepper {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field {
+  position: relative;
+  display: inline-grid;
+}
+
+/* The number, large and in mono, on a cream well. */
+.input {
+  width: 4.75rem;
+  height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  text-align: center;
+  appearance: textfield;
+  transition: border-color var(--duration-normal) var(--ease-out-expo);
+}
+
+.input::-webkit-inner-spin-button,
+.input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.input:focus-visible {
+  border-color: var(--color-terracotta);
+  outline: 3px solid color-mix(in srgb, var(--color-terracotta) 22%, transparent);
+  outline-offset: 0;
+}
+
+/* A short terracotta flash under the number each time it changes. */
+.tick {
+  position: absolute;
+  right: 22%;
+  bottom: 5px;
+  left: 22%;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-terracotta);
+  opacity: 0;
+  animation: tick 520ms var(--ease-out-expo);
+}
+
+.unit {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+@keyframes tick {
+  from {
+    opacity: 1;
+    scale: 0.2 1;
+  }
+
+  to {
+    opacity: 0;
+    scale: 1 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tick {
+    animation: none;
+  }
+}

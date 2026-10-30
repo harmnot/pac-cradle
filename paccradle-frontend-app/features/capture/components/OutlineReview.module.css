@@ -1,0 +1,302 @@
+/* The photo, and under it the dock with the tools. */
+.review {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.dock {
+  display: grid;
+  min-width: 0;
+}
+
+/* "Is the line right?" and the two ways to fix it. */
+.choices {
+  display: grid;
+  gap: var(--space-3);
+  animation: lift 600ms var(--ease-out-expo) 300ms backwards;
+}
+
+.prompt {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.prompt strong {
+  color: var(--color-text);
+}
+
+.tools {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@media (min-width: 36rem) {
+  .tools {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* A tool card: an icon in a kraft disc, a name, and when to use it. Lifts on hover. */
+.tool {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo),
+    translate var(--duration-normal) var(--ease-out-expo),
+    scale var(--duration-fast) var(--ease-out-expo);
+}
+
+.tool:hover:not(:disabled) {
+  translate: 0 -3px;
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-card);
+}
+
+.tool:active:not(:disabled) {
+  scale: 0.98;
+}
+
+.tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.toolIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-kraft-soft);
+  color: var(--color-terracotta);
+  transition:
+    background-color var(--duration-normal) var(--ease-out-expo),
+    color var(--duration-normal) var(--ease-out-expo),
+    rotate var(--duration-slow) var(--ease-spring);
+}
+
+.tool:hover:not(:disabled) .toolIcon {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  rotate: 90deg;
+}
+
+.toolText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toolText strong {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.toolText span {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* An open tool's bar: a cream label band that lifts in under the photo. */
+.barWrap {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background:
+    var(--texture-grain),
+    var(--color-surface);
+  box-shadow: var(--shadow-card);
+  animation: lift 480ms var(--ease-out-expo);
+}
+
+.instruction {
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+/* A terracotta dot that pings: "tap now". */
+.pulse {
+  flex: none;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--color-terracotta);
+  animation: ping 1300ms var(--ease-out-expo) infinite;
+}
+
+.readout {
+  min-width: 0;
+}
+
+/* The size as drawn, in mono like a calliper's display. */
+.size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+}
+
+.sizeLabel {
+  width: 100%;
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.size strong {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.sizeArea {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.problem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  animation: nudge 420ms var(--ease-out-expo);
+}
+
+.problem svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.history,
+.commit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The adjust bar, in two rows: the size and history, then how to use it and keep or cancel. */
+.bar[data-tool="adjust"] {
+  display: grid;
+  grid-template-areas:
+    "readout"
+    "history"
+    "keys"
+    "commit";
+  align-items: center;
+}
+
+.readout {
+  grid-area: readout;
+}
+
+.history {
+  grid-area: history;
+}
+
+.commit {
+  grid-area: commit;
+  justify-content: flex-end;
+}
+
+/* How to use it: pointer words everywhere, the keys only where there is a keyboard and mouse. */
+.keys {
+  grid-area: keys;
+  max-width: 34rem;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+}
+
+@media (min-width: 36rem) {
+  .bar[data-tool="adjust"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "readout history"
+      "keys commit";
+  }
+
+  .history {
+    justify-content: flex-end;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .keysKeyboard {
+    display: none;
+  }
+}
+
+@keyframes lift {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+@keyframes ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-terracotta) 55%, transparent);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+@keyframes nudge {
+  25% {
+    translate: -4px 0;
+  }
+
+  60% {
+    translate: 3px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choices,
+  .bar,
+  .pulse,
+  .problem {
+    animation: none;
+  }
+
+  .tool,
+  .toolIcon {
+    transition: none;
+  }
+}

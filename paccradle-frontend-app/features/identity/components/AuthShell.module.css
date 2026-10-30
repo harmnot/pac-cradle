@@ -1,0 +1,119 @@
+.shell {
+  display: grid;
+  flex: 1;
+  gap: var(--space-5);
+  width: 100%;
+  min-height: 100dvh;
+  padding: var(--space-3);
+}
+
+@media (min-width: 60rem) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    padding: var(--space-4);
+  }
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--page-gutter) var(--space-4);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  animation: rise-in 800ms var(--ease-out-expo) backwards;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-variation-settings: var(--display-variation);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+.back {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out-expo);
+}
+
+.back:hover {
+  color: var(--color-text);
+}
+
+.main {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-5);
+  font-size: var(--text-xs);
+}
+
+.footer a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: var(--color-text);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-3);
+  width: min(100%, 27rem);
+}
+
+.eyebrow {
+  color: var(--color-terracotta);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  animation: rise-in 700ms var(--ease-out-expo) 60ms backwards;
+}
+
+.title {
+  font-size: clamp(2.1rem, 2.6vw + 1.3rem, 2.9rem);
+  animation: rise-in 800ms var(--ease-out-expo) 120ms backwards;
+}
+
+.lead {
+  color: var(--color-text-muted);
+  animation: rise-in 800ms var(--ease-out-expo) 200ms backwards;
+}
+
+.body {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+  animation: rise-in 900ms var(--ease-out-expo) 280ms backwards;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}

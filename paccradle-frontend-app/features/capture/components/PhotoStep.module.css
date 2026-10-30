@@ -1,0 +1,175 @@
+.step {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-5);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 40rem;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  animation: rise 800ms var(--ease-out-expo) backwards;
+}
+
+.lead {
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  animation: rise 800ms var(--ease-out-expo) 80ms backwards;
+}
+
+/* The drop zone: a dashed paper frame whose dashes march while something is dragged over. */
+.drop {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5);
+  width: 100%;
+  padding: var(--space-6) var(--space-5);
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  animation: rise 900ms var(--ease-out-expo) 140ms backwards;
+  transition:
+    border-color var(--duration-normal) var(--ease-out-expo),
+    background-color var(--duration-normal) var(--ease-out-expo),
+    scale var(--duration-normal) var(--ease-spring);
+}
+
+.drop[data-dragging="true"] {
+  border-color: var(--color-terracotta);
+  background: color-mix(in srgb, var(--color-terracotta-soft) 60%, var(--color-surface));
+  scale: 1.01;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.emptyArt {
+  width: 12rem;
+  margin-bottom: var(--space-2);
+}
+
+.drop[data-dragging="true"] .emptyArt {
+  animation: bob 900ms var(--ease-in-out) infinite alternate;
+}
+
+.dropText {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-variation-settings: var(--display-variation);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* The photo itself, with a soft scanning beam passing over it while it is worked on. */
+.preview {
+  position: relative;
+  width: min(100%, 34rem);
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  box-shadow: var(--shadow-card);
+  animation: photo-in 700ms var(--ease-out-expo);
+}
+
+.previewImage {
+  width: 100%;
+  max-height: 26rem;
+  object-fit: contain;
+}
+
+.beam {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-fit-ok) 30%, transparent) 46%,
+    color-mix(in srgb, var(--color-fit-ok) 70%, transparent) 50%,
+    transparent 54%
+  );
+  background-size: 100% 220%;
+  animation: beam 1800ms var(--ease-in-out) infinite;
+  mix-blend-mode: screen;
+}
+
+.status {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  translate: -50% 0;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-soft);
+}
+
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-fit-ok);
+  animation: pulse 1000ms var(--ease-in-out) infinite alternate;
+}
+
+@keyframes beam {
+  from {
+    background-position: 0 120%;
+  }
+
+  to {
+    background-position: 0 -20%;
+  }
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.35;
+    scale: 0.7;
+  }
+}
+
+@keyframes bob {
+  to {
+    translate: 0 -6px;
+  }
+}
+
+@keyframes photo-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}

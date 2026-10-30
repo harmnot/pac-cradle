@@ -1,0 +1,226 @@
+.page {
+  display: grid;
+  gap: var(--space-6);
+  width: min(100% - 2 * var(--page-gutter), 60rem);
+  margin-inline: auto;
+  padding-block: var(--space-7) var(--space-9);
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  animation: rise 800ms var(--ease-out-expo) backwards;
+}
+
+/* A terracotta wax-seal avatar that settles in with a small spin. */
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 5rem;
+  height: 5rem;
+  border: 4px solid var(--color-surface);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--color-terracotta), var(--color-terracotta-deep));
+  color: var(--color-on-accent);
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--color-border-strong);
+  animation: seal 900ms var(--ease-spring) 120ms backwards;
+}
+
+.who {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.eyebrow {
+  color: var(--color-terracotta);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.email {
+  overflow-wrap: anywhere;
+  font-size: var(--text-2xl);
+}
+
+.since {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.badge {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-sage-soft);
+  color: var(--color-sage-deep);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-5);
+}
+
+@media (min-width: 52rem) {
+  .grid {
+    grid-template-columns: 1fr 1.4fr;
+    align-items: start;
+  }
+}
+
+.card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  animation: rise 800ms var(--ease-out-expo) 160ms backwards;
+}
+
+.card + .card {
+  animation-delay: 260ms;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-sage-deep);
+}
+
+.cardHead h2 {
+  color: var(--color-text);
+  font-size: var(--text-lg);
+}
+
+.plan {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-variation-settings: var(--display-variation);
+  line-height: var(--leading-tight);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.facts div {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-kraft-soft);
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+}
+
+.note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.rows {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-normal) var(--ease-out-expo);
+}
+
+.row:hover {
+  background: var(--color-surface-muted);
+}
+
+@media (min-width: 36rem) {
+  .row {
+    grid-template-columns: auto 1fr auto;
+  }
+}
+
+.rowIcon {
+  color: var(--color-terracotta);
+}
+
+.rowText {
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.rowText strong {
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.leave {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  animation: rise 800ms var(--ease-out-expo) 360ms backwards;
+}
+
+.leave h2 {
+  font-size: var(--text-lg);
+}
+
+.leave p {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+}
+
+@keyframes seal {
+  from {
+    opacity: 0;
+    scale: 1.6;
+    rotate: -25deg;
+  }
+}

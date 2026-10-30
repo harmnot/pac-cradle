@@ -1,0 +1,133 @@
+.page {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  width: min(100% - 2 * var(--page-gutter), var(--content-width));
+  margin-inline: auto;
+  padding-block: var(--space-5) var(--space-9);
+}
+
+/* What it is on the left, the preview on the right; stacked on phones. */
+.layout {
+  display: grid;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    align-items: start;
+  }
+}
+
+.side {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-sage-deep);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  animation: rise 700ms var(--ease-out-expo) backwards;
+}
+
+/* A sage seal that stamps in: saved. */
+.stamp {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  animation: stamp 700ms var(--ease-spring) 200ms backwards;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-2xl);
+  overflow-wrap: anywhere;
+  animation: rise 800ms var(--ease-out-expo) 60ms backwards;
+}
+
+.lead {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-kraft-soft);
+  font-size: var(--text-sm);
+  animation: rise 700ms var(--ease-out-expo) backwards;
+}
+
+.facts svg {
+  color: var(--color-terracotta-deep);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.missing {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  width: min(100% - 2 * var(--page-gutter), 40rem);
+  margin-inline: auto;
+  padding-block: var(--space-8);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    scale: 2;
+    rotate: -20deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eyebrow,
+  .stamp,
+  .title,
+  .facts li {
+    animation: none;
+  }
+}

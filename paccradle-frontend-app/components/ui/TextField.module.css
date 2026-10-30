@@ -1,0 +1,130 @@
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.label {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text);
+  font-size: var(--text-md);
+  transition:
+    border-color var(--duration-normal) var(--ease-out-expo),
+    background-color var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+.input:hover {
+  border-color: var(--color-kraft-deep);
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--color-terracotta);
+  background: var(--color-surface);
+}
+
+/* A soft terracotta glow that grows from the field on focus. */
+.focusRing {
+  position: absolute;
+  inset: -4px;
+  border-radius: calc(var(--radius-md) + 4px);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-terracotta) 22%, transparent);
+  opacity: 0;
+  scale: 0.98;
+  pointer-events: none;
+  transition:
+    opacity var(--duration-normal) var(--ease-out-expo),
+    scale var(--duration-normal) var(--ease-out-expo);
+}
+
+.input:focus-visible ~ .focusRing {
+  opacity: 1;
+  scale: 1;
+}
+
+.control:has(.reveal) .input {
+  padding-inline-end: 3.25rem;
+}
+
+.reveal {
+  position: absolute;
+  inset-inline-end: var(--space-2);
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out-expo),
+    background-color var(--duration-fast) var(--ease-out-expo);
+}
+
+.reveal:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-error);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  animation: field-error-in var(--duration-normal) var(--ease-out-expo);
+}
+
+.field[data-invalid="true"] .input {
+  border-color: var(--color-error);
+  animation: field-shake 360ms var(--ease-out-expo);
+}
+
+@keyframes field-shake {
+  20%,
+  60% {
+    translate: -4px 0;
+  }
+
+  40%,
+  80% {
+    translate: 4px 0;
+  }
+}
+
+@keyframes field-error-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}

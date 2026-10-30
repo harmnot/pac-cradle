@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n";
 import "../styles/tokens.css";
 import "../styles/base.css";
 import "../styles/motion.css";
+import "../styles/transitions.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>

@@ -1,0 +1,62 @@
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  animation: notice-in var(--duration-slow) var(--ease-out-expo) backwards;
+}
+
+.icon {
+  margin-top: 1px;
+}
+
+.text {
+  flex: 1;
+}
+
+.action {
+  flex: none;
+  margin-block: calc(-1 * var(--space-1));
+}
+
+.info {
+  border-color: color-mix(in srgb, var(--color-sage) 30%, transparent);
+  background: var(--color-sage-soft);
+  color: var(--color-text);
+}
+
+.success {
+  border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  color: var(--color-text);
+}
+
+.success .icon {
+  color: var(--color-success);
+}
+
+.error {
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
+  background: var(--color-terracotta-soft);
+  color: var(--color-text);
+}
+
+.error .icon {
+  color: var(--color-error);
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    translate: 0 -6px;
+    clip-path: inset(0 0 100% 0 round var(--radius-md));
+  }
+
+  to {
+    clip-path: inset(0 0 0 0 round var(--radius-md));
+  }
+}

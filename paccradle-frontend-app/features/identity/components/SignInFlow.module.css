@@ -1,0 +1,157 @@
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* The passkey button: a raised sage tile with a key that glows while the device asks. */
+.passkey {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  overflow: hidden;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  text-align: start;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition:
+    translate var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo),
+    background-color var(--duration-normal) var(--ease-out-expo);
+}
+
+/* Light sweeps across on hover, like the other buttons. */
+.passkey::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.22) 50%, transparent 70%);
+  translate: -120% 0;
+  transition: translate 800ms var(--ease-out-expo);
+}
+
+.passkey:hover:not(:disabled) {
+  translate: 0 -3px;
+  background: var(--color-accent-strong);
+  box-shadow: var(--shadow-lift);
+}
+
+.passkey:hover:not(:disabled)::after {
+  translate: 120% 0;
+}
+
+.passkey:active:not(:disabled) {
+  scale: 0.985;
+}
+
+.passkey:disabled {
+  cursor: progress;
+}
+
+.passkeyIcon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+}
+
+/* While the device asks: rings ripple out of the key. */
+.passkeyIcon::before,
+.passkeyIcon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid color-mix(in srgb, var(--color-on-accent) 60%, transparent);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.passkey[aria-busy="true"] .passkeyIcon::before,
+.passkey[aria-busy="true"] .passkeyIcon::after {
+  animation: ripple 1600ms var(--ease-out-expo) infinite;
+}
+
+.passkey[aria-busy="true"] .passkeyIcon::after {
+  animation-delay: 800ms;
+}
+
+.passkeyText {
+  display: grid;
+  gap: 2px;
+}
+
+.passkeyText strong {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.passkeyText span {
+  font-size: var(--text-xs);
+  opacity: 0.8;
+}
+
+.passkeyArrow {
+  transition: translate var(--duration-normal) var(--ease-spring);
+}
+
+.passkey:hover .passkeyArrow {
+  translate: 4px 0;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border-strong);
+}
+
+.alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1) var(--space-4);
+}
+
+.switch {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.switch a {
+  font-weight: var(--weight-semibold);
+}
+
+@keyframes ripple {
+  from {
+    opacity: 0.9;
+    scale: 1;
+  }
+
+  to {
+    opacity: 0;
+    scale: 1.7;
+  }
+}

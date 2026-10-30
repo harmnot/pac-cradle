@@ -1,0 +1,11 @@
+.flow {
+  display: grid;
+  gap: var(--space-7);
+  width: min(100% - 2 * var(--page-gutter), var(--content-width));
+  margin-inline: auto;
+  padding-block: var(--space-6) var(--space-9);
+}
+
+.screen {
+  display: grid;
+}

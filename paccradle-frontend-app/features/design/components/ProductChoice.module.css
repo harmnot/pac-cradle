@@ -1,0 +1,172 @@
+.product {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* The product from above on a cream label, with its size large. */
+.card {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.thumb {
+  width: 100%;
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(color-mix(in srgb, var(--color-kraft-deep) 10%, transparent) 1px, transparent 1px) 0 0 / 12px 12px,
+    linear-gradient(90deg, color-mix(in srgb, var(--color-kraft-deep) 10%, transparent) 1px, transparent 1px) 0 0 / 12px 12px,
+    var(--color-kraft-soft);
+}
+
+.thumbFill {
+  fill: color-mix(in srgb, var(--color-terracotta) 18%, transparent);
+  animation: fill-in 700ms var(--ease-out-expo) 500ms backwards;
+}
+
+.thumbLine {
+  fill: none;
+  stroke: var(--color-terracotta);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1100ms var(--ease-out-expo) 120ms forwards;
+}
+
+.facts {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.size {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(1.5rem, 1.2vw + 1.1rem, 2rem);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The height field beside a side view that grows with it. */
+.height {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.side {
+  position: relative;
+  display: block;
+  height: 6.5rem;
+  border-bottom: 2px solid var(--color-kraft-deep);
+}
+
+.ruler {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.5rem;
+  background: repeating-linear-gradient(to top, var(--color-text-muted) 0 1px, transparent 1px 0.65rem) left / 0.35rem 100% no-repeat;
+  opacity: 0.6;
+}
+
+.body {
+  position: absolute;
+  bottom: 0;
+  left: 1rem;
+  width: calc(0.9rem + var(--width) * 2.4rem);
+  height: 100%;
+  border: 2px solid var(--swatch-forest);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: var(--swatch-sage);
+  transform-origin: bottom;
+  scale: 1 max(0.04, var(--height));
+  transition: scale 700ms var(--ease-spring);
+}
+
+.body[data-round="true"] {
+  border-radius: 40% 40% 4px 4px / 14% 14% 0 0;
+}
+
+.side[data-known="false"] .body {
+  border-style: dashed;
+  background: transparent;
+}
+
+.checking,
+.checkFailed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.checkFailed {
+  color: var(--color-error);
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-terracotta);
+  animation: pulse 900ms var(--ease-in-out) infinite alternate;
+}
+
+.quantity {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fill-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.3;
+    scale: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumbLine {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .thumbFill,
+  .dot {
+    animation: none;
+  }
+
+  .body {
+    transition: none;
+  }
+}

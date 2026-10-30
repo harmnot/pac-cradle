@@ -1,0 +1,126 @@
+/*
+ * View transitions (React 19.3 <ViewTransition>, Next's Link and router `transitionTypes`).
+ * See components/motion/PageTransition.tsx:
+ *
+ *   nav-forward   deeper into the app (sign-in → next step → workspace): old slides left
+ *   nav-back      back out (← Back): old slides right
+ *   step          one screen swapping its content (passkey → password → inbox): soft lift
+ *
+ * The app header (`app-header`) and the auth art panel (`auth-art`) hold still while the
+ * content moves. Browsers without view transitions simply swap the content.
+ */
+:root {
+  --vt-exit: 160ms;
+  --vt-enter: 260ms;
+  --vt-move: 460ms;
+  --vt-offset: 48px;
+}
+
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-old(.nav-forward) {
+  --vt-slide: calc(-1 * var(--vt-offset));
+  animation:
+    var(--vt-exit) var(--ease-in-out) both vt-fade reverse,
+    var(--vt-move) var(--ease-out-expo) both vt-slide reverse;
+}
+
+::view-transition-new(.nav-forward) {
+  --vt-slide: var(--vt-offset);
+  animation:
+    var(--vt-enter) var(--ease-out-expo) var(--vt-exit) both vt-fade,
+    var(--vt-move) var(--ease-out-expo) both vt-slide;
+}
+
+::view-transition-old(.nav-back) {
+  --vt-slide: var(--vt-offset);
+  animation:
+    var(--vt-exit) var(--ease-in-out) both vt-fade reverse,
+    var(--vt-move) var(--ease-out-expo) both vt-slide reverse;
+}
+
+::view-transition-new(.nav-back) {
+  --vt-slide: calc(-1 * var(--vt-offset));
+  animation:
+    var(--vt-enter) var(--ease-out-expo) var(--vt-exit) both vt-fade,
+    var(--vt-move) var(--ease-out-expo) both vt-slide;
+}
+
+::view-transition-old(.step) {
+  animation: var(--vt-exit) var(--ease-in-out) both vt-step-out;
+}
+
+::view-transition-new(.step) {
+  animation: var(--vt-move) var(--ease-out-expo) var(--vt-exit) both vt-step-in;
+}
+
+::view-transition-group(.step) {
+  animation-duration: var(--vt-move);
+  animation-timing-function: var(--ease-out-expo);
+}
+
+/* Anchors: these never slide. */
+::view-transition-group(app-header),
+::view-transition-group(auth-art) {
+  z-index: 100;
+  animation: none;
+}
+
+::view-transition-old(app-header),
+::view-transition-old(auth-art) {
+  display: none;
+}
+
+::view-transition-new(app-header),
+::view-transition-new(auth-art) {
+  animation: none;
+}
+
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes vt-slide {
+  from {
+    translate: var(--vt-slide) 0;
+  }
+
+  to {
+    translate: 0 0;
+  }
+}
+
+@keyframes vt-step-out {
+  to {
+    opacity: 0;
+    translate: 0 -10px;
+    filter: blur(3px);
+  }
+}
+
+@keyframes vt-step-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+    filter: blur(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

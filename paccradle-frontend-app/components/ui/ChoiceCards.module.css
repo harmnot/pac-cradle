@@ -1,0 +1,177 @@
+.cards {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.wide {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.compact {
+  grid-template-columns: repeat(auto-fit, minmax(6.75rem, 1fr));
+}
+
+.cards[aria-disabled="true"] {
+  opacity: 0.55;
+}
+
+/* A paper card that lifts and warms on hover; the chosen one rises with a sage ring. */
+.card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: start;
+  cursor: pointer;
+  animation: card-in 700ms var(--ease-out-expo) backwards;
+  transition:
+    translate var(--duration-normal) var(--ease-out-expo),
+    border-color var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo),
+    background-color var(--duration-normal) var(--ease-out-expo);
+}
+
+.card:hover:not(:disabled) {
+  translate: 0 -3px;
+  border-color: var(--color-kraft-deep);
+  box-shadow: var(--shadow-soft);
+}
+
+.card:active:not(:disabled) {
+  scale: 0.99;
+}
+
+.card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-terracotta) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.card:disabled {
+  cursor: not-allowed;
+}
+
+.card[aria-checked="true"] {
+  translate: 0 -3px;
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-sage-soft) 38%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent), var(--shadow-card);
+}
+
+.compact .card {
+  padding: var(--space-3);
+}
+
+.art {
+  display: block;
+  margin: var(--space-1) 0 var(--space-2);
+  transition: scale var(--duration-slow) var(--ease-spring);
+}
+
+.wide .art {
+  max-width: 10rem;
+  margin-inline: auto;
+}
+
+.card:hover:not(:disabled) .art,
+.card[aria-checked="true"] .art {
+  scale: 1.05;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-variation-settings: var(--display-variation);
+  line-height: var(--leading-snug);
+}
+
+.compact .title {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.meta {
+  color: var(--color-terracotta-deep);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.body {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+}
+
+.badge {
+  position: absolute;
+  top: calc(-1 * var(--space-2));
+  left: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-terracotta);
+  color: var(--color-on-accent);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-soft);
+  animation: badge-in 500ms var(--ease-spring) 300ms backwards;
+}
+
+.check {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  opacity: 0;
+  scale: 0.4;
+  transition:
+    opacity var(--duration-normal) var(--ease-out-expo),
+    scale var(--duration-normal) var(--ease-spring);
+}
+
+.card[aria-checked="true"] .check {
+  opacity: 1;
+  scale: 1;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+@keyframes badge-in {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .badge {
+    animation: none;
+  }
+
+  .card,
+  .art {
+    transition: none;
+  }
+}

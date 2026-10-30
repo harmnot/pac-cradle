@@ -1,0 +1,49 @@
+.stack {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in srgb, var(--color-surface) 80%, transparent) 50%,
+      transparent 80%
+    )
+    var(--color-surface-muted);
+  background-size: 220% 100%;
+  animation: shimmer 1400ms var(--ease-in-out) infinite;
+}
+
+.line {
+  height: 0.9rem;
+}
+
+.line:last-child:not(:first-child) {
+  width: 62%;
+}
+
+.title {
+  width: 70%;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+}
+
+.block {
+  height: 8rem;
+  border-radius: var(--radius-lg);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
+  }
+}

@@ -1,0 +1,195 @@
+/* The point editor over the photo. Strokes don't scale (`vector-effect`): widths are screen px. */
+.editor {
+  outline: none;
+}
+
+/* Keyboard focus: a dashed sage frame round the photo. */
+.focusRing {
+  fill: none;
+  stroke: transparent;
+  pointer-events: none;
+}
+
+.editor:focus-visible .focusRing {
+  stroke: var(--color-focus);
+  stroke-width: 6px;
+  stroke-dasharray: 2 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Every pointer event lands here; the drawing above it lets them through. */
+.catcher {
+  fill: transparent;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.editor[data-hover="point"] .catcher {
+  cursor: grab;
+}
+
+.editor[data-hover="edge"] .catcher {
+  cursor: copy;
+}
+
+.editor[data-hover="drag"] .catcher {
+  cursor: grabbing;
+}
+
+.shape,
+.crossing,
+.ghost,
+.handles,
+.selected {
+  pointer-events: none;
+}
+
+/* The outline as it stands: terracotta, lightly filled. */
+.shape {
+  fill: color-mix(in srgb, var(--color-terracotta) 14%, transparent);
+  stroke: var(--color-terracotta);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+/* Edges that cross: red ants marching along them. */
+.crossing {
+  stroke: var(--color-fit-collide);
+  stroke-width: 4.5px;
+  stroke-linecap: round;
+  stroke-dasharray: 6 5;
+  animation: ants 600ms linear infinite;
+}
+
+/* Where a press on the line would add a point. */
+.ghost circle {
+  fill: color-mix(in srgb, var(--swatch-cream) 85%, transparent);
+  stroke: var(--color-accent);
+  stroke-width: 2px;
+  stroke-dasharray: 3 2;
+}
+
+.ghost path {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+
+/* A point: a cream dot ringed in terracotta, with a dark edge so it reads on any photo. */
+.handle,
+.handleHover {
+  fill: var(--swatch-cream);
+  stroke: var(--color-terracotta);
+  stroke-width: 2px;
+  filter: drop-shadow(0 1px 1.5px rgb(30 20 10 / 0.45));
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: scale var(--duration-fast) var(--ease-spring);
+}
+
+.handleHover {
+  fill: var(--color-terracotta);
+  stroke: var(--swatch-cream);
+  scale: 1.35;
+}
+
+/* On opening, the points pop in one after another round the outline. */
+.editor[data-entering="true"] .handles circle {
+  animation: pop 420ms var(--ease-spring) var(--delay) backwards;
+}
+
+/* The selected point: sage, with a breathing halo; the halo tightens while it moves. */
+.selectedHandle {
+  fill: var(--color-accent);
+  stroke: var(--swatch-cream);
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 1px 2px rgb(30 20 10 / 0.5));
+}
+
+.halo {
+  fill: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: breathe 1400ms var(--ease-in-out) infinite alternate;
+}
+
+.selected[data-dragging="true"] .halo {
+  animation: none;
+  scale: 0.7;
+}
+
+/* The loupe: a lens of the photo above the finger. */
+.loupe {
+  pointer-events: none;
+  animation: lens-in 220ms var(--ease-out-expo);
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.loupeBack {
+  fill: var(--swatch-cream);
+  filter: drop-shadow(0 10px 18px rgb(30 20 10 / 0.4));
+}
+
+.loupeLine {
+  fill: none;
+  stroke: var(--color-terracotta);
+  stroke-width: 2px;
+}
+
+.loupeCross {
+  stroke: var(--swatch-cream);
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 0 1px rgb(30 20 10 / 0.9));
+}
+
+.loupeRing {
+  fill: none;
+  stroke: var(--swatch-cream);
+  stroke-width: 3px;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0;
+  }
+}
+
+@keyframes breathe {
+  from {
+    scale: 0.8;
+  }
+
+  to {
+    scale: 1.15;
+  }
+}
+
+@keyframes ants {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@keyframes lens-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor[data-entering="true"] .handles circle,
+  .halo,
+  .crossing,
+  .loupe {
+    animation: none;
+  }
+
+  .handle,
+  .handleHover {
+    transition: none;
+  }
+}
