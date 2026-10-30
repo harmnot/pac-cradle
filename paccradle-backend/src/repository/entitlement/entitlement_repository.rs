@@ -7,7 +7,10 @@ use uuid::Uuid;
 use super::EntitlementRepository;
 use crate::error::AppError;
 use crate::models::TextEnum;
-use crate::models::entitlement::{CreditSpend, DesignUnlock, NewUnlock, UnlockSource};
+use crate::models::entitlement::{
+    CreditSpend, DesignUnlock, NewUnlock, Subscription, SubscriptionPlan, SubscriptionStatus,
+    UnlockSource,
+};
 use crate::shared::future::BoxFuture;
 
 /// [`EntitlementRepository`] on Postgres.
@@ -37,6 +40,24 @@ impl TryFrom<UnlockRow> for DesignUnlock {
             user_id: row.user_id,
             source: UnlockSource::from_text(&row.source)?,
             edits_until: row.edits_until,
+        })
+    }
+}
+
+struct SubscriptionRow {
+    plan: String,
+    status: String,
+    current_period_end: Option<OffsetDateTime>,
+}
+
+impl TryFrom<SubscriptionRow> for Subscription {
+    type Error = AppError;
+
+    fn try_from(row: SubscriptionRow) -> Result<Self, AppError> {
+        Ok(Self {
+            plan: SubscriptionPlan::from_text(&row.plan)?,
+            status: SubscriptionStatus::from_text(&row.status)?,
+            current_period_end: row.current_period_end,
         })
     }
 }
@@ -161,6 +182,67 @@ impl EntitlementRepository for PgEntitlementRepository {
             .fetch_one(conn)
             .await?;
             Ok(active)
+        })
+    }
+
+    fn subscription<'a>(
+        &'a self,
+        conn: &'a mut PgConnection,
+        user_id: Uuid,
+    ) -> BoxFuture<'a, Result<Option<Subscription>, AppError>> {
+        Box::pin(async move {
+            let row = sqlx::query_as!(
+                SubscriptionRow,
+                r#"
+                SELECT plan, status, current_period_end
+                FROM subscriptions
+                WHERE user_id = $1
+                ORDER BY status IN ('active', 'trialing', 'past_due') DESC, paddle_updated_at DESC
+                LIMIT 1
+                "#,
+                user_id,
+            )
+            .fetch_optional(conn)
+            .await?;
+            row.map(Subscription::try_from).transpose()
+        })
+    }
+
+    fn unlock_count<'a>(
+        &'a self,
+        conn: &'a mut PgConnection,
+        user_id: Uuid,
+    ) -> BoxFuture<'a, Result<i64, AppError>> {
+        Box::pin(async move {
+            let count = sqlx::query_scalar!(
+                r#"SELECT count(*) AS "count!" FROM design_unlocks WHERE user_id = $1"#,
+                user_id,
+            )
+            .fetch_one(conn)
+            .await?;
+            Ok(count)
+        })
+    }
+
+    fn unlocks<'a>(
+        &'a self,
+        conn: &'a mut PgConnection,
+        (user_id, design_ids): (Uuid, &'a [Uuid]),
+    ) -> BoxFuture<'a, Result<Vec<DesignUnlock>, AppError>> {
+        Box::pin(async move {
+            let rows = sqlx::query_as!(
+                UnlockRow,
+                r#"
+                SELECT design_id, user_id, source, edits_until
+                FROM design_unlocks
+                WHERE user_id = $1 AND design_id = ANY($2)
+                "#,
+                user_id,
+                design_ids,
+            )
+            .fetch_all(conn)
+            .await?;
+            rows.into_iter().map(DesignUnlock::try_from).collect()
         })
     }
 }

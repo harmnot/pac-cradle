@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::error::AppError;
+use crate::models::design::{DesignSummary, SavedDesign};
 use crate::models::session::AuthUser;
 use crate::schemas::common::PageResponse;
 use crate::schemas::design::{
@@ -26,7 +27,10 @@ pub async fn create(
         spec,
     };
     let design = state.designs.create(request).await?;
-    Ok((StatusCode::CREATED, Json(design.into())))
+    Ok((
+        StatusCode::CREATED,
+        Json(DesignResponse::new((design, None))),
+    ))
 }
 
 /// `GET /designs`: a page of the caller's designs ("My designs"), filtered and sorted.
@@ -45,17 +49,22 @@ pub async fn list(
         order: filters.order,
     };
     let page = state.designs.list(request).await?;
-    Ok(Json(PageResponse::new((page, DesignSummaryResponse::from))))
+    let ids: Vec<Uuid> = page.items.iter().map(|design| design.id).collect();
+    let unlocks = state.billing.unlocks((&user, &ids)).await?;
+    Ok(Json(PageResponse::new((page, |design: DesignSummary| {
+        let unlock = unlocks.get(&design.id);
+        DesignSummaryResponse::new((design, unlock))
+    }))))
 }
 
-/// `GET /designs/{design_id}`: the caller's design.
+/// `GET /designs/{design_id}`: the caller's design, with its unlock (poll it after a checkout).
 pub async fn get(
     State(state): State<AppState>,
     user: AuthUser,
     Path(design_id): Path<Uuid>,
 ) -> Result<Json<DesignResponse>, AppError> {
     let design = state.designs.get((&user, design_id)).await?;
-    Ok(Json(design.into()))
+    Ok(Json(with_unlock((&state, &user, design)).await?))
 }
 
 /// `PATCH /designs/{design_id}`: saves a change made from `version`; the answer carries the
@@ -72,5 +81,14 @@ pub async fn update(
         change: body.change()?,
     };
     let design = state.designs.update(request).await?;
-    Ok(Json(design.into()))
+    Ok(Json(with_unlock((&state, &user, design)).await?))
+}
+
+/// The design's response, with its unlock if it has one.
+async fn with_unlock(
+    (state, user, design): (&AppState, &AuthUser, SavedDesign),
+) -> Result<DesignResponse, AppError> {
+    let unlocks = state.billing.unlocks((user, &[design.id])).await?;
+    let unlock = unlocks.get(&design.id);
+    Ok(DesignResponse::new((design, unlock)))
 }

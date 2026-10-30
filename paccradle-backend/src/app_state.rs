@@ -124,6 +124,7 @@ impl AppState {
         );
         let billing: Arc<dyn BillingService> =
             Arc::new(DefaultBillingService::new(BillingProviders {
+                db: Arc::clone(&db),
                 entitlements: Arc::new(PgEntitlementRepository::new()),
                 users: Arc::clone(&users),
                 prices: config.prices.clone(),

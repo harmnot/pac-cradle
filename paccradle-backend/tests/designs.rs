@@ -79,7 +79,7 @@ async fn a_guest_saves_a_design_and_reads_it_back_exactly(pool: PgPool) {
     .await;
 
     assert_eq!(reply.status, StatusCode::CREATED, "{:?}", reply.body);
-    assert_eq!(reply.header("api-version"), "1.0.0-beta.6");
+    assert_eq!(reply.header("api-version"), "1.0.0-beta.7");
     let body = reply.json();
     assert_eq!(body["name"], "Perfume set");
     assert_eq!(body["version"], 1);

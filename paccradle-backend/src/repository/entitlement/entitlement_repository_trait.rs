@@ -4,7 +4,7 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use crate::models::entitlement::{CreditSpend, DesignUnlock, NewUnlock};
+use crate::models::entitlement::{CreditSpend, DesignUnlock, NewUnlock, Subscription};
 use crate::shared::future::BoxFuture;
 
 /// Reads and writes what a user may export. Every method runs on the connection it is given:
@@ -53,4 +53,26 @@ pub trait EntitlementRepository: Send + Sync {
         conn: &'a mut PgConnection,
         user_id: Uuid,
     ) -> BoxFuture<'a, Result<bool, AppError>>;
+
+    /// The user's subscription that matters: a live one (trialing, active, past due) first,
+    /// else the one Paddle changed last.
+    fn subscription<'a>(
+        &'a self,
+        conn: &'a mut PgConnection,
+        user_id: Uuid,
+    ) -> BoxFuture<'a, Result<Option<Subscription>, AppError>>;
+
+    /// How many designs are unlocked for the user.
+    fn unlock_count<'a>(
+        &'a self,
+        conn: &'a mut PgConnection,
+        user_id: Uuid,
+    ) -> BoxFuture<'a, Result<i64, AppError>>;
+
+    /// The unlocks of those of `design_ids` that are unlocked for the user.
+    fn unlocks<'a>(
+        &'a self,
+        conn: &'a mut PgConnection,
+        request: (Uuid, &'a [Uuid]),
+    ) -> BoxFuture<'a, Result<Vec<DesignUnlock>, AppError>>;
 }

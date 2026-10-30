@@ -10,7 +10,7 @@ mod common;
 
 use axum::http::{Method, StatusCode};
 use common::designs::{cradle_spec, grid_spec};
-use common::{Reply, TestApi, WEB_ORIGIN, auth_api, call, link_token};
+use common::{Reply, TestApi, WEB_ORIGIN, account, add_credits, auth_api, call};
 use paccradle_backend::jobs;
 use paccradle_backend::models::export::RunExport;
 use paccradle_backend::models::job::{JobKind, JobOutcome};
@@ -27,39 +27,6 @@ const PRICES: [(&str, &str); 4] = [
     ("PADDLE_PRICE_PRO_MONTHLY", "pri_01monthly"),
     ("PADDLE_PRICE_PRO_YEARLY", "pri_01yearly"),
 ];
-
-/// A signed-in account.
-struct Account {
-    token: String,
-    id: Uuid,
-}
-
-/// A new account for `email`, signed up through its confirmation link.
-async fn account(api: &TestApi, email: &str) -> Account {
-    let reply = api
-        .send(
-            call(Method::POST, &format!("{CLIENT}/auth/email-link"))
-                .json(json!({ "email": email })),
-        )
-        .await;
-    assert_eq!(reply.status, StatusCode::ACCEPTED);
-    let sent = api.deliver_emails().await;
-    let reply = api
-        .send(
-            call(Method::POST, &format!("{CLIENT}/auth/email-link/sign-in"))
-                .json(json!({ "token": link_token(&sent[0]) })),
-        )
-        .await;
-    assert_eq!(reply.status, StatusCode::OK, "{:?}", reply.body);
-    Account {
-        token: reply.access_token(),
-        id: reply.json()["account"]["id"]
-            .as_str()
-            .unwrap()
-            .parse()
-            .unwrap(),
-    }
-}
 
 /// Saves `spec` as "Perfume set" for `token` and returns the design's id.
 async fn design(api: &TestApi, (token, spec): (&str, Value)) -> String {
@@ -97,21 +64,6 @@ async fn run_export_jobs(api: &TestApi) -> Vec<JobOutcome> {
         outcomes.push(api.state.jobs.finish(&job, result).await.unwrap());
     }
     outcomes
-}
-
-/// Gives `user` `count` export credits, as a pack purchase would.
-async fn add_credits(pool: &PgPool, (user, count): (Uuid, i32)) {
-    sqlx::query!(
-        r#"
-        INSERT INTO credit_ledger (id, user_id, delta, reason, paddle_transaction_id)
-        VALUES (gen_random_uuid(), $1, $2, 'purchase', 'txn_' || gen_random_uuid())
-        "#,
-        user,
-        count,
-    )
-    .execute(pool)
-    .await
-    .unwrap();
 }
 
 async fn balance(pool: &PgPool, user: Uuid) -> i64 {
@@ -193,7 +145,7 @@ async fn the_preview_and_the_test_print_are_free(pool: PgPool) {
 
     assert_eq!(paid_with(&reply), "free");
     assert_eq!(reply.header("cache-control"), "no-store");
-    assert_eq!(reply.header("api-version"), "1.0.0-beta.6");
+    assert_eq!(reply.header("api-version"), "1.0.0-beta.7");
     let body = reply.json();
     assert_eq!(body["status"], "pending");
     assert_eq!(body["formats"], json!(["png", "test_print"]));

@@ -6,11 +6,13 @@ use serde_json::Value;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::billing::UnlockResponse;
 use super::common::page_request;
 use crate::error::{AppError, ErrorCode};
 use crate::models::design::{
     DesignChange, DesignSort, DesignSummary, InsertStyle, MAX_DESIGN_NAME_CHARS, SavedDesign,
 };
+use crate::models::entitlement::DesignUnlock;
 use crate::models::page::{PageRequest, SortOrder};
 
 /// `POST /designs`.
@@ -125,6 +127,8 @@ pub struct DesignResponse {
     pub version: i32,
     /// The design as saved.
     pub spec: insert_core::Design,
+    /// Its unlock, once its production files are paid for (M1-D8); `null` before.
+    pub unlock: Option<UnlockResponse>,
     /// When it was made.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -133,9 +137,11 @@ pub struct DesignResponse {
     pub updated_at: OffsetDateTime,
 }
 
-impl From<SavedDesign> for DesignResponse {
-    fn from(design: SavedDesign) -> Self {
+impl DesignResponse {
+    /// The design, with its unlock if it has one.
+    pub fn new((design, unlock): (SavedDesign, Option<&DesignUnlock>)) -> Self {
         Self {
+            unlock: unlock.map(|unlock| UnlockResponse::new((unlock, design.updated_at))),
             design_id: design.id,
             name: design.name,
             version: design.version,
@@ -163,6 +169,8 @@ pub struct DesignSummaryResponse {
     pub product_count: i64,
     /// Whether it has an outer box.
     pub has_box: bool,
+    /// Its unlock, once its production files are paid for (M1-D8); `null` before.
+    pub unlock: Option<UnlockResponse>,
     /// When it was made.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -171,9 +179,11 @@ pub struct DesignSummaryResponse {
     pub updated_at: OffsetDateTime,
 }
 
-impl From<DesignSummary> for DesignSummaryResponse {
-    fn from(design: DesignSummary) -> Self {
+impl DesignSummaryResponse {
+    /// The design in the list, with its unlock if it has one.
+    pub fn new((design, unlock): (DesignSummary, Option<&DesignUnlock>)) -> Self {
         Self {
+            unlock: unlock.map(|unlock| UnlockResponse::new((unlock, design.updated_at))),
             design_id: design.id,
             name: design.name,
             version: design.version,

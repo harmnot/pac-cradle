@@ -1,5 +1,6 @@
 //! Request and response bodies. The contract is written up in dated `postman/` files.
 
+pub mod billing;
 pub mod capture;
 pub mod common;
 pub mod design;

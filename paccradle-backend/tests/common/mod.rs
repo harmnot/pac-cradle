@@ -26,9 +26,10 @@ use paccradle_backend::shared::future::BoxFuture;
 use paccradle_backend::third_party::email::{EmailMessage, EmailSender};
 use paccradle_backend::third_party::storage::MemoryStorage;
 use paccradle_backend::{AppState, Providers};
-use serde_json::Value;
+use serde_json::{Value, json};
 use sqlx::PgPool;
 use tower::ServiceExt;
+use uuid::Uuid;
 
 /// The web app's origin in tests.
 pub const WEB_ORIGIN: &str = "http://localhost:3000";
@@ -348,4 +349,49 @@ pub async fn upload(api: &TestApi, (token, parts): (&str, &[Part<'_>])) -> Reply
         .body(Body::from(multipart(parts)))
         .unwrap();
     send(&api.app, request).await
+}
+
+/// A signed-in account.
+pub struct Account {
+    pub token: String,
+    pub id: Uuid,
+}
+
+/// A new account for `email`, signed up through its confirmation link.
+pub async fn account(api: &TestApi, email: &str) -> Account {
+    let reply = api
+        .send(call(Method::POST, "/api/client/v1/auth/email-link").json(json!({ "email": email })))
+        .await;
+    assert_eq!(reply.status, StatusCode::ACCEPTED);
+    let sent = api.deliver_emails().await;
+    let reply = api
+        .send(
+            call(Method::POST, "/api/client/v1/auth/email-link/sign-in")
+                .json(json!({ "token": link_token(&sent[0]) })),
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{:?}", reply.body);
+    Account {
+        token: reply.access_token(),
+        id: reply.json()["account"]["id"]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap(),
+    }
+}
+
+/// Gives `user` `count` export credits, as a pack purchase would.
+pub async fn add_credits(pool: &PgPool, (user, count): (Uuid, i32)) {
+    sqlx::query!(
+        r#"
+        INSERT INTO credit_ledger (id, user_id, delta, reason, paddle_transaction_id)
+        VALUES (gen_random_uuid(), $1, $2, 'purchase', 'txn_' || gen_random_uuid())
+        "#,
+        user,
+        count,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 }

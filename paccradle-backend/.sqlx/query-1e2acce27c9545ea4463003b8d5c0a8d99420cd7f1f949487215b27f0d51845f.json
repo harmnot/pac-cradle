@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO subscriptions\n            (id, user_id, paddle_subscription_id, plan, status, current_period_end, paddle_updated_at)\n        VALUES (gen_random_uuid(), $1, 'sub_' || gen_random_uuid(), $2, $3,\n                now() + interval '30 days', now() - make_interval(days => $4))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1e2acce27c9545ea4463003b8d5c0a8d99420cd7f1f949487215b27f0d51845f"
+}

@@ -85,7 +85,7 @@ async fn an_upload_is_measured_by_its_vision_run(pool: PgPool) {
     let pending = get(&api, (&token, &id)).await;
     assert_eq!(pending.status, StatusCode::OK);
     assert_eq!(pending.header("cache-control"), "no-store");
-    assert_eq!(pending.header("api-version"), "1.0.0-beta.6");
+    assert_eq!(pending.header("api-version"), "1.0.0-beta.7");
     let body = pending.json();
     assert_eq!(body["status"], "pending");
     assert_eq!(body["result"], Value::Null);

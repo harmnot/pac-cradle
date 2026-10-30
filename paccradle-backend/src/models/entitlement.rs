@@ -14,7 +14,8 @@ use super::TextEnum;
 pub const EDIT_WINDOW: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
 /// `design_unlocks.source`: what paid for a design's production files.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum UnlockSource {
     /// A single-export checkout (M1-F4).
     Purchase,
@@ -47,6 +48,14 @@ pub struct DesignUnlock {
     pub source: UnlockSource,
     /// Versions saved until then are covered.
     pub edits_until: OffsetDateTime,
+}
+
+impl DesignUnlock {
+    /// Whether it covers the design version saved at `saved_at`: production files of it can
+    /// be made without paying again (§9.4: edited for 30 days).
+    pub fn covers(&self, saved_at: OffsetDateTime) -> bool {
+        saved_at <= self.edits_until
+    }
 }
 
 /// An unlock to make or renew, covering [`EDIT_WINDOW`] from now.
@@ -98,4 +107,108 @@ pub struct CreditSpend {
     pub user_id: Uuid,
     /// The design it unlocks.
     pub design_id: Uuid,
+}
+
+/// What a user's exports are paid with, as `/me` shows it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Plan {
+    /// No subscription: free files, plus credits or single purchases.
+    Free,
+    /// Pro: every export (§10).
+    Pro,
+    /// Studio (v2): Pro for 3 seats.
+    Studio,
+}
+
+/// `subscriptions.plan`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionPlan {
+    /// Pro, $12 a month.
+    ProMonthly,
+    /// Pro, $139 a year.
+    ProYearly,
+    /// Studio, $49 a month (v2).
+    StudioMonthly,
+}
+
+impl TextEnum for SubscriptionPlan {
+    const ALL: &'static [Self] = &[Self::ProMonthly, Self::ProYearly, Self::StudioMonthly];
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::ProMonthly => "pro_monthly",
+            Self::ProYearly => "pro_yearly",
+            Self::StudioMonthly => "studio_monthly",
+        }
+    }
+}
+
+/// `subscriptions.status`, as Paddle last said it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionStatus {
+    /// In a free trial.
+    Trialing,
+    /// Paid up.
+    Active,
+    /// A payment failed; Paddle is still trying.
+    PastDue,
+    /// Paused by the customer.
+    Paused,
+    /// Ended.
+    Canceled,
+}
+
+impl SubscriptionStatus {
+    /// Whether it gives the plan's exports: trialing, active, or past due while Paddle
+    /// collects (the same rule as `EntitlementRepository::pro_active`).
+    pub const fn grants_plan(self) -> bool {
+        matches!(self, Self::Trialing | Self::Active | Self::PastDue)
+    }
+}
+
+impl TextEnum for SubscriptionStatus {
+    const ALL: &'static [Self] = &[
+        Self::Trialing,
+        Self::Active,
+        Self::PastDue,
+        Self::Paused,
+        Self::Canceled,
+    ];
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Trialing => "trialing",
+            Self::Active => "active",
+            Self::PastDue => "past_due",
+            Self::Paused => "paused",
+            Self::Canceled => "canceled",
+        }
+    }
+}
+
+/// A user's subscription, as Paddle last told us.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Subscription {
+    /// Which plan.
+    pub plan: SubscriptionPlan,
+    /// Its state.
+    pub status: SubscriptionStatus,
+    /// When the paid period ends (renews or stops).
+    pub current_period_end: Option<OffsetDateTime>,
+}
+
+/// What `/me` says about a user's billing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BillingSummary {
+    /// Free, or the plan a live subscription gives.
+    pub plan: Plan,
+    /// Export credits left.
+    pub credits: i64,
+    /// The subscription that matters: a live one, else the latest.
+    pub subscription: Option<Subscription>,
+    /// Designs unlocked for them.
+    pub unlocked_designs: i64,
 }

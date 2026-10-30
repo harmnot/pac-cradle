@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT plan, status, current_period_end\n                FROM subscriptions\n                WHERE user_id = $1\n                ORDER BY status IN ('active', 'trialing', 'past_due') DESC, paddle_updated_at DESC\n                LIMIT 1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "plan",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "subscriptions",
+            "name": "plan"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "subscriptions",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "current_period_end",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "subscriptions",
+            "name": "current_period_end"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "bd227c551cac40eb842ef98460635ef7218d14561b5d25f2d9e4f7c13fd05de0"
+}

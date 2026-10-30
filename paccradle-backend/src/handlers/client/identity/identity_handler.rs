@@ -10,7 +10,7 @@ use crate::handlers::auth::refresh_cookie;
 use crate::locales::Locale;
 use crate::models::session::AuthUser;
 use crate::schemas::identity::{
-    AccountResponse, EmailLinkRequest, EmailLinkSignInRequest, PasswordSignInRequest,
+    AccountResponse, EmailLinkRequest, EmailLinkSignInRequest, MeResponse, PasswordSignInRequest,
     SetPasswordRequest,
 };
 use crate::schemas::passkey::{
@@ -75,13 +75,18 @@ pub async fn password_sign_in(
     Ok(session_response(&state, (signed_in, StatusCode::OK)))
 }
 
-/// `GET /me`: the signed-in user (a guest too).
+/// `GET /me`: the signed-in user (a guest too), with their plan, credits, subscription and
+/// how many designs are unlocked.
 pub async fn me(
     State(state): State<AppState>,
     user: AuthUser,
-) -> Result<Json<AccountResponse>, AppError> {
+) -> Result<Json<MeResponse>, AppError> {
     let account = state.identity.account(&user).await?;
-    Ok(Json(AccountResponse::from(account)))
+    let billing = state.billing.summary(&user).await?;
+    Ok(Json(MeResponse {
+        account: AccountResponse::from(account),
+        billing: billing.into(),
+    }))
 }
 
 /// `PUT /me/password`: sets or changes the password; other sessions end. 204.

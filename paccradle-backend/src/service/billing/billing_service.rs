@@ -1,12 +1,19 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::json;
 use sqlx::PgConnection;
+use uuid::Uuid;
 
 use super::{BillingService, ExportEntitlement};
 use crate::config::PaddlePrices;
 use crate::error::{AppError, ErrorCode};
-use crate::models::entitlement::{CreditSpend, EDIT_WINDOW, NewUnlock, PaidWith, UnlockSource};
+use crate::models::entitlement::{
+    BillingSummary, CreditSpend, DesignUnlock, EDIT_WINDOW, NewUnlock, PaidWith, Plan,
+    SubscriptionPlan, UnlockSource,
+};
+use crate::models::session::AuthUser;
+use crate::repository::database::Database;
 use crate::repository::entitlement::EntitlementRepository;
 use crate::repository::user::UserRepository;
 use crate::shared::future::BoxFuture;
@@ -14,6 +21,8 @@ use crate::shared::id::new_id;
 
 /// What [`DefaultBillingService`] works with.
 pub struct BillingProviders {
+    /// Connections (`summary`, `unlocks`; exports pass their own transaction).
+    pub db: Arc<dyn Database>,
     /// Unlocks, credits and subscriptions.
     pub entitlements: Arc<dyn EntitlementRepository>,
     /// `users` (the checkout's email).
@@ -88,7 +97,7 @@ impl BillingService for DefaultBillingService {
             let entitlements = &self.parts.entitlements;
             entitlements.lock_account(conn, user_id).await?;
             let unlock = entitlements.unlock(conn, request.design.id).await?;
-            if unlock.is_some_and(|unlock| request.design.updated_at <= unlock.edits_until) {
+            if unlock.is_some_and(|unlock| unlock.covers(request.design.updated_at)) {
                 return Ok(PaidWith::Unlocked);
             }
             if entitlements.pro_active(conn, user_id).await? {
@@ -106,6 +115,51 @@ impl BillingService for DefaultBillingService {
                 return Ok(PaidWith::Credit);
             }
             Err(self.payment_required((conn, &request)).await?)
+        })
+    }
+
+    fn summary<'a>(
+        &'a self,
+        user: &'a AuthUser,
+    ) -> BoxFuture<'a, Result<BillingSummary, AppError>> {
+        Box::pin(async move {
+            let entitlements = &self.parts.entitlements;
+            let mut conn = self.parts.db.connection().await?;
+            let subscription = entitlements.subscription(&mut conn, user.user_id).await?;
+            let plan = match subscription {
+                Some(live) if live.status.grants_plan() => match live.plan {
+                    SubscriptionPlan::ProMonthly | SubscriptionPlan::ProYearly => Plan::Pro,
+                    SubscriptionPlan::StudioMonthly => Plan::Studio,
+                },
+                _ => Plan::Free,
+            };
+            Ok(BillingSummary {
+                plan,
+                credits: entitlements.credit_balance(&mut conn, user.user_id).await?,
+                subscription,
+                unlocked_designs: entitlements.unlock_count(&mut conn, user.user_id).await?,
+            })
+        })
+    }
+
+    fn unlocks<'a>(
+        &'a self,
+        (user, design_ids): (&'a AuthUser, &'a [Uuid]),
+    ) -> BoxFuture<'a, Result<HashMap<Uuid, DesignUnlock>, AppError>> {
+        Box::pin(async move {
+            if design_ids.is_empty() {
+                return Ok(HashMap::new());
+            }
+            let mut conn = self.parts.db.connection().await?;
+            let unlocks = self
+                .parts
+                .entitlements
+                .unlocks(&mut conn, (user.user_id, design_ids))
+                .await?;
+            Ok(unlocks
+                .into_iter()
+                .map(|unlock| (unlock.design_id, unlock))
+                .collect())
         })
     }
 }

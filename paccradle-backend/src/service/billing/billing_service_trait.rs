@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use sqlx::PgConnection;
+use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::models::design::SavedDesign;
-use crate::models::entitlement::PaidWith;
+use crate::models::entitlement::{BillingSummary, DesignUnlock, PaidWith};
 use crate::models::session::AuthUser;
 use crate::shared::future::BoxFuture;
 
@@ -30,4 +33,15 @@ pub trait BillingService: Send + Sync {
         &'a self,
         request: (&'a mut PgConnection, ExportEntitlement<'a>),
     ) -> BoxFuture<'a, Result<PaidWith, AppError>>;
+
+    /// The caller's plan, credits, subscription and how many designs are unlocked (`/me`).
+    /// A guest has none of them: free, nothing left.
+    fn summary<'a>(&'a self, user: &'a AuthUser)
+    -> BoxFuture<'a, Result<BillingSummary, AppError>>;
+
+    /// The unlocks of those of `design_ids` unlocked for the caller, by design.
+    fn unlocks<'a>(
+        &'a self,
+        request: (&'a AuthUser, &'a [Uuid]),
+    ) -> BoxFuture<'a, Result<HashMap<Uuid, DesignUnlock>, AppError>>;
 }

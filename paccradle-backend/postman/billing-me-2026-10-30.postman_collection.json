@@ -1,0 +1,292 @@
+{
+  "info": {
+    "name": "paccradle API: billing in /me and design unlocks (2026-10-30)",
+    "description": "Change: M1-D8 (2026-10-30). The client contract moves to **1.0.0-beta.7** (`api-version`); the admin contract stays at 1.0.0-beta.2 (the back office's `/me` is unchanged). Merge into the main contract.\n\n**Added:** `billing` on the client's `GET /me` (plan, credits, subscription, unlocked designs), and `unlock` on designs (`GET`/`PATCH /designs/{design_id}` and the `GET /designs` items). No new codes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:7773"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "design_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Client: billing (/api/client/v1)",
+      "item": [
+        {
+          "name": "Me, with billing",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "The signed-in user (a guest too). The account's fields are unchanged; **new**: `billing`.\n\n- `plan`: `free`, `pro` or `studio`, from a live subscription (`trialing`, `active`, or `past_due` while Paddle still collects).\n- `credits`: export credits left (never expire).\n- `subscription`: the one that matters (a live one, else the latest), or `null`.\n- `unlocked_designs`: how many designs are unlocked. Each design says itself whether it is (`unlock` on `GET /designs/{design_id}` and in \"My designs\").\n\nAfter a pack purchase, poll this until `credits` grows; after Pro, until `plan` is `pro` (the webhook updates them, M1-F4)."
+          },
+          "response": [
+            {
+              "name": "200 a new account",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "me"
+                  ]
+                },
+                "description": "The signed-in user (a guest too). The account's fields are unchanged; **new**: `billing`.\n\n- `plan`: `free`, `pro` or `studio`, from a live subscription (`trialing`, `active`, or `past_due` while Paddle still collects).\n- `credits`: export credits left (never expire).\n- `subscription`: the one that matters (a live one, else the latest), or `null`.\n- `unlocked_designs`: how many designs are unlocked. Each design says itself whether it is (`unlock` on `GET /designs/{design_id}` and in \"My designs\").\n\nAfter a pack purchase, poll this until `credits` grows; after Pro, until `plan` is `pro` (the webhook updates them, M1-F4)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.7"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                }
+              ],
+              "body": "{\n  \"id\": \"01a18a7f-7e2a-74e9-8aac-463f411ad71a\",\n  \"email\": \"d8-1793324970@example.com\",\n  \"role\": \"user\",\n  \"has_password\": false,\n  \"passkey_count\": 0,\n  \"locale\": \"en\",\n  \"paper_default\": \"a4\",\n  \"created_at\": \"2026-10-30T01:49:33.596601Z\",\n  \"billing\": {\n    \"plan\": \"free\",\n    \"credits\": 0,\n    \"subscription\": null,\n    \"unlocked_designs\": 0\n  }\n}"
+            },
+            {
+              "name": "200 after a credit was spent",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "me"
+                  ]
+                },
+                "description": "The signed-in user (a guest too). The account's fields are unchanged; **new**: `billing`.\n\n- `plan`: `free`, `pro` or `studio`, from a live subscription (`trialing`, `active`, or `past_due` while Paddle still collects).\n- `credits`: export credits left (never expire).\n- `subscription`: the one that matters (a live one, else the latest), or `null`.\n- `unlocked_designs`: how many designs are unlocked. Each design says itself whether it is (`unlock` on `GET /designs/{design_id}` and in \"My designs\").\n\nAfter a pack purchase, poll this until `credits` grows; after Pro, until `plan` is `pro` (the webhook updates them, M1-F4)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.7"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                }
+              ],
+              "body": "{\n  \"id\": \"01a18a7f-7e2a-74e9-8aac-463f411ad71a\",\n  \"email\": \"d8-1793324970@example.com\",\n  \"role\": \"user\",\n  \"has_password\": false,\n  \"passkey_count\": 0,\n  \"locale\": \"en\",\n  \"paper_default\": \"a4\",\n  \"created_at\": \"2026-10-30T01:49:33.596601Z\",\n  \"billing\": {\n    \"plan\": \"free\",\n    \"credits\": 4,\n    \"subscription\": null,\n    \"unlocked_designs\": 1\n  }\n}"
+            },
+            {
+              "name": "200 on Pro",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "me"
+                  ]
+                },
+                "description": "The signed-in user (a guest too). The account's fields are unchanged; **new**: `billing`.\n\n- `plan`: `free`, `pro` or `studio`, from a live subscription (`trialing`, `active`, or `past_due` while Paddle still collects).\n- `credits`: export credits left (never expire).\n- `subscription`: the one that matters (a live one, else the latest), or `null`.\n- `unlocked_designs`: how many designs are unlocked. Each design says itself whether it is (`unlock` on `GET /designs/{design_id}` and in \"My designs\").\n\nAfter a pack purchase, poll this until `credits` grows; after Pro, until `plan` is `pro` (the webhook updates them, M1-F4)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.7"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                }
+              ],
+              "body": "{\n  \"id\": \"01a18a7f-7e2a-74e9-8aac-463f411ad71a\",\n  \"email\": \"d8-1793324970@example.com\",\n  \"role\": \"user\",\n  \"has_password\": false,\n  \"passkey_count\": 0,\n  \"locale\": \"en\",\n  \"paper_default\": \"a4\",\n  \"created_at\": \"2026-10-30T01:49:33.596601Z\",\n  \"billing\": {\n    \"plan\": \"pro\",\n    \"credits\": 4,\n    \"subscription\": {\n      \"plan\": \"pro_monthly\",\n      \"status\": \"active\",\n      \"current_period_end\": \"2026-11-29T01:49:35.295448Z\"\n    },\n    \"unlocked_designs\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A design, with its unlock",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "designs",
+                "{{design_id}}"
+              ]
+            },
+            "description": "**New:** `unlock` (also in `PATCH` answers and \"My designs\" items): `null` until the design's production files are paid for; then `source` (`purchase`, `credit`, `pro`), `edits_until` (versions saved until then export without paying again) and `covers_current_version` (whether the design as it is now exports its production files at no cost). After a single-export checkout, poll this design until `unlock` shows, then ask for the files."
+          },
+          "response": [
+            {
+              "name": "200 not unlocked yet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "**New:** `unlock` (also in `PATCH` answers and \"My designs\" items): `null` until the design's production files are paid for; then `source` (`purchase`, `credit`, `pro`), `edits_until` (versions saved until then export without paying again) and `covers_current_version` (whether the design as it is now exports its production files at no cost). After a single-export checkout, poll this design until `unlock` shows, then ask for the files."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.7"
+                }
+              ],
+              "body": "{\n  \"design_id\": \"01a18a7f-821b-71d7-9876-4d7a77508771\",\n  \"name\": \"Perfume set\",\n  \"version\": 1,\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  },\n  \"unlock\": null,\n  \"created_at\": \"2026-10-30T01:49:34.625622Z\",\n  \"updated_at\": \"2026-10-30T01:49:34.625622Z\"\n}"
+            },
+            {
+              "name": "200 unlocked (paid with a credit)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "**New:** `unlock` (also in `PATCH` answers and \"My designs\" items): `null` until the design's production files are paid for; then `source` (`purchase`, `credit`, `pro`), `edits_until` (versions saved until then export without paying again) and `covers_current_version` (whether the design as it is now exports its production files at no cost). After a single-export checkout, poll this design until `unlock` shows, then ask for the files."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.7"
+                }
+              ],
+              "body": "{\n  \"design_id\": \"01a18a7f-821b-71d7-9876-4d7a77508771\",\n  \"name\": \"Perfume set\",\n  \"version\": 1,\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  },\n  \"unlock\": {\n    \"source\": \"credit\",\n    \"edits_until\": \"2026-11-29T01:49:35.018885Z\",\n    \"covers_current_version\": true\n  },\n  \"created_at\": \"2026-10-30T01:49:34.625622Z\",\n  \"updated_at\": \"2026-10-30T01:49:34.625622Z\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

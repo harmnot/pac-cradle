@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::billing::BillingResponse;
 use crate::error::{AppError, ErrorCode};
 use crate::models::paper::Paper;
 use crate::models::session::{NextStep, SignedIn};
@@ -128,6 +129,16 @@ pub struct AccountResponse {
     /// When the account (or the guest it grew from) was made, RFC 3339.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+}
+
+/// `GET /me` on the client surface: the account and its billing (M1-D8).
+#[derive(Debug, Serialize)]
+pub struct MeResponse {
+    /// The account's fields, at the top level.
+    #[serde(flatten)]
+    pub account: AccountResponse,
+    /// Plan, credits, subscription and unlocked designs.
+    pub billing: BillingResponse,
 }
 
 impl From<User> for AccountResponse {
