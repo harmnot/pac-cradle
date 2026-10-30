@@ -108,6 +108,18 @@ impl SoftAuthenticator {
         };
         let mut credential_id = vec![0u8; 32];
         ring::rand::SecureRandom::fill(&rng, &mut credential_id).unwrap();
+        Self::with((signer, credential_id, origin))
+    }
+
+    /// A P-256 credential from a known PKCS#8 key and credential id, for RP ID `localhost`,
+    /// used from `origin`: the development seed's admin passkey (`examples/dev_seed.rs`).
+    pub fn p256_from_pkcs8((pkcs8, credential_id, origin): (&[u8], &[u8], &str)) -> Self {
+        let rng = SystemRandom::new();
+        let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8, &rng).unwrap();
+        Self::with((Signer::P256(key), credential_id.to_vec(), origin))
+    }
+
+    fn with((signer, credential_id, origin): (Signer, Vec<u8>, &str)) -> Self {
         Self {
             signer,
             credential_id,

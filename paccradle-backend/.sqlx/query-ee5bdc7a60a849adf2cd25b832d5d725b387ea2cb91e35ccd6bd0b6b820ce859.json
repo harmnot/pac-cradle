@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM users WHERE id = ANY($1) OR lower(email) = ANY($2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ee5bdc7a60a849adf2cd25b832d5d725b387ea2cb91e35ccd6bd0b6b820ce859"
+}

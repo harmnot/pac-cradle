@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO subscriptions (id, user_id, paddle_subscription_id, plan, status,\n                                   current_period_end, paddle_updated_at)\n        VALUES ($1, $2, 'sub_dev_seed_dewi_pro', 'pro_monthly', 'active',\n                now() + interval '30 days', now())\n        RETURNING current_period_end AS \"current_period_end!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "current_period_end!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "subscriptions",
+            "name": "current_period_end"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3fec7f880eb0de866fc70cf74bead8f31f30e7d4fe5e6bf13ded0e37f6344cca"
+}

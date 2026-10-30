@@ -1,0 +1,291 @@
+{
+  "info": {
+    "name": "paccradle API: dev seed sign-ins (2026-10-30)",
+    "description": "M1-D9 (2026-10-30). **Not a contract change**: no request or response changes, and the contract versions stay as they are. Sign-ins for the seeded development accounts (`scripts/dev-seed.sh`, `examples/dev_seed.rs`); use them with the environment `dev-seed-2026-10-30.postman_environment.json`.\n\n| Name | Email | Has |\n|---|---|---|\n| Ada Admin | admin@paccradle.test | the admin role |\n| Bima Buyer | buyer@paccradle.test | free plan, no credits, 3 designs (exports answer 402) |\n| Citra Credits | credits@paccradle.test | 4 credits left, her cradle unlocked |\n| Dewi Pro | pro@paccradle.test | Pro monthly, active |\n\nPassword for every one: `paccradle-dev-pass` (`{{seed_password}}`). Run `scripts/dev-seed.sh` again to put them back as seeded.\n\n**Back office**: admins sign in with a passkey only, which Postman can't make. Run `scripts/dev-seed.sh admin-token`, paste the cookie value (after `paccradle_admin_refresh=`) into `admin_refresh_token`, then send *Back office: refresh*: it saves `admin_access_token` (5 minutes) and the next cookie. Send it again whenever the token runs out; the session ends 12 hours after `admin-token` signed in.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Web app accounts (password sign-in)",
+      "item": [
+        {
+          "name": "Sign in as Ada Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('signed in', () => pm.expect(pm.response.code).to.eql(200));",
+                  "pm.environment.set('access_token', body.access_token);",
+                  "const cookie = pm.cookies.get('paccradle_refresh');",
+                  "if (cookie) pm.environment.set('refresh_token', cookie);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "auth",
+                "password",
+                "sign-in"
+              ]
+            },
+            "description": "Ada Admin: the admin role. On the web app she is an ordinary account; the back office needs her passkey (below).\n\nSaves `access_token` and `refresh_token` in the environment, so every other collection's requests run as this account. The access token lasts 15 minutes: send this again, or the auth collection's Refresh.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{seed_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in as Bima Buyer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('signed in', () => pm.expect(pm.response.code).to.eql(200));",
+                  "pm.environment.set('access_token', body.access_token);",
+                  "const cookie = pm.cookies.get('paccradle_refresh');",
+                  "if (cookie) pm.environment.set('refresh_token', cookie);",
+                  "pm.environment.set('design_id', pm.environment.get('bima_cradle_id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "auth",
+                "password",
+                "sign-in"
+              ]
+            },
+            "description": "Bima Buyer: free plan, no credits, 3 designs (cradle, card, grid). SVG, PDF or DXF of any of them answers 402 `EXPORT_PAYMENT_REQUIRED` with the checkout; PNG and the test print are free.\n\nSaves `access_token` and `refresh_token` in the environment, and `design_id` (`{{bima_cradle_id}}`), so every other collection's requests run as this account. The access token lasts 15 minutes: send this again, or the auth collection's Refresh.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{buyer_email}}\",\n  \"password\": \"{{seed_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in as Citra Credits",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('signed in', () => pm.expect(pm.response.code).to.eql(200));",
+                  "pm.environment.set('access_token', body.access_token);",
+                  "const cookie = pm.cookies.get('paccradle_refresh');",
+                  "if (cookie) pm.environment.set('refresh_token', cookie);",
+                  "pm.environment.set('design_id', pm.environment.get('citra_cradle_id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "auth",
+                "password",
+                "sign-in"
+              ]
+            },
+            "description": "Citra Credits: bought a 5-pack and spent 1 on her cradle (unlocked for 30 days, its export done once the API's worker ran it): 4 credits left. Her card isn't unlocked: exporting it spends a credit.\n\nSaves `access_token` and `refresh_token` in the environment, and `design_id` (`{{citra_cradle_id}}`), so every other collection's requests run as this account. The access token lasts 15 minutes: send this again, or the auth collection's Refresh.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{credits_email}}\",\n  \"password\": \"{{seed_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in as Dewi Pro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('signed in', () => pm.expect(pm.response.code).to.eql(200));",
+                  "pm.environment.set('access_token', body.access_token);",
+                  "const cookie = pm.cookies.get('paccradle_refresh');",
+                  "if (cookie) pm.environment.set('refresh_token', cookie);",
+                  "pm.environment.set('design_id', pm.environment.get('dewi_grid_id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/auth/password/sign-in",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "auth",
+                "password",
+                "sign-in"
+              ]
+            },
+            "description": "Dewi Pro: Pro monthly, active for 30 days from seeding. Exports unlock her designs without spending credits.\n\nSaves `access_token` and `refresh_token` in the environment, and `design_id` (`{{dewi_grid_id}}`), so every other collection's requests run as this account. The access token lasts 15 minutes: send this again, or the auth collection's Refresh.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{pro_email}}\",\n  \"password\": \"{{seed_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Back office (seeded passkey)",
+      "item": [
+        {
+          "name": "Back office: refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refreshed', () => pm.expect(pm.response.code).to.eql(200));",
+                  "pm.environment.set('admin_access_token', pm.response.json().access_token);",
+                  "const cookie = pm.cookies.get('paccradle_admin_refresh');",
+                  "if (cookie) pm.environment.set('admin_refresh_token', cookie);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "paccradle_admin_refresh={{admin_refresh_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Trades `admin_refresh_token` (from `scripts/dev-seed.sh admin-token`) for a 5-minute `admin_access_token`, and saves the next cookie: each refresh replaces it, and sending a replaced one again ends the session. No `Origin` header, so it works whether or not `ADMIN_WEB_URL` is set."
+          }
+        },
+        {
+          "name": "Back office: me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Ada's back-office account: `role` is `admin`."
+          }
+        }
+      ]
+    }
+  ]
+}

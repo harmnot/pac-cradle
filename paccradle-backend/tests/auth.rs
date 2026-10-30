@@ -854,6 +854,46 @@ async fn admins_sign_in_to_the_back_office_with_a_passkey_only(pool: PgPool) {
     assert_eq!(demoted.error_code(), "AUTH_SESSION_EXPIRED");
 }
 
+#[sqlx::test]
+async fn back_office_sign_out_ends_only_the_back_office_session(pool: PgPool) {
+    let api = auth_api(pool.clone(), &[("ADMIN_WEB_URL", ADMIN_ORIGIN)]);
+    let uma = sign_up(&api, "uma@example.com").await;
+    let mut device = SoftAuthenticator::new(KeyKind::Ed25519, APP_ORIGIN);
+    add_passkey(&api, (&uma, &mut device)).await;
+    sqlx::query("UPDATE users SET role = 'admin' WHERE id = $1")
+        .bind(uma.user_id())
+        .execute(&pool)
+        .await
+        .unwrap();
+    device.origin = ADMIN_ORIGIN.to_owned();
+    let back_office = Browser::from(
+        &passkey_sign_in(&api, (ADMIN, &mut device)).await,
+        ADMIN_COOKIE,
+    );
+
+    let out = api
+        .send(
+            call(Method::POST, &admin("/auth/sign-out")).cookie(ADMIN_COOKIE, &back_office.cookie),
+        )
+        .await;
+    assert_eq!(out.status, StatusCode::NO_CONTENT);
+    assert!(
+        out.set_cookie(ADMIN_COOKIE)
+            .starts_with("paccradle_admin_refresh=; Path=/api/admin/v1/auth; Max-Age=0"),
+        "{}",
+        out.set_cookie(ADMIN_COOKIE)
+    );
+    let refreshed = api
+        .send(call(Method::POST, &admin("/auth/refresh")).cookie(ADMIN_COOKIE, &back_office.cookie))
+        .await;
+    assert_eq!(refreshed.error_code(), "AUTH_SESSION_EXPIRED");
+    // The web app's session of the same person carries on.
+    assert_eq!(refresh(&api, &uma.cookie).await.status, StatusCode::OK);
+    // Without a cookie it still answers 204.
+    let again = api.send(call(Method::POST, &admin("/auth/sign-out"))).await;
+    assert_eq!(again.status, StatusCode::NO_CONTENT);
+}
+
 /// An `admin_audit_log` row: email, method, path, route, status, request id.
 type AuditRow = (String, String, String, Option<String>, Option<i16>, String);
 

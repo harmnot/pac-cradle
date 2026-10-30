@@ -10,7 +10,7 @@
 # Build the image first: docker build --target toolchain -t paccradle-toolchain .
 # Build output lives in the "paccradle-target" Docker volume (fast; macOS bind mounts are slow).
 # DATABASE_URL points at scripts/dev-db.sh's database through the host (set DOCKER_DATABASE_URL
-# to use another); SQLX_OFFLINE passes through when set.
+# to use another); SQLX_OFFLINE and DEV_API_URL (scripts/dev-seed.sh) pass through when set.
 set -euo pipefail
 
 backend_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,5 +23,6 @@ exec docker run --rm \
   -e CARGO_TARGET_DIR=/target \
   -e DATABASE_URL="${database_url}" \
   ${SQLX_OFFLINE:+-e SQLX_OFFLINE="${SQLX_OFFLINE}"} \
+  ${DEV_API_URL:+-e DEV_API_URL="${DEV_API_URL}"} \
   -w /app \
   paccradle-toolchain "$@"

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO credit_ledger (id, user_id, delta, reason, paddle_transaction_id, note)\n        VALUES ($1, $2, 5, 'purchase', 'txn_dev_seed_citra_pack', 'dev seed: a 5-pack')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2796dc6d0949348ce6c755e0a496ed950f84bff5dc7f5e8ee1a16b4d9d15bf16"
+}
