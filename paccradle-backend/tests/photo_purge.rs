@@ -61,6 +61,7 @@ async fn captures(api: &TestApi, (user, count, days_ago): (Uuid, i64, f64)) -> V
                 key: key.clone(),
                 bytes: b"photo".to_vec(),
                 content_type: "image/jpeg",
+                content_disposition: None,
             })
             .await
             .unwrap();

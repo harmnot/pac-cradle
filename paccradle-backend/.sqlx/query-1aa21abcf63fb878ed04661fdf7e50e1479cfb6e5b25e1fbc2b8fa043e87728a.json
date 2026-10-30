@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE exports SET status = 'failed', error_code = $2\n                WHERE id = $1 AND status = 'pending'\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1aa21abcf63fb878ed04661fdf7e50e1479cfb6e5b25e1fbc2b8fa043e87728a"
+}

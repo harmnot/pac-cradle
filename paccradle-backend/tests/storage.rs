@@ -162,6 +162,7 @@ async fn the_memory_store_keeps_deletes_and_goes_down_on_demand() {
             key: "photos/a.jpg".to_owned(),
             bytes: b"photo".to_vec(),
             content_type: "image/jpeg",
+            content_disposition: None,
         })
         .await
         .unwrap();
@@ -194,6 +195,7 @@ async fn a_real_bucket_round_trip() {
         key: key.clone(),
         bytes: body.clone(),
         content_type: "text/plain",
+        content_disposition: None,
     })
     .await
     .unwrap();

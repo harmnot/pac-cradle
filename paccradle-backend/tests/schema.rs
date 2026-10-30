@@ -107,7 +107,8 @@ async fn enum_like_columns_refuse_values_the_code_doesnt_know(pool: PgPool) {
 
     for formats in [vec!["cf2"], vec![]] {
         let export = sqlx::query(
-            "INSERT INTO exports (id, design_id, design_version, formats) VALUES ($1, $2, 1, $3)",
+            "INSERT INTO exports (id, design_id, design_version, formats, spec, paid_with) \
+             VALUES ($1, $2, 1, $3, '{}', 'free')",
         )
         .bind(new_id())
         .bind(design_id)
@@ -236,7 +237,8 @@ async fn deleting_a_user_deletes_everything_theirs(pool: PgPool) {
         .await
         .unwrap();
         sqlx::query(
-            "INSERT INTO exports (id, design_id, design_version, formats) VALUES ($1, $2, 1, '{svg,pdf}')",
+            "INSERT INTO exports (id, design_id, design_version, formats, spec, paid_with) \
+             VALUES ($1, $2, 1, '{svg,pdf}', '{}', 'credit')",
         )
         .bind(new_id())
         .bind(design_id)

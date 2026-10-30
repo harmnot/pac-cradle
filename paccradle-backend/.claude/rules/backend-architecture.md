@@ -141,6 +141,8 @@ Built (M1-D5): `capture.rs` gained the full row (`run`, `result` as the §5.5 JS
 
 Built (M1-D6): `page.rs` (`PageRequest` with `offset`/`limit`, `Page<T>` with `total_pages`, `SortOrder`; `MAX_PAGE_SIZE` 100, `DEFAULT_PAGE_SIZE` 20: every list uses them), `design.rs` (`SavedDesign` holding the typed `insert_core::Design`, `NewDesign`, `DesignChange` with the version it was made from, `DesignSummary`, `InsertStyle`, `DesignSort`, `DesignListQuery`).
 
+Built (M1-D7): `entitlement.rs` (`DesignUnlock`, `NewUnlock`, `UnlockSource`, `CreditSpend`, `PaidWith`, `EDIT_WINDOW` 30 days), `export.rs` (`ExportFormat` with `is_paid`, `ExportStatus`, `NewExport` with the spec copy, `Export`, `ExportFile`, `ExportLink`, `ExportView`, `ExportSummary`, `ExportListQuery`, the `RunExport` job kind).
+
 ### 4.4 `src/repository`
 Database communication layer (SQLx).
 
@@ -175,7 +177,7 @@ How they are written (M1-D2):
 - No SQL built from strings: sqlx 0.9 only takes `&'static str` SQL unless wrapped in `AssertSqlSafe`, which production code doesn't use.
 - `sqlx::Error` converts into `AppError` (`?`): a database that can't be reached is 503 `SERVICE_UNAVAILABLE` (`meta.dependency = "database"`), anything else 500.
 - Built: `health/` (`ping`), `job/` (insert, claim, mark done/dead, requeue, release expired leases, delete old done jobs).
-- From M1-D3, `database::Database` (`begin()` → `Tx`, `connection()` → a pooled `Conn`) is how services get connections, and the new repositories take `&mut PgConnection` in **every** method: the service decides what commits together (`&mut tx`) or runs alone (`&mut conn`). Built: `user/` (find by id or email, password hash, insert guest or account, confirm a guest's email, move a guest's rows, delete, advisory lock per email), `session/` (insert, find by refresh hash current or previous, conditional rotate, revoke, revoke others, delete ended), `email_link/` (insert, count recent per address, set token, consume, retire the others, delete old), `passkey/` (challenges: insert, take once, delete expired; passkeys: insert unless known, find by credential id, ids per user, record use), `audit/` (insert with the admin's email copied, finish once). Built (M1-D4): `capture/` (insert a pending capture, photos due for the purge, forget a photo's key if it still names it; M1-D5: find, `lock` with `FOR UPDATE`, `save` the fields that change); `design/` (M1-D6: insert, find, lock, update, a page of summaries and its count: the sort column and direction are parameters picked by `CASE`, since the SQL is fixed; search is `strpos(lower(name), lower($q))`, so no `LIKE` escaping); `job/` gained `insert_unless_recent` (the schedule check, under an advisory lock per kind).
+- From M1-D3, `database::Database` (`begin()` → `Tx`, `connection()` → a pooled `Conn`) is how services get connections, and the new repositories take `&mut PgConnection` in **every** method: the service decides what commits together (`&mut tx`) or runs alone (`&mut conn`). Built: `user/` (find by id or email, password hash, insert guest or account, confirm a guest's email, move a guest's rows, delete, advisory lock per email), `session/` (insert, find by refresh hash current or previous, conditional rotate, revoke, revoke others, delete ended), `email_link/` (insert, count recent per address, set token, consume, retire the others, delete old), `passkey/` (challenges: insert, take once, delete expired; passkeys: insert unless known, find by credential id, ids per user, record use), `audit/` (insert with the admin's email copied, finish once). Built (M1-D4): `capture/` (insert a pending capture, photos due for the purge, forget a photo's key if it still names it; M1-D5: find, `lock` with `FOR UPDATE`, `save` the fields that change); `entitlement/` (M1-D7: lock the user's row, a design's unlock, save or renew an unlock, credit balance, spend a credit, whether Pro is active), `export/` (M1-D7: insert, find with the design's owner, finish with files or fail while pending, a design's page of summaries and its count), `design/` (M1-D6: insert, find, lock, update, a page of summaries and its count: the sort column and direction are parameters picked by `CASE`, since the SQL is fixed; search is `strpos(lower(name), lower($q))`, so no `LIKE` escaping); `job/` gained `insert_unless_recent` (the schedule check, under an advisory lock per kind).
 
 ### 4.5 `src/service`
 Business logic layer — one folder per Paccradle domain.
@@ -192,8 +194,8 @@ service/
 ├── audit/                   # the admin write log (M1-D3)
 ├── capture/                 # uploads (M1-D4); vision runs, reading a capture, corrections (M1-D5; calls vision)
 ├── design/                  # create, get, versioned update, "My designs" (M1-D6; checks specs with insert_core); share links (M2)
-├── export/                  # entitlement check, export jobs, signed URLs (calls insert_core exporters)
-├── billing/                 # Paddle checkout payloads, webhooks, credits, unlocks, subscriptions
+├── export/                  # export requests, the run_export job, signed URLs (M1-D7; calls insert_core exporters)
+├── billing/                 # the export entitlement and its 402 checkout (M1-D7); Paddle webhooks, purchases, refunds, portal (M1-F)
 └── privacy/                 # photo purge (M1-D4), account and data deletion
 ```
 
@@ -246,7 +248,7 @@ schemas/
 ├── passkey.rs               # W3C options/credential JSON, PasskeyResponse (M1-D3)
 ├── capture.rs               # CreateCaptureRequest + CaptureCreatedResponse (M1-D4); CaptureResponse (CLAUDE.md §5.5 JSON), CorrectionRequest (D5)
 ├── design.rs                # CreateDesignRequest, UpdateDesignRequest, DesignListParams, DesignResponse, DesignSummaryResponse (M1-D6)
-├── export.rs                # CreateExportRequest, ExportResponse, CheckoutRequired (402)
+├── export.rs                # CreateExportRequest, ExportListParams, ExportResponse, ExportSummaryResponse (M1-D7; the 402's checkout is the error's meta)
 └── webhooks.rs              # Paddle webhook payloads
 ```
 
@@ -272,7 +274,7 @@ handlers/
 │   ├── mod.rs               # client router: its *_route.rs files, api-version header, CORS for APP_WEB_URL
 │   ├── capture/             # POST /captures: multipart upload, own body limit and hourly per-address limit (M1-D4); GET /captures/{id}, POST /captures/{id}/correct, no-store (M1-D5)
 │   ├── design/              # POST/GET /designs, GET/PATCH /designs/{id} (M1-D6)
-│   ├── export/
+│   ├── export/              # POST/GET /designs/{id}/exports, GET /exports/{id}, no-store (M1-D7)
 │   ├── billing/             # customer portal link
 │   ├── identity/            # /auth/{guest,email-link[/sign-in],password/sign-in}, /me, /me/password, /me/passkeys (M1-D3)
 │   └── share/               # public read-only share data
@@ -309,7 +311,7 @@ jobs/
 ├── send_email_link.rs       # makes a link's token and emails it, through the identity service (M1-D3)
 ├── purge_photos.rs          # daily: calls privacy service (photos older than 30 days, M1-D4)
 ├── run_vision.rs            # calls capture service; marks a run failed when its job fails for good (M1-D5)
-├── run_export.rs            # calls export service (M1-D7)
+├── run_export.rs            # calls export service; marks the export failed when its job fails for good (M1-D7)
 ├── process_webhooks.rs      # calls billing service for stored Paddle events (M1-F3)
 └── reconcile_billing.rs     # daily: calls billing service to repair subscription drift
 ```
@@ -399,6 +401,12 @@ Conventions (the header of the first migration):
 - **Versions.** `POST` saves version 1. `PATCH` carries the version it was made from: another one is `DESIGN_VERSION_CONFLICT` with `meta.current_version` (another tab saved first; the editor reloads). A change that changes nothing keeps the version, so autosaving the same state costs nothing. Every saved change adds one; an export records the version it was made from.
 - **"My designs"** (`GET /designs`): `page` (from 1), `page_size` (1–100, default 20), `search` (name, any case), `style`, `sort` (`updated_at` default, `created_at`, `name`), `order` (default `asc` by name, `desc` by date); `{items, page, page_size, total, total_pages}`. Items are summaries without outlines (style, product types and count, whether it has a box). Unknown parameters are `INVALID_REQUEST`.
 - **Privacy.** Someone else's design, or an unknown id, is `DESIGN_NOT_FOUND`. Guests save designs too; they move to the account when the guest signs up or in (M1-D3).
+
+## 11. Exports and entitlements (M1-D7, CLAUDE.md §9.3)
+- **Asking** (`POST /designs/{id}/exports {formats, paper?, version?}`): an account only (`AUTH_ACCOUNT_REQUIRED` for a guest, DEC-14); 60 an hour per user; the design must be the caller's and, when `version` is sent, current (`DESIGN_VERSION_CONFLICT`). The design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422, `insert_core`'s words) and costs nothing.
+- **Free and paid.** `png` (preview) and `test_print` (needs `paper`) are free. `svg`, `pdf`, `dxf` need `BillingService::entitle_export`, run in the export's own transaction with the user's row locked (`SELECT … FOR UPDATE`, so two clicks spend one credit): an unlock whose 30-day edit window covers this version (the design's `updated_at` ≤ `edits_until`) → `unlocked`; Pro (`active`, `trialing`, `past_due`) → `pro`, unlocking the design for 30 days; a credit (`SUM(delta)` > 0) → `credit`, a `spend` row of −1 and the unlock; otherwise `EXPORT_PAYMENT_REQUIRED` (402) with `meta.checkout` (`price_id` of a single export, `custom_data {user_id, design_id}`, `customer_email`) and `meta.offers` (the four price ids). Prices come from `PADDLE_PRICE_*` (required in production).
+- **The export** keeps a copy of the spec, the design's name and version, the paper and `paid_with`, and its `run_export` job is queued in the same transaction. The job makes every file from that copy, stores it at `exports/{id}/{file name}` with `Content-Disposition: attachment; filename="paccradle-<name>-v<version>…"`, then marks the export done; a file that can't be made marks it failed (logged); storage outages retry; a job that fails for good marks it `EXPORT_FAILED`. Asking again is free: the design stays unlocked.
+- **Downloading** (`GET /exports/{id}`): files with 5-minute signed links once done (`EXPORT_URL_TTL`); someone else's export is `EXPORT_NOT_FOUND`. History: `GET /designs/{id}/exports` (paged, `status` filter, newest first). Export files are kept: re-downloading never expires.
 
 ## Related files
 - `CLAUDE.md` (repo root) — product plan

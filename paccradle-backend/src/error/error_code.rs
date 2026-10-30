@@ -83,11 +83,20 @@ pub enum ErrorCode {
     DesignInvalid,
     /// 409: the design was saved meanwhile (another tab); it is now at `{current_version}`.
     DesignVersionConflict,
+    /// 422: the design can't be made into pieces yet (it doesn't fit its box…); `{detail}`
+    /// says why, in the editor's own (English) words.
+    DesignNotBuildable,
+    /// 402: production files need the design unlocked: `meta.checkout` opens Paddle.
+    ExportPaymentRequired,
+    /// 404: no export with this id belongs to the caller.
+    ExportNotFound,
+    /// 500 (an export's stored error): its files couldn't be made. Asking again is free.
+    ExportFailed,
 }
 
 impl ErrorCode {
     /// Every code, so tests can check each has a message in every language.
-    pub const ALL: [Self; 37] = [
+    pub const ALL: [Self; 41] = [
         Self::InvalidRequest,
         Self::AuthRequired,
         Self::Forbidden,
@@ -125,6 +134,10 @@ impl ErrorCode {
         Self::DesignNotFound,
         Self::DesignInvalid,
         Self::DesignVersionConflict,
+        Self::DesignNotBuildable,
+        Self::ExportPaymentRequired,
+        Self::ExportNotFound,
+        Self::ExportFailed,
     ];
 
     /// The code as callers see it, e.g. `ROUTE_NOT_FOUND`.
@@ -167,6 +180,10 @@ impl ErrorCode {
             Self::DesignNotFound => "DESIGN_NOT_FOUND",
             Self::DesignInvalid => "DESIGN_INVALID",
             Self::DesignVersionConflict => "DESIGN_VERSION_CONFLICT",
+            Self::DesignNotBuildable => "DESIGN_NOT_BUILDABLE",
+            Self::ExportPaymentRequired => "EXPORT_PAYMENT_REQUIRED",
+            Self::ExportNotFound => "EXPORT_NOT_FOUND",
+            Self::ExportFailed => "EXPORT_FAILED",
         }
     }
 
@@ -185,8 +202,12 @@ impl ErrorCode {
             Self::CapturePaperNotFound
             | Self::CaptureProductNotFound
             | Self::CaptureTraceNotFound
-            | Self::CaptureNothingAtTap => StatusCode::UNPROCESSABLE_ENTITY,
-            Self::CaptureNotFound | Self::DesignNotFound => StatusCode::NOT_FOUND,
+            | Self::CaptureNothingAtTap
+            | Self::DesignNotBuildable => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::ExportPaymentRequired => StatusCode::PAYMENT_REQUIRED,
+            Self::CaptureNotFound | Self::DesignNotFound | Self::ExportNotFound => {
+                StatusCode::NOT_FOUND
+            }
             Self::CapturePhotoDeleted => StatusCode::GONE,
             Self::CaptureNotReady | Self::DesignVersionConflict => StatusCode::CONFLICT,
             Self::AuthRequired | Self::AuthInvalidCredentials | Self::AuthSessionExpired => {
@@ -205,7 +226,9 @@ impl ErrorCode {
                 StatusCode::UNSUPPORTED_MEDIA_TYPE
             }
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
-            Self::Internal | Self::CaptureProcessingFailed => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Internal | Self::CaptureProcessingFailed | Self::ExportFailed => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
             Self::ServiceUnavailable | Self::RequestTimeout => StatusCode::SERVICE_UNAVAILABLE,
         }
     }

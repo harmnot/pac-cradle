@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO credit_ledger (id, user_id, delta, reason, paddle_transaction_id)\n        VALUES (gen_random_uuid(), $1, $2, 'purchase', 'txn_' || gen_random_uuid())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cffee5a53e0991965f9b388a961983f1616fec8e34f84b000c93a653fea807f0"
+}

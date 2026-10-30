@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO design_unlocks (id, design_id, user_id, source, edits_until)\n                VALUES ($1, $2, $3, $4, now() + make_interval(secs => $5))\n                ON CONFLICT (design_id) DO UPDATE\n                SET user_id = EXCLUDED.user_id,\n                    source = EXCLUDED.source,\n                    paddle_transaction_id = NULL,\n                    unlocked_at = now(),\n                    edits_until = EXCLUDED.edits_until\n                RETURNING design_id, user_id, source, edits_until\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "design_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "design_unlocks",
+            "name": "design_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "design_unlocks",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "source",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "design_unlocks",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "edits_until",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "design_unlocks",
+            "name": "edits_until"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7ac621e0873951d277b4c9b8d11a1702437e321b824051e77d76d518577c1dbe"
+}

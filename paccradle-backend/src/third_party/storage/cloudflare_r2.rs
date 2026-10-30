@@ -58,19 +58,22 @@ impl CloudflareR2 {
         format!("/{}/{}", self.bucket, sigv4::encode_path(key))
     }
 
-    /// Sends a signed request for the object at `key`, with `body` (bytes and media type)
-    /// for a PUT.
+    /// Sends a signed request for the object at `key`, with `body` (the object) for a PUT.
     async fn send(
         &self,
-        (method, key, body): (Method, &str, Option<(Vec<u8>, &'static str)>),
+        (method, key, body): (Method, &str, Option<NewObject>),
     ) -> Result<Response, AppError> {
         let path = self.path(key);
-        let payload_sha256 = sigv4::payload_hash(body.as_ref().map_or(&[], |(bytes, _)| bytes));
-        let content_type = body.as_ref().map(|&(_, content_type)| content_type);
-        let headers: Vec<(&str, &str)> = content_type
-            .map(|value| ("content-type", value))
-            .into_iter()
-            .collect();
+        let payload_sha256 =
+            sigv4::payload_hash(body.as_ref().map_or(&[], |object| object.bytes.as_slice()));
+        // Sorted by name, as SigV4 signs them.
+        let mut headers: Vec<(&str, &str)> = Vec::new();
+        if let Some(object) = &body {
+            if let Some(disposition) = &object.content_disposition {
+                headers.push(("content-disposition", disposition));
+            }
+            headers.push(("content-type", object.content_type));
+        }
         let signed = self.signer.sign((
             &Request {
                 method: method.as_str(),
@@ -87,8 +90,11 @@ impl CloudflareR2 {
             .header("authorization", signed.authorization)
             .header("x-amz-date", signed.amz_date)
             .header("x-amz-content-sha256", signed.content_sha256);
-        if let Some((bytes, content_type)) = body {
-            request = request.header("content-type", content_type).body(bytes);
+        for &(name, value) in &headers {
+            request = request.header(name, value);
+        }
+        if let Some(object) = body {
+            request = request.body(object.bytes);
         }
         request.send().await.map_err(unavailable)
     }
@@ -97,13 +103,8 @@ impl CloudflareR2 {
 impl ObjectStorage for CloudflareR2 {
     fn put(&self, object: NewObject) -> BoxFuture<'_, Result<(), AppError>> {
         Box::pin(async move {
-            let response = self
-                .send((
-                    Method::PUT,
-                    &object.key,
-                    Some((object.bytes, object.content_type)),
-                ))
-                .await?;
+            let key = object.key.clone();
+            let response = self.send((Method::PUT, &key, Some(object))).await?;
             refused(response).await
         })
     }

@@ -4,6 +4,7 @@
 
 pub mod handler;
 pub mod purge_photos;
+pub mod run_export;
 pub mod run_vision;
 pub mod send_email_link;
 pub mod worker;
@@ -21,8 +22,8 @@ use crate::models::job::Schedule;
 /// A day, for daily jobs.
 const DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
-/// The handlers this release runs: sign-in emails (M1-D3), the photo purge (M1-D4) and vision
-/// runs (M1-D5). Others join with their task: exports (D7), Paddle webhooks (F3).
+/// The handlers this release runs: sign-in emails (M1-D3), the photo purge (M1-D4), vision
+/// runs (M1-D5) and exports (M1-D7). Paddle webhooks join with M1-F3.
 pub fn handlers(state: &AppState) -> JobHandlers {
     JobHandlers::new()
         .with(send_email_link::SendEmailLinkHandler::new(
@@ -30,6 +31,7 @@ pub fn handlers(state: &AppState) -> JobHandlers {
         ))
         .with(purge_photos::PurgePhotosHandler::new(state.privacy.clone()))
         .with(run_vision::RunVisionHandler::new(state.captures.clone()))
+        .with(run_export::RunExportHandler::new(state.exports.clone()))
 }
 
 /// The jobs that run by themselves: the photo purge, a day after the last run finished (and

@@ -6,6 +6,8 @@ pub mod capture;
 pub mod database;
 pub mod design;
 pub mod email_link;
+pub mod entitlement;
+pub mod export;
 pub mod health;
 pub mod job;
 pub mod passkey;

@@ -244,6 +244,7 @@ impl CaptureService for DefaultCaptureService {
                     key: capture.storage_key.clone(),
                     bytes: clean.bytes,
                     content_type: clean.info.format.media_type(),
+                    content_disposition: None,
                 })
                 .await?;
             match self.insert(&capture).await {

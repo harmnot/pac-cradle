@@ -190,7 +190,7 @@ fn load(vars: &[(&str, &str)]) -> Result<AppConfig, ConfigError> {
     AppConfig::from_lookup(|name| vars.get(name).map(|value| (*value).to_owned()))
 }
 
-const PRODUCTION: [(&str, &str); 13] = [
+const PRODUCTION: [(&str, &str); 17] = [
     ("APP_ENV", "production"),
     (
         "DATABASE_URL",
@@ -211,6 +211,11 @@ const PRODUCTION: [(&str, &str); 13] = [
     ("STORAGE_BUCKET", "paccradle-photos"),
     ("STORAGE_ACCESS_KEY_ID", "key-id"),
     ("STORAGE_SECRET_ACCESS_KEY", "key-secret"),
+    // Checkout prices (M1-D7).
+    ("PADDLE_PRICE_SINGLE_EXPORT", "pri_01single"),
+    ("PADDLE_PRICE_EXPORT_PACK", "pri_01pack"),
+    ("PADDLE_PRICE_PRO_MONTHLY", "pri_01monthly"),
+    ("PADDLE_PRICE_PRO_YEARLY", "pri_01yearly"),
 ];
 
 #[test]

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE design_unlocks SET edits_until = now() - interval '1 day'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ac154f8e02d83be14483e57d268cc7ea9009f592d75ff8dd1bcb47941c1ea9e5"
+}

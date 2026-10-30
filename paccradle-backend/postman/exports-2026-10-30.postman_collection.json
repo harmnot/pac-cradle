@@ -1,0 +1,768 @@
+{
+  "info": {
+    "name": "paccradle API: exports (2026-10-30)",
+    "description": "Change: M1-D7, exports endpoints (2026-10-30). The client contract moves to **1.0.0-beta.6** (`api-version`); the admin contract stays at 1.0.0-beta.2. Merge into the main contract.\n\n**New:** `POST` and `GET /api/client/v1/designs/{design_id}/exports`, `GET /api/client/v1/exports/{export_id}`. **New codes:** `DESIGN_NOT_BUILDABLE` (422, `meta.detail` in English), `EXPORT_PAYMENT_REQUIRED` (402, `meta.checkout` and `meta.offers` for Paddle.js), `EXPORT_NOT_FOUND` (404), `EXPORT_FAILED` (an export's stored error). `AUTH_ACCOUNT_REQUIRED` (403) now also answers a guest's export.\n\n**Checkout:** `Paddle.Checkout.open({ items: [{ priceId: meta.checkout.price_id, quantity: 1 }], customer: { email: meta.checkout.customer_email }, customData: meta.checkout.custom_data })`. The purchase unlocks the design when Paddle's webhook lands (M1-F4); until then the 402 stays.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:7773"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "design_id",
+      "value": ""
+    },
+    {
+      "key": "export_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Client: exports",
+      "item": [
+        {
+          "name": "Ask for files",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "designs",
+                "{{design_id}}",
+                "exports"
+              ]
+            },
+            "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+          },
+          "response": [
+            {
+              "name": "202 free files",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ]
+                },
+                "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"export_id\": \"01a18a6f-9bf3-756a-9fd6-711b112be350\",\n  \"design_id\": \"01a18a6f-9a97-72d8-8121-d9e2562fb9f1\",\n  \"design_version\": 1,\n  \"status\": \"pending\",\n  \"formats\": [\n    \"png\",\n    \"test_print\"\n  ],\n  \"paper\": \"a4\",\n  \"paid_with\": \"free\",\n  \"files\": [],\n  \"error\": null,\n  \"created_at\": \"2026-10-30T01:32:12.659094Z\"\n}"
+            },
+            {
+              "name": "202 paid with a credit",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ]
+                },
+                "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"export_id\": \"01a18a6f-9dbc-776d-9ccd-27bd7515df6b\",\n  \"design_id\": \"01a18a6f-9a97-72d8-8121-d9e2562fb9f1\",\n  \"design_version\": 1,\n  \"status\": \"pending\",\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"paper\": null,\n  \"paid_with\": \"credit\",\n  \"files\": [],\n  \"error\": null,\n  \"created_at\": \"2026-10-30T01:32:13.091654Z\"\n}"
+            },
+            {
+              "name": "402 not paid for: open the checkout",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ]
+                },
+                "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+              },
+              "status": "Payment Required",
+              "code": 402,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"EXPORT_PAYMENT_REQUIRED\",\n    \"message\": \"Production files need this design unlocked: buy it, use an export credit, or go Pro.\",\n    \"meta\": {\n      \"checkout\": {\n        \"custom_data\": {\n          \"design_id\": \"01a18a6f-9a97-72d8-8121-d9e2562fb9f1\",\n          \"user_id\": \"01a18a6f-97cc-7731-8531-f65c28ca8cf7\"\n        },\n        \"customer_email\": \"d7-1793323928@example.com\",\n        \"price_id\": \"pri_01devsingle\"\n      },\n      \"offers\": {\n        \"export_pack\": \"pri_01devpack\",\n        \"pro_monthly\": \"pri_01devmonthly\",\n        \"pro_yearly\": \"pri_01devyearly\",\n        \"single_export\": \"pri_01devsingle\"\n      }\n    }\n  }\n}"
+            },
+            {
+              "name": "403 a guest",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ]
+                },
+                "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"AUTH_ACCOUNT_REQUIRED\",\n    \"message\": \"Confirm your email to do this.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "409 a newer version was saved",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ]
+                },
+                "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"DESIGN_VERSION_CONFLICT\",\n    \"message\": \"This design was changed somewhere else (version 2). Reload it to see the latest.\",\n    \"meta\": {\n      \"current_version\": 2\n    }\n  }\n}"
+            },
+            {
+              "name": "422 the design can't be made yet",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ]
+                },
+                "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+              },
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"DESIGN_NOT_BUILDABLE\",\n    \"message\": \"This design can't be made yet: a 1 × 1 grid without a frame has no dividers to cut.\",\n    \"meta\": {\n      \"detail\": \"a 1 × 1 grid without a frame has no dividers to cut\"\n    }\n  }\n}"
+            },
+            {
+              "name": "400 a test print without its paper",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"version\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ]
+                },
+                "description": "Asks for files from the design's current version. **Needs an account**: a guest gets `AUTH_ACCOUNT_REQUIRED` (403) and the web app opens sign-up (DEC-14).\n\n- `formats`: any of `svg`, `pdf`, `dxf` (production files, **paid**) and `png` (watermarked preview), `test_print` (watermarked print-at-home PDF; needs `paper`), which are **free**. Repeats are ignored.\n- `paper`: `a4` or `letter`, for the test print.\n- `version`: the version the user is looking at; another one is `DESIGN_VERSION_CONFLICT` (409).\n\nThe design is generated first: one that can't be made yet is `DESIGN_NOT_BUILDABLE` (422) and costs nothing. Production files are covered, in this order, by: the design's unlock if this version was saved within its 30-day edit window (`paid_with: unlocked`); Pro (`pro`, unlocks the design for 30 days); one export credit (`credit`, spent now, unlocks for 30 days). Otherwise **402 `EXPORT_PAYMENT_REQUIRED`**: open Paddle.js with `meta.checkout` (`price_id`, `custom_data`, `customer_email`); `meta.offers` has the pack and Pro prices. After paying, ask again.\n\n**202** with the pending export: poll `GET /exports/{export_id}`. At most 60 exports an hour per user."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"paper\",\n      \"allowed\": \"a4 or letter, for test_print\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get an export",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/exports/{{export_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "exports",
+                "{{export_id}}"
+              ]
+            },
+            "description": "The caller's export. Once `done`, each file has a link that works for 5 minutes and downloads under `file_name`; fetch the export again for new links (files are kept: re-downloading never expires). `failed` carries `error` (`EXPORT_FAILED`): ask again, at no cost. Someone else's export is `EXPORT_NOT_FOUND`."
+          },
+          "response": [
+            {
+              "name": "200 done: production files",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/exports/{{export_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "exports",
+                    "{{export_id}}"
+                  ]
+                },
+                "description": "The caller's export. Once `done`, each file has a link that works for 5 minutes and downloads under `file_name`; fetch the export again for new links (files are kept: re-downloading never expires). `failed` carries `error` (`EXPORT_FAILED`): ask again, at no cost. Someone else's export is `EXPORT_NOT_FOUND`."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"export_id\": \"01a18a6f-9dbc-776d-9ccd-27bd7515df6b\",\n  \"design_id\": \"01a18a6f-9a97-72d8-8121-d9e2562fb9f1\",\n  \"design_version\": 1,\n  \"status\": \"done\",\n  \"formats\": [\n    \"svg\",\n    \"pdf\",\n    \"dxf\"\n  ],\n  \"paper\": null,\n  \"paid_with\": \"credit\",\n  \"files\": [\n    {\n      \"format\": \"svg\",\n      \"file_name\": \"paccradle-perfume-set-v1.svg\",\n      \"bytes\": 5213,\n      \"url\": \"memory:///exports/01a18a6f-9dbc-776d-9ccd-27bd7515df6b/paccr…&X-Amz-Expires=300&X-Amz-Signature=…\",\n      \"url_expires_at\": \"2026-10-30T01:37:16.873011959Z\"\n    },\n    {\n      \"format\": \"pdf\",\n      \"file_name\": \"paccradle-perfume-set-v1.pdf\",\n      \"bytes\": 6727,\n      \"url\": \"memory:///exports/01a18a6f-9dbc-776d-9ccd-27bd7515df6b/paccr…&X-Amz-Expires=300&X-Amz-Signature=…\",\n      \"url_expires_at\": \"2026-10-30T01:37:16.873011959Z\"\n    },\n    {\n      \"format\": \"dxf\",\n      \"file_name\": \"paccradle-perfume-set-v1.dxf\",\n      \"bytes\": 15209,\n      \"url\": \"memory:///exports/01a18a6f-9dbc-776d-9ccd-27bd7515df6b/paccr…&X-Amz-Expires=300&X-Amz-Signature=…\",\n      \"url_expires_at\": \"2026-10-30T01:37:16.873011959Z\"\n    }\n  ],\n  \"error\": null,\n  \"created_at\": \"2026-10-30T01:32:13.091654Z\"\n}"
+            },
+            {
+              "name": "200 done: free files",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/exports/{{export_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "exports",
+                    "{{export_id}}"
+                  ]
+                },
+                "description": "The caller's export. Once `done`, each file has a link that works for 5 minutes and downloads under `file_name`; fetch the export again for new links (files are kept: re-downloading never expires). `failed` carries `error` (`EXPORT_FAILED`): ask again, at no cost. Someone else's export is `EXPORT_NOT_FOUND`."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"export_id\": \"01a18a6f-9bf3-756a-9fd6-711b112be350\",\n  \"design_id\": \"01a18a6f-9a97-72d8-8121-d9e2562fb9f1\",\n  \"design_version\": 1,\n  \"status\": \"done\",\n  \"formats\": [\n    \"png\",\n    \"test_print\"\n  ],\n  \"paper\": \"a4\",\n  \"paid_with\": \"free\",\n  \"files\": [\n    {\n      \"format\": \"png\",\n      \"file_name\": \"paccradle-perfume-set-v1-preview.png\",\n      \"bytes\": 603211,\n      \"url\": \"memory:///exports/01a18a6f-9bf3-756a-9fd6-711b112be350/paccr…&X-Amz-Expires=300&X-Amz-Signature=…\",\n      \"url_expires_at\": \"2026-10-30T01:37:16.846601973Z\"\n    },\n    {\n      \"format\": \"test_print\",\n      \"file_name\": \"paccradle-perfume-set-v1-test-print-a4.pdf\",\n      \"bytes\": 99883,\n      \"url\": \"memory:///exports/01a18a6f-9bf3-756a-9fd6-711b112be350/paccr…&X-Amz-Expires=300&X-Amz-Signature=…\",\n      \"url_expires_at\": \"2026-10-30T01:37:16.846601973Z\"\n    }\n  ],\n  \"error\": null,\n  \"created_at\": \"2026-10-30T01:32:12.659094Z\"\n}"
+            },
+            {
+              "name": "404 someone else's or unknown",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/exports/{{export_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "exports",
+                    "{{export_id}}"
+                  ]
+                },
+                "description": "The caller's export. Once `done`, each file has a link that works for 5 minutes and downloads under `file_name`; fetch the export again for new links (files are kept: re-downloading never expires). `failed` carries `error` (`EXPORT_FAILED`): ask again, at no cost. Someone else's export is `EXPORT_NOT_FOUND`."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"EXPORT_NOT_FOUND\",\n    \"message\": \"There is no such export.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A design's exports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports?page=1&page_size=20&status=done&sort=created_at&order=desc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "designs",
+                "{{design_id}}",
+                "exports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "From 1."
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "1 to 100."
+                },
+                {
+                  "key": "status",
+                  "value": "done",
+                  "description": "pending | done | failed"
+                },
+                {
+                  "key": "sort",
+                  "value": "created_at",
+                  "description": "Only created_at."
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "desc (default) | asc"
+                }
+              ]
+            },
+            "description": "A design's export history, newest first. Open one with `GET /exports/{export_id}` for its links."
+          },
+          "response": [
+            {
+              "name": "200 a page",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}/exports?page=1&page_size=20&status=done&sort=created_at&order=desc",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}",
+                    "exports"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "From 1."
+                    },
+                    {
+                      "key": "page_size",
+                      "value": "20",
+                      "description": "1 to 100."
+                    },
+                    {
+                      "key": "status",
+                      "value": "done",
+                      "description": "pending | done | failed"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "created_at",
+                      "description": "Only created_at."
+                    },
+                    {
+                      "key": "order",
+                      "value": "desc",
+                      "description": "desc (default) | asc"
+                    }
+                  ]
+                },
+                "description": "A design's export history, newest first. Open one with `GET /exports/{export_id}` for its links."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.6"
+                }
+              ],
+              "body": "{\n  \"items\": [\n    {\n      \"export_id\": \"01a18a6f-9dbc-776d-9ccd-27bd7515df6b\",\n      \"design_version\": 1,\n      \"status\": \"done\",\n      \"formats\": [\n        \"svg\",\n        \"pdf\",\n        \"dxf\"\n      ],\n      \"paid_with\": \"credit\",\n      \"created_at\": \"2026-10-30T01:32:13.091654Z\"\n    },\n    {\n      \"export_id\": \"01a18a6f-9bf3-756a-9fd6-711b112be350\",\n      \"design_version\": 1,\n      \"status\": \"done\",\n      \"formats\": [\n        \"png\",\n        \"test_print\"\n      ],\n      \"paid_with\": \"free\",\n      \"created_at\": \"2026-10-30T01:32:12.659094Z\"\n    }\n  ],\n  \"page\": 1,\n  \"page_size\": 10,\n  \"total\": 2,\n  \"total_pages\": 1\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

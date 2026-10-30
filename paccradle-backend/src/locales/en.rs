@@ -82,6 +82,14 @@ pub(super) const fn error_message(code: ErrorCode) -> &'static str {
         }
         ErrorCode::DesignNotFound => "There is no such design.",
         ErrorCode::DesignInvalid => "This design can't be saved: {detail}.",
+        ErrorCode::DesignNotBuildable => "This design can't be made yet: {detail}.",
+        ErrorCode::ExportPaymentRequired => {
+            "Production files need this design unlocked: buy it, use an export credit, or go Pro."
+        }
+        ErrorCode::ExportNotFound => "There is no such export.",
+        ErrorCode::ExportFailed => {
+            "The files couldn't be made. Please ask for them again: it won't cost anything."
+        }
         ErrorCode::DesignVersionConflict => {
             "This design was changed somewhere else (version {current_version}). Reload it to \
              see the latest."

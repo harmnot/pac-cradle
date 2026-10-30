@@ -3,6 +3,7 @@
 pub mod capture;
 pub mod common;
 pub mod design;
+pub mod export;
 pub mod identity;
 pub mod meta;
 pub mod passkey;

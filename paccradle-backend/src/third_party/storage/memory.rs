@@ -11,7 +11,7 @@ use crate::shared::future::BoxFuture;
 /// `STORAGE_*` settings. Objects are lost at restart, and its signed URLs (`memory:///…`)
 /// can't be opened. Tests can make it go down ([`MemoryStorage::set_available`]).
 pub struct MemoryStorage {
-    objects: Mutex<HashMap<String, (Vec<u8>, &'static str)>>,
+    objects: Mutex<HashMap<String, NewObject>>,
     available: AtomicBool,
 }
 
@@ -32,7 +32,16 @@ impl MemoryStorage {
 
     /// The object at `key` and its media type.
     pub fn object(&self, key: &str) -> Option<(Vec<u8>, &'static str)> {
-        self.objects().get(key).cloned()
+        self.objects()
+            .get(key)
+            .map(|object| (object.bytes.clone(), object.content_type))
+    }
+
+    /// The `Content-Disposition` the object at `key` was stored with.
+    pub fn content_disposition(&self, key: &str) -> Option<String> {
+        self.objects()
+            .get(key)
+            .and_then(|object| object.content_disposition.clone())
     }
 
     /// Every key, sorted.
@@ -47,7 +56,7 @@ impl MemoryStorage {
         self.available.store(available, Ordering::SeqCst);
     }
 
-    fn objects(&self) -> std::sync::MutexGuard<'_, HashMap<String, (Vec<u8>, &'static str)>> {
+    fn objects(&self) -> std::sync::MutexGuard<'_, HashMap<String, NewObject>> {
         // A panic while holding the lock leaves the map usable.
         self.objects.lock().unwrap_or_else(PoisonError::into_inner)
     }
@@ -64,8 +73,7 @@ impl ObjectStorage for MemoryStorage {
     fn put(&self, object: NewObject) -> BoxFuture<'_, Result<(), AppError>> {
         Box::pin(async move {
             self.reachable()?;
-            self.objects()
-                .insert(object.key, (object.bytes, object.content_type));
+            self.objects().insert(object.key.clone(), object);
             Ok(())
         })
     }
@@ -73,7 +81,7 @@ impl ObjectStorage for MemoryStorage {
     fn get<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Result<Option<Vec<u8>>, AppError>> {
         Box::pin(async move {
             self.reachable()?;
-            Ok(self.objects().get(key).map(|(bytes, _)| bytes.clone()))
+            Ok(self.objects().get(key).map(|object| object.bytes.clone()))
         })
     }
 

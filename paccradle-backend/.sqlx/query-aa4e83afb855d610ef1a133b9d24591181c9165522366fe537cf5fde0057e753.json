@@ -1,0 +1,172 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT exports.id, exports.design_id, designs.user_id, exports.design_version,\n                       exports.spec, exports.design_name, exports.formats, exports.paper,\n                       exports.paid_with, exports.status, exports.files, exports.error_code,\n                       exports.created_at\n                FROM exports JOIN designs ON designs.id = exports.design_id\n                WHERE exports.id = $1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "design_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "design_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "designs",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "design_version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "design_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "spec",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "spec"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "design_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "design_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "formats",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "formats"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "paper",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "paper"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "paid_with",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "paid_with"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "files",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "files"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "error_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "error_code"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "aa4e83afb855d610ef1a133b9d24591181c9165522366fe537cf5fde0057e753"
+}

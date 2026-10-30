@@ -4,6 +4,6 @@ mod app_config;
 pub mod env_file;
 
 pub use app_config::{
-    AppConfig, AppEnv, AuthConfig, ConfigError, DatabaseConfig, EmailConfig, SmtpSecurity,
-    StorageConfig, UPLOADS_PER_ADDRESS_FACTOR,
+    AppConfig, AppEnv, AuthConfig, ConfigError, DatabaseConfig, EmailConfig, PaddlePrices,
+    SmtpSecurity, StorageConfig, UPLOADS_PER_ADDRESS_FACTOR,
 };

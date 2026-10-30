@@ -114,7 +114,7 @@ async fn a_guest_uploads_a_photo_and_it_is_kept_without_its_metadata(pool: PgPoo
     .await;
 
     assert_eq!(reply.status, StatusCode::CREATED, "{:?}", reply.body);
-    assert_eq!(reply.header("api-version"), "1.0.0-beta.5");
+    assert_eq!(reply.header("api-version"), "1.0.0-beta.6");
     let body = reply.json();
     let id: Uuid = body["capture_id"].as_str().unwrap().parse().unwrap();
     assert_eq!(body["status"], "pending");

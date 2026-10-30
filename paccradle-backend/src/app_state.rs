@@ -9,14 +9,18 @@ use crate::repository::capture::{CaptureRepository, PgCaptureRepository};
 use crate::repository::database::{Database, PgDatabase};
 use crate::repository::design::PgDesignRepository;
 use crate::repository::email_link::PgEmailLinkRepository;
+use crate::repository::entitlement::PgEntitlementRepository;
+use crate::repository::export::PgExportRepository;
 use crate::repository::health::PgHealthRepository;
 use crate::repository::job::PgJobRepository;
 use crate::repository::passkey::PgPasskeyRepository;
 use crate::repository::session::PgSessionRepository;
 use crate::repository::user::{PgUserRepository, UserRepository};
 use crate::service::audit::{AuditService, DefaultAuditService};
+use crate::service::billing::{BillingProviders, BillingService, DefaultBillingService};
 use crate::service::capture::{CaptureProviders, CaptureService, DefaultCaptureService};
 use crate::service::design::{DefaultDesignService, DesignProviders, DesignService};
+use crate::service::export::{DefaultExportService, ExportProviders, ExportService};
 use crate::service::health::{DefaultHealthService, HealthService};
 use crate::service::identity::{DefaultIdentityService, IdentityProviders, IdentityService};
 use crate::service::job::{DefaultJobService, JobService};
@@ -50,6 +54,10 @@ pub struct AppState {
     pub privacy: Arc<dyn PrivacyService>,
     /// Saved designs.
     pub designs: Arc<dyn DesignService>,
+    /// What users have paid for.
+    pub billing: Arc<dyn BillingService>,
+    /// Exported files.
+    pub exports: Arc<dyn ExportService>,
 }
 
 /// The outside services the app talks to.
@@ -114,6 +122,12 @@ impl AppState {
                 email,
             },
         );
+        let billing: Arc<dyn BillingService> =
+            Arc::new(DefaultBillingService::new(BillingProviders {
+                entitlements: Arc::new(PgEntitlementRepository::new()),
+                users: Arc::clone(&users),
+                prices: config.prices.clone(),
+            }));
         let passkeys = DefaultPasskeyService::new(
             Arc::clone(&config),
             PasskeyProviders {
@@ -134,9 +148,18 @@ impl AppState {
             },
             config.rate_limit_uploads_per_hour,
         ));
-        let designs = DefaultDesignService::new(DesignProviders {
+        let designs: Arc<dyn DesignService> =
+            Arc::new(DefaultDesignService::new(DesignProviders {
+                db: Arc::clone(&db),
+                designs: Arc::new(PgDesignRepository::new()),
+            }));
+        let exports = DefaultExportService::new(ExportProviders {
             db: Arc::clone(&db),
-            designs: Arc::new(PgDesignRepository::new()),
+            exports: Arc::new(PgExportRepository::new()),
+            designs: Arc::clone(&designs),
+            billing: Arc::clone(&billing),
+            jobs: Arc::clone(&jobs),
+            storage: Arc::clone(&storage),
         });
         let privacy = DefaultPrivacyService::new(PrivacyProviders {
             db,
@@ -154,7 +177,9 @@ impl AppState {
             audit: Arc::new(audit),
             captures: Arc::new(capture_service),
             privacy: Arc::new(privacy),
-            designs: Arc::new(designs),
+            designs,
+            billing,
+            exports: Arc::new(exports),
         }
     }
 }

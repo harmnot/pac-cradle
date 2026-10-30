@@ -542,8 +542,10 @@ POST   /captures/{capture_id}/correct   {tap_point_px | edited_contour_px | heig
 POST   /designs                         {name?, spec: insert_core::Design {material, products, insert, outer_box}} → 201 {design_id, name, version 1, spec, …}
 GET    /designs                         ?page&page_size&search&style&sort&order → {items[summary], page, page_size, total, total_pages}
 GET    /designs/{design_id}             PATCH /designs/{design_id} {version, name?, spec?} → version + 1, or 409 if saved meanwhile
-POST   /designs/{design_id}/exports     {formats, preset}  → 200 {export_id} | 402 {checkout}
-GET    /exports/{export_id}             → {status, files:[{format, signed_url}]}
+POST   /designs/{design_id}/exports     {formats [svg|pdf|dxf paid, png|test_print free], paper?, version?}
+                                        → 202 {export_id, status, paid_with} | 402 {error.meta.checkout, offers} | 422 not buildable
+GET    /designs/{design_id}/exports     ?page&page_size&status&order → the design's export history
+GET    /exports/{export_id}             → {status, files:[{format, file_name, url (5 min), url_expires_at}], error?}
 GET    /me                              → {id, email, role, has_password, passkey_count, …}; billing adds {plan, credits, unlocked_designs, subscription} (F5)
 POST   /billing/portal                  → Paddle customer portal link
 POST   /handoff                         → {token, qr_url}     GET /handoff/{token}/events (SSE)

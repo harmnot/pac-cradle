@@ -11,6 +11,9 @@ pub struct NewObject {
     pub bytes: Vec<u8>,
     /// Its media type, e.g. `image/jpeg`.
     pub content_type: &'static str,
+    /// `Content-Disposition` sent with it on download, e.g. `attachment; filename="…"` for an
+    /// export; `None` for photos.
+    pub content_disposition: Option<String>,
 }
 
 // Photos are people's data: a log line shows the key and size, never the bytes.
@@ -20,6 +23,7 @@ impl std::fmt::Debug for NewObject {
             .field("key", &self.key)
             .field("bytes", &self.bytes.len())
             .field("content_type", &self.content_type)
+            .field("content_disposition", &self.content_disposition)
             .finish()
     }
 }

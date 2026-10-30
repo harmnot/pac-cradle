@@ -6,6 +6,7 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
 pub mod authenticator;
+pub mod designs;
 pub mod photos;
 
 use std::collections::HashMap;

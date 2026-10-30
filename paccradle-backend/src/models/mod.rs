@@ -5,6 +5,8 @@ pub mod audit;
 pub mod capture;
 pub mod design;
 pub mod email_link;
+pub mod entitlement;
+pub mod export;
 pub mod job;
 pub mod page;
 pub mod paper;

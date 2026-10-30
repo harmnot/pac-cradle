@@ -80,8 +80,14 @@ fn production_needs_an_https_web_app_origin() {
         ("STORAGE_BUCKET", "paccradle-photos"),
         ("STORAGE_ACCESS_KEY_ID", "key-id"),
         ("STORAGE_SECRET_ACCESS_KEY", "key-secret"),
+        // Checkout prices (M1-D7): checked below.
+        ("PADDLE_PRICE_SINGLE_EXPORT", "pri_01single"),
+        ("PADDLE_PRICE_EXPORT_PACK", "pri_01pack"),
+        ("PADDLE_PRICE_PRO_MONTHLY", "pri_01monthly"),
+        ("PADDLE_PRICE_PRO_YEARLY", "pri_01yearly"),
     ]);
     assert_eq!(config.web_origin, "https://app.example.com");
+    assert_eq!(config.prices.single_export.as_deref(), Some("pri_01single"));
     assert_eq!(
         config
             .admin_web_origin
@@ -288,4 +294,38 @@ fn photo_storage_settings_are_checked() {
         error(&with("STORAGE_ACCESS_KEY_ID", "key id")).starts_with("STORAGE_ACCESS_KEY_ID must")
     );
     assert!(error(&[("RATE_LIMIT_UPLOADS_PER_HOUR", "0")]).contains("from 1 to 10000"));
+}
+
+#[test]
+fn checkout_prices_are_optional_in_development_and_shaped_like_paddles() {
+    let config = config(&[]);
+    assert_eq!(
+        config.prices,
+        paccradle_backend::config::PaddlePrices::default()
+    );
+    assert_eq!(
+        error(&[("PADDLE_PRICE_EXPORT_PACK", "price_123")]),
+        "PADDLE_PRICE_EXPORT_PACK must be a Paddle price id, e.g. pri_01h…"
+    );
+    let production = [
+        ("APP_ENV", "production"),
+        ("APP_WEB_URL", "https://app.example.com"),
+        ("DATABASE_URL", "postgres://api:secret@db:5432/paccradle"),
+        ("AUTH_JWT_SECRET", "0123456789abcdef0123456789abcdef"),
+        ("SMTP_HOST", "mail.example.com"),
+        ("SMTP_USERNAME", "api"),
+        ("SMTP_PASSWORD", "secret"),
+        ("EMAIL_FROM", "Example <no-reply@example.com>"),
+        (
+            "STORAGE_ENDPOINT",
+            "https://account.r2.cloudflarestorage.com",
+        ),
+        ("STORAGE_BUCKET", "paccradle-photos"),
+        ("STORAGE_ACCESS_KEY_ID", "key-id"),
+        ("STORAGE_SECRET_ACCESS_KEY", "key-secret"),
+    ];
+    assert_eq!(
+        error(&production),
+        "PADDLE_PRICE_SINGLE_EXPORT is required in production"
+    );
 }

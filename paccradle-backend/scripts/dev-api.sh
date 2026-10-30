@@ -9,7 +9,7 @@
 #   scripts/dev-api.sh --release       # extra arguments go to cargo run
 #
 # DEV_SMTP_HOST overrides the SMTP host (default host.docker.internal, for Mailpit). These
-# settings, when set in your shell (even empty), override .env too: STORAGE_*, EMAIL_FROM,
+# settings, when set in your shell (even empty), override .env too: STORAGE_*, EMAIL_FROM, PADDLE_*,
 # RATE_LIMIT_*, JOB_WORKERS, RUST_LOG. E.g. keep photos in memory for one run:
 #   STORAGE_ENDPOINT= STORAGE_BUCKET= STORAGE_ACCESS_KEY_ID= STORAGE_SECRET_ACCESS_KEY= scripts/dev-api.sh
 set -euo pipefail
@@ -23,7 +23,7 @@ fi
 overrides=()
 while IFS= read -r name; do
   overrides+=(-e "${name}=${!name}")
-done < <(compgen -e | grep -E '^(STORAGE_[A-Z_]+|EMAIL_FROM|RATE_LIMIT_[A-Z_]+|JOB_WORKERS|RUST_LOG)$' || true)
+done < <(compgen -e | grep -E '^(STORAGE_[A-Z_]+|EMAIL_FROM|PADDLE_[A-Z_]+|RATE_LIMIT_[A-Z_]+|JOB_WORKERS|RUST_LOG)$' || true)
 
 exec docker run --rm --init ${tty_flags[@]+"${tty_flags[@]}"} \
   -p "127.0.0.1:${port}:7773" \

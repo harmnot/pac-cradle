@@ -91,6 +91,8 @@ pub struct AppConfig {
     /// Object storage for photos (M1-D4). `None` only in development without `STORAGE_*`:
     /// photos are then kept in memory and lost at restart.
     pub storage: Option<StorageConfig>,
+    /// Paddle's price ids, for the checkout a paid export offers (M1-D7; created in F1).
+    pub prices: PaddlePrices,
     /// `RATE_LIMIT_UPLOADS_PER_HOUR`, default 30: vision runs one user may start per hour
     /// (each upload and each tap counts). One client address may upload
     /// [`UPLOADS_PER_ADDRESS_FACTOR`] times as many photos.
@@ -100,6 +102,20 @@ pub struct AppConfig {
 /// How many users' worth of uploads one client address gets (an office or a family behind
 /// one address).
 pub const UPLOADS_PER_ADDRESS_FACTOR: u32 = 4;
+
+/// Paddle price ids (`pri_…`, Paddle > Catalog), one per thing sold (DEC-02). Required in
+/// production; unset in development, the checkout a paid export offers has no price to open.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PaddlePrices {
+    /// `PADDLE_PRICE_SINGLE_EXPORT`: one design's production files, $10.
+    pub single_export: Option<String>,
+    /// `PADDLE_PRICE_EXPORT_PACK`: 5 export credits, $35.
+    pub export_pack: Option<String>,
+    /// `PADDLE_PRICE_PRO_MONTHLY`: Pro, $12 a month.
+    pub pro_monthly: Option<String>,
+    /// `PADDLE_PRICE_PRO_YEARLY`: Pro, $139 a year.
+    pub pro_yearly: Option<String>,
+}
 
 /// An S3-compatible bucket: Cloudflare R2 in production (M1-D4).
 #[derive(Debug, Clone)]
@@ -288,6 +304,7 @@ impl AppConfig {
             },
             email: vars.email(env)?,
             storage: vars.storage(env)?,
+            prices: vars.prices(env)?,
             rate_limit_uploads_per_hour: NonZeroU32::new(vars.bounded(Bounded {
                 name: "RATE_LIMIT_UPLOADS_PER_HOUR",
                 default: 30,
@@ -501,6 +518,33 @@ impl<F: Fn(&str) -> Option<String>> Vars<F> {
             smtp_security,
             smtp_credentials,
             from,
+        })
+    }
+
+    fn prices(&self, env: AppEnv) -> Result<PaddlePrices, ConfigError> {
+        let price = |name: &'static str| -> Result<Option<String>, ConfigError> {
+            let Some(id) = self.get(name) else {
+                return match env {
+                    AppEnv::Production => Err(ConfigError::Missing { name }),
+                    AppEnv::Development => Ok(None),
+                };
+            };
+            let shaped = id.strip_prefix("pri_").is_some_and(|rest| {
+                !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_alphanumeric())
+            });
+            if !shaped {
+                return Err(ConfigError::Invalid {
+                    name,
+                    problem: "must be a Paddle price id, e.g. pri_01h…".to_owned(),
+                });
+            }
+            Ok(Some(id))
+        };
+        Ok(PaddlePrices {
+            single_export: price("PADDLE_PRICE_SINGLE_EXPORT")?,
+            export_pack: price("PADDLE_PRICE_EXPORT_PACK")?,
+            pro_monthly: price("PADDLE_PRICE_PRO_MONTHLY")?,
+            pro_yearly: price("PADDLE_PRICE_PRO_YEARLY")?,
         })
     }
 
