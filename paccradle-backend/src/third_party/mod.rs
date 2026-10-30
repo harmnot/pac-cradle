@@ -2,3 +2,5 @@
 //! providers can stand in. Only services call them.
 
 pub mod email;
+pub mod http;
+pub mod storage;

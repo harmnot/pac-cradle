@@ -52,6 +52,11 @@ impl AppError {
     pub fn code(&self) -> ErrorCode {
         self.code
     }
+
+    /// The values for its message (stored with a capture whose run failed, M1-D5).
+    pub fn meta(&self) -> &Map<String, Value> {
+        &self.meta
+    }
 }
 
 impl IntoResponse for AppError {

@@ -32,6 +32,28 @@ fn a_bucket_spends_its_minute_then_refills_evenly() {
 }
 
 #[test]
+fn a_bucket_can_refill_over_an_hour() {
+    // Uploads (M1-D4): 30 at once, then one every 2 minutes.
+    let limiter = RateLimiter::with_window((per_minute(30), Duration::from_secs(3600)));
+    let start = Instant::now();
+
+    for _ in 0..30 {
+        assert_eq!(limiter.check("user", start), Ok(()));
+    }
+    let wait = limiter.check("user", start).unwrap_err();
+    assert!((wait.as_secs_f64() - 120.0).abs() < 1e-6, "{wait:?}");
+    assert!(
+        limiter
+            .check("user", start + Duration::from_secs(119))
+            .is_err()
+    );
+    assert_eq!(
+        limiter.check("user", start + Duration::from_secs(240)),
+        Ok(())
+    );
+}
+
+#[test]
 fn keys_have_separate_buckets() {
     let limiter = RateLimiter::new(per_minute(1));
     let now = Instant::now();

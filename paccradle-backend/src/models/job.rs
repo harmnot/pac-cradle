@@ -61,6 +61,46 @@ impl NewJob {
     }
 }
 
+/// A kind of job that runs by itself: the worker adds one whenever none of its kind is queued
+/// or running and the last one finished at least [`Schedule::every`] ago (`jobs::schedules`).
+#[derive(Debug, Clone)]
+pub struct Schedule {
+    kind: &'static str,
+    payload: Value,
+    max_attempts: i32,
+    /// How long after one run finishes (done or dead) the next is due.
+    pub every: Duration,
+}
+
+impl Schedule {
+    /// Runs of kind `K` with `payload`, `every` apart.
+    pub fn of<K: JobKind>((payload, every): (&K::Payload, Duration)) -> Result<Self, AppError> {
+        let job = NewJob::of::<K>(payload)?;
+        Ok(Self {
+            kind: job.kind,
+            payload: job.payload,
+            max_attempts: job.max_attempts,
+            every,
+        })
+    }
+
+    /// [`JobKind::NAME`] of its jobs.
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    /// A job for the next run, with a new id, due now.
+    pub fn next_job(&self) -> NewJob {
+        NewJob {
+            id: crate::shared::id::new_id(),
+            kind: self.kind,
+            payload: self.payload.clone(),
+            max_attempts: self.max_attempts,
+            delay: Duration::ZERO,
+        }
+    }
+}
+
 /// A job a worker has claimed. Its lease runs until the worker reports how it went.
 #[derive(Debug, Clone)]
 pub struct Job {

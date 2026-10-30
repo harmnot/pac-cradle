@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/insert_core", "crates/insert_core_wasm", "crates/vision"]
+members = ["crates/insert_core", "crates/insert_core_wasm", "crates/photo_file", "crates/vision"]
 resolver = "3"
 
 [workspace.package]
@@ -40,15 +40,21 @@ workspace = true
 [dependencies]
 # Password hashes (M1-D3): Argon2id, OWASP's first choice; nothing in std or ring is memory-hard.
 argon2 = { version = "0.6.0", default-features = false, features = ["alloc", "password-hash"] }
-axum = { version = "0.8.9", default-features = false, features = ["http1", "http2", "json", "query", "tokio", "tower-log", "tracing", "matched-path"] }
+axum = { version = "0.8.9", default-features = false, features = ["http1", "http2", "json", "multipart", "query", "tokio", "tower-log", "tracing", "matched-path"] }
 # The API makes the production files, so it turns on insert_core's exporters.
 insert_core = { path = "crates/insert_core", features = ["export"] }
+# Upload checks and metadata cleaning (M1-D4), with no OpenCV.
+photo_file = { path = "crates/photo_file" }
 # Sign-in emails over SMTP (M1-D3): any provider, Mailpit locally. TLS through rustls + ring,
 # which sqlx already builds.
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
 # Crypto for sign-in (M1-D3): random tokens, SHA-256, HMAC for access tokens, and the passkey
 # signatures (P-256, Ed25519, RSA). Already in the build through sqlx's rustls.
 ring = "0.17.14"
+# HTTPS to object storage (M1-D4; Paddle and the AI providers later). No default TLS: its
+# default provider is aws-lc-rs, a C build. The client gets a rustls config on ring instead.
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 # Postgres with compile-time checked queries (`.sqlx/` holds them for builds without a database)
@@ -64,8 +70,15 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 # UUID v7 for request IDs now and database IDs from M1-D2 (backend rules).
 uuid = { version = "1.29.0", features = ["v7", "serde"] }
+# The capture job measures photos (M1-D5). It links OpenCV: build the API in the toolchain
+# image (scripts/in-docker.sh) where OpenCV isn't installed.
+vision = { path = "crates/vision" }
+# Mozilla's root certificates, as sqlx and lettre use them.
+webpki-roots = "1.0.11"
 
 [dev-dependencies]
+# Test photos for the capture job: a sheet and a product drawn and encoded (M1-D5).
+opencv = { workspace = true }
 # oneshot() drives the router in tests without opening a port.
 tower = { version = "0.5.3", features = ["util"] }
 

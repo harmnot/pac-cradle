@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT id, name, version,\n                       spec -> 'insert' ->> 'style' AS \"insert_style!\",\n                       jsonb_array_length(spec -> 'products') AS \"product_types!\",\n                       (SELECT coalesce(sum((product ->> 'quantity')::bigint), 0)\n                        FROM jsonb_array_elements(spec -> 'products') AS product)::bigint\n                           AS \"product_count!\",\n                       jsonb_typeof(spec -> 'outer_box') = 'object' AS \"has_box!\",\n                       created_at, updated_at\n                FROM designs\n                WHERE user_id = $1\n                  AND ($2::text IS NULL OR strpos(lower(name), lower($2)) > 0)\n                  AND ($3::text IS NULL OR spec -> 'insert' ->> 'style' = $3)\n                ORDER BY\n                    CASE WHEN $4 = 'name' AND $5 = 'asc' THEN lower(name) END ASC,\n                    CASE WHEN $4 = 'name' AND $5 = 'desc' THEN lower(name) END DESC,\n                    CASE WHEN $4 = 'created_at' AND $5 = 'asc' THEN created_at END ASC,\n                    CASE WHEN $4 = 'created_at' AND $5 = 'desc' THEN created_at END DESC,\n                    CASE WHEN $4 = 'updated_at' AND $5 = 'asc' THEN updated_at END ASC,\n                    CASE WHEN $4 = 'updated_at' AND $5 = 'desc' THEN updated_at END DESC,\n                    id\n                LIMIT $6 OFFSET $7\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "designs",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "designs",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "designs",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "insert_style!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "product_types!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "product_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "has_box!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "designs",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "designs",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "840effccd087f04b8b8e50b1d3a09f57d24a3f5e8ef67db7c5f8cbba6f26a74b"
+}

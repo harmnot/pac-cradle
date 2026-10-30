@@ -1,0 +1,1286 @@
+{
+  "info": {
+    "name": "paccradle API: capture results and corrections (2026-10-30)",
+    "description": "Change: M1-D5, captures endpoints (2026-10-30). The client contract moves to **1.0.0-beta.4** (`api-version`); the admin contract stays at 1.0.0-beta.2. Merge into the main contract.\n\n**New:** `GET /api/client/v1/captures/{capture_id}` and `POST /api/client/v1/captures/{capture_id}/correct`. **Changed:** `POST /captures` (beta.3) now queues the capture's first vision run with it; its 201 is unchanged. Its settings are checked against vision's own ranges (same messages). `RATE_LIMIT_UPLOADS_PER_HOUR` now counts taps too.\n\n**New codes:** `CAPTURE_PAPER_NOT_FOUND`, `CAPTURE_PRODUCT_NOT_FOUND`, `CAPTURE_TRACE_NOT_FOUND`, `CAPTURE_NOTHING_AT_TAP` (these four are a run's stored errors, 422 if ever answered), `CAPTURE_OUTLINE_CROSSES_ITSELF` (400), `CAPTURE_PROCESSING_FAILED` (500, stored), `CAPTURE_NOT_FOUND` (404), `CAPTURE_PHOTO_DELETED` (410), `CAPTURE_NOT_READY` (409). `CAPTURE_INVALID_INPUT` can now name `tap_point_px`, `edited_contour_px` or `height_mm`.\n\n**Editor flow:** upload → poll GET until not `pending` → draw `result.products[].contour_px` over `photo.url` → on a wrong outline, tap (202, poll again) or drag the points (edit, 200) → type the height (200). Warnings and errors are codes to translate (DEC-11).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:7773"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "capture_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Client: captures (/api/client/v1/captures/{capture_id})",
+      "item": [
+        {
+          "name": "Get a capture",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "captures",
+                "{{capture_id}}"
+              ]
+            },
+            "description": "The caller's capture. Poll it (every second or so) while `status` is `pending`: a vision run takes about a second once it starts.\n\n- `status`: `pending` (a run is queued or running), `done`, `failed` (see `error`).\n- `result`: the latest outline, CLAUDE.md §5.5 (paper corners, products with `contour_mm` and `contour_px` in photo pixels, `warnings` as codes, `camera`, `level_used`). It stays while a newer run is pending and after a run fails, so the editor can keep showing it; `null` until the first run succeeds.\n- `error`: the last run's failure in the caller's language, with `code` to branch on and `meta` for your own text. Codes: `CAPTURE_PAPER_NOT_FOUND`, `CAPTURE_PRODUCT_NOT_FOUND`, `CAPTURE_TRACE_NOT_FOUND`, `CAPTURE_NOTHING_AT_TAP`, `CAPTURE_INVALID_INPUT` (a tap outside the photo), `CAPTURE_PHOTO_DELETED`, `CAPTURE_PROCESSING_FAILED`.\n- `photo.url`: a signed link that works until `url_expires_at` (10 minutes); fetch the capture again for a new one. `null` once the photo was deleted (30 days, `photo_kept_until`).\n\nSomeone else's capture, or an unknown id, is `CAPTURE_NOT_FOUND`. Answers are `no-store`."
+          },
+          "response": [
+            {
+              "name": "200 pending (first run queued)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}"
+                  ]
+                },
+                "description": "The caller's capture. Poll it (every second or so) while `status` is `pending`: a vision run takes about a second once it starts.\n\n- `status`: `pending` (a run is queued or running), `done`, `failed` (see `error`).\n- `result`: the latest outline, CLAUDE.md §5.5 (paper corners, products with `contour_mm` and `contour_px` in photo pixels, `warnings` as codes, `camera`, `level_used`). It stays while a newer run is pending and after a run fails, so the editor can keep showing it; `null` until the first run succeeds.\n- `error`: the last run's failure in the caller's language, with `code` to branch on and `meta` for your own text. Codes: `CAPTURE_PAPER_NOT_FOUND`, `CAPTURE_PRODUCT_NOT_FOUND`, `CAPTURE_TRACE_NOT_FOUND`, `CAPTURE_NOTHING_AT_TAP`, `CAPTURE_INVALID_INPUT` (a tap outside the photo), `CAPTURE_PHOTO_DELETED`, `CAPTURE_PROCESSING_FAILED`.\n- `photo.url`: a signed link that works until `url_expires_at` (10 minutes); fetch the capture again for a new one. `null` once the photo was deleted (30 days, `photo_kept_until`).\n\nSomeone else's capture, or an unknown id, is `CAPTURE_NOT_FOUND`. Answers are `no-store`."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a49-51ab-762f-8d3d-96cec4f13e73\",\n  \"status\": \"pending\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"settings\": {\n    \"pen_width_mm\": 0.5,\n    \"height_mm\": null,\n    \"focal_length_35mm\": 26.0,\n    \"tap_point_px\": null\n  },\n  \"result\": null,\n  \"error\": null,\n  \"photo\": {\n    \"url\": \"https://<account>.r2.cloudflarestorage.com/<bucket>/photos/01a18a49-51ab-762f-8d3d-96cec4f13e73.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&…&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=…\",\n    \"url_expires_at\": \"2026-10-30T01:00:25.137458Z\"\n  },\n  \"created_at\": \"2026-10-30T00:50:24.112035Z\",\n  \"photo_kept_until\": \"2026-11-29T00:50:24.112035Z\"\n}"
+            },
+            {
+              "name": "200 done",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}"
+                  ]
+                },
+                "description": "The caller's capture. Poll it (every second or so) while `status` is `pending`: a vision run takes about a second once it starts.\n\n- `status`: `pending` (a run is queued or running), `done`, `failed` (see `error`).\n- `result`: the latest outline, CLAUDE.md §5.5 (paper corners, products with `contour_mm` and `contour_px` in photo pixels, `warnings` as codes, `camera`, `level_used`). It stays while a newer run is pending and after a run fails, so the editor can keep showing it; `null` until the first run succeeds.\n- `error`: the last run's failure in the caller's language, with `code` to branch on and `meta` for your own text. Codes: `CAPTURE_PAPER_NOT_FOUND`, `CAPTURE_PRODUCT_NOT_FOUND`, `CAPTURE_TRACE_NOT_FOUND`, `CAPTURE_NOTHING_AT_TAP`, `CAPTURE_INVALID_INPUT` (a tap outside the photo), `CAPTURE_PHOTO_DELETED`, `CAPTURE_PROCESSING_FAILED`.\n- `photo.url`: a signed link that works until `url_expires_at` (10 minutes); fetch the capture again for a new one. `null` once the photo was deleted (30 days, `photo_kept_until`).\n\nSomeone else's capture, or an unknown id, is `CAPTURE_NOT_FOUND`. Answers are `no-store`."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a49-51ab-762f-8d3d-96cec4f13e73\",\n  \"status\": \"done\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"settings\": {\n    \"pen_width_mm\": 0.5,\n    \"height_mm\": 95.0,\n    \"focal_length_35mm\": 26.0,\n    \"tap_point_px\": null\n  },\n  \"result\": {\n    \"mode\": \"photo\",\n    \"paper\": {\n      \"size\": \"A4\",\n      \"corners_px\": [\n        [\n          1180.2,\n          200.4\n        ],\n        [\n          2859.8,\n          240.1\n        ],\n        [\n          2979.6,\n          2799.7\n        ],\n        [\n          1050.3,\n          2760.2\n        ]\n      ],\n      \"px_per_mm\": 10.0\n    },\n    \"camera\": {\n      \"height_mm\": 402.6,\n      \"foot_mm\": [\n        104.1,\n        171.3\n      ],\n      \"focal_source\": \"exif\"\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"shape\": \"round\",\n        \"confidence\": 1.0,\n        \"bbox_mm\": {\n          \"l\": 52.31,\n          \"w\": 52.27\n        },\n        \"diameter_mm\": 52.29,\n        \"angle_deg\": 0.0,\n        \"center_mm\": [\n          105.0,\n          150.0\n        ],\n        \"area_mm2\": 2147.5,\n        \"contour_mm\": [\n          [\n            0.0,\n            -26.1\n          ],\n          [\n            18.5,\n            -18.4\n          ],\n          \"…\"\n        ],\n        \"contour_px\": [\n          [\n            2015.3,\n            1268.8\n          ],\n          [\n            2177.9,\n            1335.1\n          ],\n          \"…\"\n        ],\n        \"contour_source\": \"detected\",\n        \"height_mm\": 95.0,\n        \"height_source\": \"user\"\n      }\n    ],\n    \"warnings\": [\n      {\n        \"kind\": \"outline_may_be_bigger\",\n        \"height_mm\": 95.0,\n        \"up_to_mm\": 7.8\n      }\n    ],\n    \"level_used\": \"L1\"\n  },\n  \"error\": null,\n  \"photo\": {\n    \"url\": \"https://<account>.r2.cloudflarestorage.com/<bucket>/photos/01a18a49-51ab-762f-8d3d-96cec4f13e73.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&…&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=…\",\n    \"url_expires_at\": \"2026-10-30T01:00:25.137458Z\"\n  },\n  \"created_at\": \"2026-10-30T00:50:24.112035Z\",\n  \"photo_kept_until\": \"2026-11-29T00:50:24.112035Z\"\n}"
+            },
+            {
+              "name": "200 failed (no paper in the photo)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}"
+                  ]
+                },
+                "description": "The caller's capture. Poll it (every second or so) while `status` is `pending`: a vision run takes about a second once it starts.\n\n- `status`: `pending` (a run is queued or running), `done`, `failed` (see `error`).\n- `result`: the latest outline, CLAUDE.md §5.5 (paper corners, products with `contour_mm` and `contour_px` in photo pixels, `warnings` as codes, `camera`, `level_used`). It stays while a newer run is pending and after a run fails, so the editor can keep showing it; `null` until the first run succeeds.\n- `error`: the last run's failure in the caller's language, with `code` to branch on and `meta` for your own text. Codes: `CAPTURE_PAPER_NOT_FOUND`, `CAPTURE_PRODUCT_NOT_FOUND`, `CAPTURE_TRACE_NOT_FOUND`, `CAPTURE_NOTHING_AT_TAP`, `CAPTURE_INVALID_INPUT` (a tap outside the photo), `CAPTURE_PHOTO_DELETED`, `CAPTURE_PROCESSING_FAILED`.\n- `photo.url`: a signed link that works until `url_expires_at` (10 minutes); fetch the capture again for a new one. `null` once the photo was deleted (30 days, `photo_kept_until`).\n\nSomeone else's capture, or an unknown id, is `CAPTURE_NOT_FOUND`. Answers are `no-store`."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a49-51ab-762f-8d3d-96cec4f13e73\",\n  \"status\": \"failed\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"settings\": {\n    \"pen_width_mm\": 0.5,\n    \"height_mm\": null,\n    \"focal_length_35mm\": 26.0,\n    \"tap_point_px\": null\n  },\n  \"result\": null,\n  \"error\": {\n    \"code\": \"CAPTURE_PAPER_NOT_FOUND\",\n    \"message\": \"We couldn't find the paper. Put it on a darker surface and keep all 4 corners in the photo.\",\n    \"meta\": {}\n  },\n  \"photo\": {\n    \"url\": \"https://<account>.r2.cloudflarestorage.com/<bucket>/photos/01a18a49-51ab-762f-8d3d-96cec4f13e73.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&…&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=…\",\n    \"url_expires_at\": \"2026-10-30T01:00:25.137458Z\"\n  },\n  \"created_at\": \"2026-10-30T00:50:24.112035Z\",\n  \"photo_kept_until\": \"2026-11-29T00:50:24.112035Z\"\n}"
+            },
+            {
+              "name": "404 someone else's or unknown",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}"
+                  ]
+                },
+                "description": "The caller's capture. Poll it (every second or so) while `status` is `pending`: a vision run takes about a second once it starts.\n\n- `status`: `pending` (a run is queued or running), `done`, `failed` (see `error`).\n- `result`: the latest outline, CLAUDE.md §5.5 (paper corners, products with `contour_mm` and `contour_px` in photo pixels, `warnings` as codes, `camera`, `level_used`). It stays while a newer run is pending and after a run fails, so the editor can keep showing it; `null` until the first run succeeds.\n- `error`: the last run's failure in the caller's language, with `code` to branch on and `meta` for your own text. Codes: `CAPTURE_PAPER_NOT_FOUND`, `CAPTURE_PRODUCT_NOT_FOUND`, `CAPTURE_TRACE_NOT_FOUND`, `CAPTURE_NOTHING_AT_TAP`, `CAPTURE_INVALID_INPUT` (a tap outside the photo), `CAPTURE_PHOTO_DELETED`, `CAPTURE_PROCESSING_FAILED`.\n- `photo.url`: a signed link that works until `url_expires_at` (10 minutes); fetch the capture again for a new one. `null` once the photo was deleted (30 days, `photo_kept_until`).\n\nSomeone else's capture, or an unknown id, is `CAPTURE_NOT_FOUND`. Answers are `no-store`."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_NOT_FOUND\",\n    \"message\": \"There is no such capture.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Correct: tap the product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tap_point_px\": [\n    2018.4,\n    1500.2\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "captures",
+                "{{capture_id}}",
+                "correct"
+              ]
+            },
+            "description": "A tap on the product, in photo pixels (the frame of `contour_px` and `corners_px`): detection runs again and keeps the outline under the tap, or the nearest within 10 mm. **202**, `status: pending`; poll `GET /captures/{capture_id}`. The last outline stays until the run lands. Works after `CAPTURE_PRODUCT_NOT_FOUND` too. Counts against `RATE_LIMIT_UPLOADS_PER_HOUR` with uploads. Without a tap, a retry would give the same outline (until L2 in M3): offer a tap, Trace mode or an edit."
+          },
+          "response": [
+            {
+              "name": "202 a new run is pending",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tap_point_px\": [\n    2018.4,\n    1500.2\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "A tap on the product, in photo pixels (the frame of `contour_px` and `corners_px`): detection runs again and keeps the outline under the tap, or the nearest within 10 mm. **202**, `status: pending`; poll `GET /captures/{capture_id}`. The last outline stays until the run lands. Works after `CAPTURE_PRODUCT_NOT_FOUND` too. Counts against `RATE_LIMIT_UPLOADS_PER_HOUR` with uploads. Without a tap, a retry would give the same outline (until L2 in M3): offer a tap, Trace mode or an edit."
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a49-51ab-762f-8d3d-96cec4f13e73\",\n  \"status\": \"pending\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"settings\": {\n    \"pen_width_mm\": 0.5,\n    \"height_mm\": 95.0,\n    \"focal_length_35mm\": 26.0,\n    \"tap_point_px\": [\n      2018.4,\n      1500.2\n    ]\n  },\n  \"result\": {\n    \"mode\": \"photo\",\n    \"paper\": {\n      \"size\": \"A4\",\n      \"corners_px\": [\n        [\n          1180.2,\n          200.4\n        ],\n        [\n          2859.8,\n          240.1\n        ],\n        [\n          2979.6,\n          2799.7\n        ],\n        [\n          1050.3,\n          2760.2\n        ]\n      ],\n      \"px_per_mm\": 10.0\n    },\n    \"camera\": {\n      \"height_mm\": 402.6,\n      \"foot_mm\": [\n        104.1,\n        171.3\n      ],\n      \"focal_source\": \"exif\"\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"shape\": \"round\",\n        \"confidence\": 1.0,\n        \"bbox_mm\": {\n          \"l\": 52.31,\n          \"w\": 52.27\n        },\n        \"diameter_mm\": 52.29,\n        \"angle_deg\": 0.0,\n        \"center_mm\": [\n          105.0,\n          150.0\n        ],\n        \"area_mm2\": 2147.5,\n        \"contour_mm\": [\n          [\n            0.0,\n            -26.1\n          ],\n          [\n            18.5,\n            -18.4\n          ],\n          \"…\"\n        ],\n        \"contour_px\": [\n          [\n            2015.3,\n            1268.8\n          ],\n          [\n            2177.9,\n            1335.1\n          ],\n          \"…\"\n        ],\n        \"contour_source\": \"detected\",\n        \"height_mm\": 95.0,\n        \"height_source\": \"user\"\n      }\n    ],\n    \"warnings\": [\n      {\n        \"kind\": \"outline_may_be_bigger\",\n        \"height_mm\": 95.0,\n        \"up_to_mm\": 7.8\n      }\n    ],\n    \"level_used\": \"L1\"\n  },\n  \"error\": null,\n  \"photo\": {\n    \"url\": \"https://<account>.r2.cloudflarestorage.com/<bucket>/photos/01a18a49-51ab-762f-8d3d-96cec4f13e73.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&…&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=…\",\n    \"url_expires_at\": \"2026-10-30T01:00:25.137458Z\"\n  },\n  \"created_at\": \"2026-10-30T00:50:24.112035Z\",\n  \"photo_kept_until\": \"2026-11-29T00:50:24.112035Z\"\n}"
+            },
+            {
+              "name": "410 the photo was deleted",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tap_point_px\": [\n    2018.4,\n    1500.2\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "A tap on the product, in photo pixels (the frame of `contour_px` and `corners_px`): detection runs again and keeps the outline under the tap, or the nearest within 10 mm. **202**, `status: pending`; poll `GET /captures/{capture_id}`. The last outline stays until the run lands. Works after `CAPTURE_PRODUCT_NOT_FOUND` too. Counts against `RATE_LIMIT_UPLOADS_PER_HOUR` with uploads. Without a tap, a retry would give the same outline (until L2 in M3): offer a tap, Trace mode or an edit."
+              },
+              "status": "Gone",
+              "code": 410,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_PHOTO_DELETED\",\n    \"message\": \"This photo was deleted after 30 days. Take a new one to measure again.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "429 too many vision runs",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tap_point_px\": [\n    2018.4,\n    1500.2\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "A tap on the product, in photo pixels (the frame of `contour_px` and `corners_px`): detection runs again and keeps the outline under the tap, or the nearest within 10 mm. **202**, `status: pending`; poll `GET /captures/{capture_id}`. The last outline stays until the run lands. Works after `CAPTURE_PRODUCT_NOT_FOUND` too. Counts against `RATE_LIMIT_UPLOADS_PER_HOUR` with uploads. Without a tap, a retry would give the same outline (until L2 in M3): offer a tap, Trace mode or an edit."
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 1799 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 1799\n    }\n  }\n}"
+            },
+            {
+              "name": "400 none, or more than one, of the three",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tap_point_px\": [\n    2018.4,\n    1500.2\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "A tap on the product, in photo pixels (the frame of `contour_px` and `corners_px`): detection runs again and keeps the outline under the tap, or the nearest within 10 mm. **202**, `status: pending`; poll `GET /captures/{capture_id}`. The last outline stays until the run lands. Works after `CAPTURE_PRODUCT_NOT_FOUND` too. Counts against `RATE_LIMIT_UPLOADS_PER_HOUR` with uploads. Without a tap, a retry would give the same outline (until L2 in M3): offer a tap, Trace mode or an edit."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"correction\",\n      \"expected\": \"one of tap_point_px, edited_contour_px, height_mm\"\n    }\n  }\n}"
+            },
+            {
+              "name": "404 someone else's or unknown",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tap_point_px\": [\n    2018.4,\n    1500.2\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "A tap on the product, in photo pixels (the frame of `contour_px` and `corners_px`): detection runs again and keeps the outline under the tap, or the nearest within 10 mm. **202**, `status: pending`; poll `GET /captures/{capture_id}`. The last outline stays until the run lands. Works after `CAPTURE_PRODUCT_NOT_FOUND` too. Counts against `RATE_LIMIT_UPLOADS_PER_HOUR` with uploads. Without a tap, a retry would give the same outline (until L2 in M3): offer a tap, Trace mode or an edit."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_NOT_FOUND\",\n    \"message\": \"There is no such capture.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Correct: edited outline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"edited_contour_px\": [\n    [\n      1800,\n      1300\n    ],\n    [\n      2240,\n      1300\n    ],\n    [\n      2240,\n      1700\n    ],\n    [\n      1800,\n      1700\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "captures",
+                "{{capture_id}}",
+                "correct"
+              ]
+            },
+            "description": "The outline as the user drew it, in photo pixels, in order round the product (3 to 2,000 points). Measured exactly as drawn, at once: **200**, `contour_source: user`, confidence 1. Outdates any pending run. Needs an outline (`CAPTURE_NOT_READY` otherwise); a crossing outline is `CAPTURE_OUTLINE_CROSSES_ITSELF`; points off the paper or under 25 mm² are `CAPTURE_INVALID_INPUT` (`meta.field = edited_contour_px`)."
+          },
+          "response": [
+            {
+              "name": "200 measured as drawn",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"edited_contour_px\": [\n    [\n      1800,\n      1300\n    ],\n    [\n      2240,\n      1300\n    ],\n    [\n      2240,\n      1700\n    ],\n    [\n      1800,\n      1700\n    ]\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The outline as the user drew it, in photo pixels, in order round the product (3 to 2,000 points). Measured exactly as drawn, at once: **200**, `contour_source: user`, confidence 1. Outdates any pending run. Needs an outline (`CAPTURE_NOT_READY` otherwise); a crossing outline is `CAPTURE_OUTLINE_CROSSES_ITSELF`; points off the paper or under 25 mm² are `CAPTURE_INVALID_INPUT` (`meta.field = edited_contour_px`)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a49-51ab-762f-8d3d-96cec4f13e73\",\n  \"status\": \"done\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"settings\": {\n    \"pen_width_mm\": 0.5,\n    \"height_mm\": 95.0,\n    \"focal_length_35mm\": 26.0,\n    \"tap_point_px\": null\n  },\n  \"result\": {\n    \"mode\": \"photo\",\n    \"paper\": {\n      \"size\": \"A4\",\n      \"corners_px\": [\n        [\n          1180.2,\n          200.4\n        ],\n        [\n          2859.8,\n          240.1\n        ],\n        [\n          2979.6,\n          2799.7\n        ],\n        [\n          1050.3,\n          2760.2\n        ]\n      ],\n      \"px_per_mm\": 10.0\n    },\n    \"camera\": {\n      \"height_mm\": 402.6,\n      \"foot_mm\": [\n        104.1,\n        171.3\n      ],\n      \"focal_source\": \"exif\"\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"shape\": \"rectangular\",\n        \"confidence\": 1.0,\n        \"bbox_mm\": {\n          \"l\": 52.08,\n          \"w\": 46.2\n        },\n        \"diameter_mm\": null,\n        \"angle_deg\": 0.0,\n        \"center_mm\": [\n          105.2,\n          150.1\n        ],\n        \"area_mm2\": 2406.1,\n        \"contour_mm\": [\n          [\n            0.0,\n            -26.1\n          ],\n          [\n            18.5,\n            -18.4\n          ],\n          \"…\"\n        ],\n        \"contour_px\": [\n          [\n            2015.3,\n            1268.8\n          ],\n          [\n            2177.9,\n            1335.1\n          ],\n          \"…\"\n        ],\n        \"contour_source\": \"user\",\n        \"height_mm\": 95.0,\n        \"height_source\": \"user\"\n      }\n    ],\n    \"warnings\": [\n      {\n        \"kind\": \"outline_may_be_bigger\",\n        \"height_mm\": 95.0,\n        \"up_to_mm\": 7.8\n      }\n    ],\n    \"level_used\": \"L1\"\n  },\n  \"error\": null,\n  \"photo\": {\n    \"url\": \"https://<account>.r2.cloudflarestorage.com/<bucket>/photos/01a18a49-51ab-762f-8d3d-96cec4f13e73.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&…&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=…\",\n    \"url_expires_at\": \"2026-10-30T01:00:25.137458Z\"\n  },\n  \"created_at\": \"2026-10-30T00:50:24.112035Z\",\n  \"photo_kept_until\": \"2026-11-29T00:50:24.112035Z\"\n}"
+            },
+            {
+              "name": "400 the outline crosses itself",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"edited_contour_px\": [\n    [\n      1800,\n      1300\n    ],\n    [\n      2240,\n      1300\n    ],\n    [\n      2240,\n      1700\n    ],\n    [\n      1800,\n      1700\n    ]\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The outline as the user drew it, in photo pixels, in order round the product (3 to 2,000 points). Measured exactly as drawn, at once: **200**, `contour_source: user`, confidence 1. Outdates any pending run. Needs an outline (`CAPTURE_NOT_READY` otherwise); a crossing outline is `CAPTURE_OUTLINE_CROSSES_ITSELF`; points off the paper or under 25 mm² are `CAPTURE_INVALID_INPUT` (`meta.field = edited_contour_px`)."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_OUTLINE_CROSSES_ITSELF\",\n    \"message\": \"The outline crosses itself. Move the points so the line goes round the product once.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "400 too few points",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"edited_contour_px\": [\n    [\n      1800,\n      1300\n    ],\n    [\n      2240,\n      1300\n    ],\n    [\n      2240,\n      1700\n    ],\n    [\n      1800,\n      1700\n    ]\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The outline as the user drew it, in photo pixels, in order round the product (3 to 2,000 points). Measured exactly as drawn, at once: **200**, `contour_source: user`, confidence 1. Outdates any pending run. Needs an outline (`CAPTURE_NOT_READY` otherwise); a crossing outline is `CAPTURE_OUTLINE_CROSSES_ITSELF`; points off the paper or under 25 mm² are `CAPTURE_INVALID_INPUT` (`meta.field = edited_contour_px`)."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_INVALID_INPUT\",\n    \"message\": \"The setting edited_contour_px must be 3 to 2000 points.\",\n    \"meta\": {\n      \"field\": \"edited_contour_px\",\n      \"allowed\": \"3 to 2000 points\"\n    }\n  }\n}"
+            },
+            {
+              "name": "409 no outline yet",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"edited_contour_px\": [\n    [\n      1800,\n      1300\n    ],\n    [\n      2240,\n      1300\n    ],\n    [\n      2240,\n      1700\n    ],\n    [\n      1800,\n      1700\n    ]\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The outline as the user drew it, in photo pixels, in order round the product (3 to 2,000 points). Measured exactly as drawn, at once: **200**, `contour_source: user`, confidence 1. Outdates any pending run. Needs an outline (`CAPTURE_NOT_READY` otherwise); a crossing outline is `CAPTURE_OUTLINE_CROSSES_ITSELF`; points off the paper or under 25 mm² are `CAPTURE_INVALID_INPUT` (`meta.field = edited_contour_px`)."
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_NOT_READY\",\n    \"message\": \"There's no outline to edit yet. Wait for the measurement, or tap the product.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "400 none, or more than one, of the three",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"edited_contour_px\": [\n    [\n      1800,\n      1300\n    ],\n    [\n      2240,\n      1300\n    ],\n    [\n      2240,\n      1700\n    ],\n    [\n      1800,\n      1700\n    ]\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The outline as the user drew it, in photo pixels, in order round the product (3 to 2,000 points). Measured exactly as drawn, at once: **200**, `contour_source: user`, confidence 1. Outdates any pending run. Needs an outline (`CAPTURE_NOT_READY` otherwise); a crossing outline is `CAPTURE_OUTLINE_CROSSES_ITSELF`; points off the paper or under 25 mm² are `CAPTURE_INVALID_INPUT` (`meta.field = edited_contour_px`)."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"correction\",\n      \"expected\": \"one of tap_point_px, edited_contour_px, height_mm\"\n    }\n  }\n}"
+            },
+            {
+              "name": "404 someone else's or unknown",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"edited_contour_px\": [\n    [\n      1800,\n      1300\n    ],\n    [\n      2240,\n      1300\n    ],\n    [\n      2240,\n      1700\n    ],\n    [\n      1800,\n      1700\n    ]\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The outline as the user drew it, in photo pixels, in order round the product (3 to 2,000 points). Measured exactly as drawn, at once: **200**, `contour_source: user`, confidence 1. Outdates any pending run. Needs an outline (`CAPTURE_NOT_READY` otherwise); a crossing outline is `CAPTURE_OUTLINE_CROSSES_ITSELF`; points off the paper or under 25 mm² are `CAPTURE_INVALID_INPUT` (`meta.field = edited_contour_px`)."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_NOT_FOUND\",\n    \"message\": \"There is no such capture.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Correct: height",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"height_mm\": 95\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "captures",
+                "{{capture_id}}",
+                "correct"
+              ]
+            },
+            "description": "The product's height in mm (0.1 to 1000), typed by the user. Kept for every later run and applied to the outline at once: **200**, with the tall-product warning worked out again (`outline_may_be_bigger` with `up_to_mm`, or none when under 0.5 mm). While a run is still pending, a new run with the height is queued instead: **202**."
+          },
+          "response": [
+            {
+              "name": "200 applied",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"height_mm\": 95\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The product's height in mm (0.1 to 1000), typed by the user. Kept for every later run and applied to the outline at once: **200**, with the tall-product warning worked out again (`outline_may_be_bigger` with `up_to_mm`, or none when under 0.5 mm). While a run is still pending, a new run with the height is queued instead: **202**."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a49-51ab-762f-8d3d-96cec4f13e73\",\n  \"status\": \"done\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"settings\": {\n    \"pen_width_mm\": 0.5,\n    \"height_mm\": 95.0,\n    \"focal_length_35mm\": 26.0,\n    \"tap_point_px\": null\n  },\n  \"result\": {\n    \"mode\": \"photo\",\n    \"paper\": {\n      \"size\": \"A4\",\n      \"corners_px\": [\n        [\n          1180.2,\n          200.4\n        ],\n        [\n          2859.8,\n          240.1\n        ],\n        [\n          2979.6,\n          2799.7\n        ],\n        [\n          1050.3,\n          2760.2\n        ]\n      ],\n      \"px_per_mm\": 10.0\n    },\n    \"camera\": {\n      \"height_mm\": 402.6,\n      \"foot_mm\": [\n        104.1,\n        171.3\n      ],\n      \"focal_source\": \"exif\"\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"shape\": \"round\",\n        \"confidence\": 1.0,\n        \"bbox_mm\": {\n          \"l\": 52.31,\n          \"w\": 52.27\n        },\n        \"diameter_mm\": 52.29,\n        \"angle_deg\": 0.0,\n        \"center_mm\": [\n          105.0,\n          150.0\n        ],\n        \"area_mm2\": 2147.5,\n        \"contour_mm\": [\n          [\n            0.0,\n            -26.1\n          ],\n          [\n            18.5,\n            -18.4\n          ],\n          \"…\"\n        ],\n        \"contour_px\": [\n          [\n            2015.3,\n            1268.8\n          ],\n          [\n            2177.9,\n            1335.1\n          ],\n          \"…\"\n        ],\n        \"contour_source\": \"detected\",\n        \"height_mm\": 95.0,\n        \"height_source\": \"user\"\n      }\n    ],\n    \"warnings\": [\n      {\n        \"kind\": \"outline_may_be_bigger\",\n        \"height_mm\": 95.0,\n        \"up_to_mm\": 7.8\n      }\n    ],\n    \"level_used\": \"L1\"\n  },\n  \"error\": null,\n  \"photo\": {\n    \"url\": \"https://<account>.r2.cloudflarestorage.com/<bucket>/photos/01a18a49-51ab-762f-8d3d-96cec4f13e73.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&…&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=…\",\n    \"url_expires_at\": \"2026-10-30T01:00:25.137458Z\"\n  },\n  \"created_at\": \"2026-10-30T00:50:24.112035Z\",\n  \"photo_kept_until\": \"2026-11-29T00:50:24.112035Z\"\n}"
+            },
+            {
+              "name": "202 a run was pending: a new one takes the height",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"height_mm\": 95\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The product's height in mm (0.1 to 1000), typed by the user. Kept for every later run and applied to the outline at once: **200**, with the tall-product warning worked out again (`outline_may_be_bigger` with `up_to_mm`, or none when under 0.5 mm). While a run is still pending, a new run with the height is queued instead: **202**."
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a49-51ab-762f-8d3d-96cec4f13e73\",\n  \"status\": \"pending\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"settings\": {\n    \"pen_width_mm\": 0.5,\n    \"height_mm\": 95.0,\n    \"focal_length_35mm\": 26.0,\n    \"tap_point_px\": null\n  },\n  \"result\": null,\n  \"error\": null,\n  \"photo\": {\n    \"url\": \"https://<account>.r2.cloudflarestorage.com/<bucket>/photos/01a18a49-51ab-762f-8d3d-96cec4f13e73.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&…&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=…\",\n    \"url_expires_at\": \"2026-10-30T01:00:25.137458Z\"\n  },\n  \"created_at\": \"2026-10-30T00:50:24.112035Z\",\n  \"photo_kept_until\": \"2026-11-29T00:50:24.112035Z\"\n}"
+            },
+            {
+              "name": "400 out of range",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"height_mm\": 95\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The product's height in mm (0.1 to 1000), typed by the user. Kept for every later run and applied to the outline at once: **200**, with the tall-product warning worked out again (`outline_may_be_bigger` with `up_to_mm`, or none when under 0.5 mm). While a run is still pending, a new run with the height is queued instead: **202**."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_INVALID_INPUT\",\n    \"message\": \"The setting height_mm must be 0.1 to 1000 mm.\",\n    \"meta\": {\n      \"field\": \"height_mm\",\n      \"allowed\": \"0.1 to 1000 mm\"\n    }\n  }\n}"
+            },
+            {
+              "name": "400 none, or more than one, of the three",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"height_mm\": 95\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The product's height in mm (0.1 to 1000), typed by the user. Kept for every later run and applied to the outline at once: **200**, with the tall-product warning worked out again (`outline_may_be_bigger` with `up_to_mm`, or none when under 0.5 mm). While a run is still pending, a new run with the height is queued instead: **202**."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"correction\",\n      \"expected\": \"one of tap_point_px, edited_contour_px, height_mm\"\n    }\n  }\n}"
+            },
+            {
+              "name": "404 someone else's or unknown",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"height_mm\": 95\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures/{{capture_id}}/correct",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures",
+                    "{{capture_id}}",
+                    "correct"
+                  ]
+                },
+                "description": "The product's height in mm (0.1 to 1000), typed by the user. Kept for every later run and applied to the outline at once: **200**, with the tall-product warning worked out again (`outline_may_be_bigger` with `up_to_mm`, or none when under 0.5 mm). While a run is still pending, a new run with the height is queued instead: **202**."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.4"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_NOT_FOUND\",\n    \"message\": \"There is no such capture.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

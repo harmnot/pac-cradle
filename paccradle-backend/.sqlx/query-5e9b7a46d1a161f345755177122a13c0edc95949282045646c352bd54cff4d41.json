@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO jobs (id, kind, payload, max_attempts, run_at)\n                SELECT $1, $2, $3, $4, now()\n                WHERE NOT EXISTS (\n                    SELECT 1 FROM jobs\n                    WHERE kind = $2\n                      AND (status IN ('queued', 'running')\n                           OR finished_at > now() - make_interval(secs => $5))\n                )\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Int4",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5e9b7a46d1a161f345755177122a13c0edc95949282045646c352bd54cff4d41"
+}

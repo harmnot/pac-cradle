@@ -45,7 +45,7 @@ impl ApiSurface {
     /// requests, responses or error codes, and write the change into a dated `postman/` file.
     pub const fn version(self) -> &'static str {
         match self {
-            Self::Client => "1.0.0-beta.2",
+            Self::Client => "1.0.0-beta.5",
             Self::Admin => "1.0.0-beta.2",
         }
     }

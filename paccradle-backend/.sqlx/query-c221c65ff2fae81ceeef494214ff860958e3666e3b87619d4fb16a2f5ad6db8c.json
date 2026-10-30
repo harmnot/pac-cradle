@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT count(*) AS \"count!\"\n                FROM designs\n                WHERE user_id = $1\n                  AND ($2::text IS NULL OR strpos(lower(name), lower($2)) > 0)\n                  AND ($3::text IS NULL OR spec -> 'insert' ->> 'style' = $3)\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c221c65ff2fae81ceeef494214ff860958e3666e3b87619d4fb16a2f5ad6db8c"
+}

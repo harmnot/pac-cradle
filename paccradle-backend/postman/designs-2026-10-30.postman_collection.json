@@ -1,0 +1,786 @@
+{
+  "info": {
+    "name": "paccradle API: designs (2026-10-30)",
+    "description": "Change: M1-D6, designs endpoints (2026-10-30). The client contract moves to **1.0.0-beta.5** (`api-version`); the admin contract stays at 1.0.0-beta.2. Merge into the main contract.\n\n**New:** `POST /api/client/v1/designs`, `GET /api/client/v1/designs` (paginated: `page`, `page_size`, `total_pages`, with `search`, `style`, `sort`, `order`), `GET` and `PATCH /api/client/v1/designs/{design_id}`. **New codes:** `DESIGN_NOT_FOUND` (404), `DESIGN_INVALID` (400, `meta.detail` in English), `DESIGN_VERSION_CONFLICT` (409, `meta.current_version`). Every list endpoint answers `{items, page, page_size, total, total_pages}` from now on.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:7773"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "design_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Client: designs (/api/client/v1/designs)",
+      "item": [
+        {
+          "name": "Save a design",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Perfume set\",\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/designs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "designs"
+              ]
+            },
+            "description": "Saves the editor's design at version 1. Guests may save (their designs move to the account when they sign up or in).\n\n- `name`: shown in \"My designs\"; trimmed, control characters dropped, at most 200 characters; may be left out (empty).\n- `spec`: `insert_core::Design`, the same JSON the WASM preview takes: `material`, `products` (each with `id`, `contour_mm`, `height_mm`, `quantity`), `insert` (`style` and its settings), `outer_box` (or `null`). Copy each product's outline from its capture's `result.products[].contour_mm` (with the typed height): the design keeps the copy, so later taps or edits on the capture don't change it.\n\nRefused with `DESIGN_INVALID` (400) when the spec has the wrong shape or breaks `insert_core`'s rules (the same ones the editor runs in WASM); `meta.detail` says what, in English. A design that doesn't fit its box yet is still saved. Unknown top-level fields are refused. The answer's `spec` is the design as stored: defaults the request left out are filled in."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Perfume set\",\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs"
+                  ]
+                },
+                "description": "Saves the editor's design at version 1. Guests may save (their designs move to the account when they sign up or in).\n\n- `name`: shown in \"My designs\"; trimmed, control characters dropped, at most 200 characters; may be left out (empty).\n- `spec`: `insert_core::Design`, the same JSON the WASM preview takes: `material`, `products` (each with `id`, `contour_mm`, `height_mm`, `quantity`), `insert` (`style` and its settings), `outer_box` (or `null`). Copy each product's outline from its capture's `result.products[].contour_mm` (with the typed height): the design keeps the copy, so later taps or edits on the capture don't change it.\n\nRefused with `DESIGN_INVALID` (400) when the spec has the wrong shape or breaks `insert_core`'s rules (the same ones the editor runs in WASM); `meta.detail` says what, in English. A design that doesn't fit its box yet is still saved. Unknown top-level fields are refused. The answer's `spec` is the design as stored: defaults the request left out are filled in."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"design_id\": \"01a18a5b-a2dc-760f-b789-a56b42001be7\",\n  \"name\": \"Perfume set\",\n  \"version\": 1,\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  },\n  \"created_at\": \"2026-10-30T01:10:23.714161Z\",\n  \"updated_at\": \"2026-10-30T01:10:23.714161Z\"\n}"
+            },
+            {
+              "name": "400 a spec that breaks the rules or has the wrong shape",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Perfume set\",\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs"
+                  ]
+                },
+                "description": "Saves the editor's design at version 1. Guests may save (their designs move to the account when they sign up or in).\n\n- `name`: shown in \"My designs\"; trimmed, control characters dropped, at most 200 characters; may be left out (empty).\n- `spec`: `insert_core::Design`, the same JSON the WASM preview takes: `material`, `products` (each with `id`, `contour_mm`, `height_mm`, `quantity`), `insert` (`style` and its settings), `outer_box` (or `null`). Copy each product's outline from its capture's `result.products[].contour_mm` (with the typed height): the design keeps the copy, so later taps or edits on the capture don't change it.\n\nRefused with `DESIGN_INVALID` (400) when the spec has the wrong shape or breaks `insert_core`'s rules (the same ones the editor runs in WASM); `meta.detail` says what, in English. A design that doesn't fit its box yet is still saved. Unknown top-level fields are refused. The answer's `spec` is the design as stored: defaults the request left out are filled in."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"DESIGN_INVALID\",\n    \"message\": \"This design can't be saved: missing field `clearance_mm`.\",\n    \"meta\": {\n      \"detail\": \"missing field `clearance_mm`\"\n    }\n  }\n}"
+            },
+            {
+              "name": "400 a name over 200 characters",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Perfume set\",\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs"
+                  ]
+                },
+                "description": "Saves the editor's design at version 1. Guests may save (their designs move to the account when they sign up or in).\n\n- `name`: shown in \"My designs\"; trimmed, control characters dropped, at most 200 characters; may be left out (empty).\n- `spec`: `insert_core::Design`, the same JSON the WASM preview takes: `material`, `products` (each with `id`, `contour_mm`, `height_mm`, `quantity`), `insert` (`style` and its settings), `outer_box` (or `null`). Copy each product's outline from its capture's `result.products[].contour_mm` (with the typed height): the design keeps the copy, so later taps or edits on the capture don't change it.\n\nRefused with `DESIGN_INVALID` (400) when the spec has the wrong shape or breaks `insert_core`'s rules (the same ones the editor runs in WASM); `meta.detail` says what, in English. A design that doesn't fit its box yet is still saved. Unknown top-level fields are refused. The answer's `spec` is the design as stored: defaults the request left out are filled in."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"name\",\n      \"allowed\": \"at most 200 characters\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "My designs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/designs?page=1&page_size=20&search=perfume&style=cradle_platform&sort=updated_at&order=desc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "designs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "From 1; default 1."
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "1 to 100; default 20."
+                },
+                {
+                  "key": "search",
+                  "value": "perfume",
+                  "description": "Names containing this, any letter case."
+                },
+                {
+                  "key": "style",
+                  "value": "cradle_platform",
+                  "description": "partition_grid | cutout_card | cradle_platform"
+                },
+                {
+                  "key": "sort",
+                  "value": "updated_at",
+                  "description": "updated_at (default) | created_at | name"
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "asc | desc; default asc by name, desc by date"
+                }
+              ]
+            },
+            "description": "\"My designs\": a page of the caller's designs, filtered and sorted. Items are summaries without outlines; open one with `GET /designs/{design_id}`. Unknown parameters are `INVALID_REQUEST`; a page past the end has no items but still says `total` and `total_pages`."
+          },
+          "response": [
+            {
+              "name": "200 a page",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs?page=1&page_size=20&search=perfume&style=cradle_platform&sort=updated_at&order=desc",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "From 1; default 1."
+                    },
+                    {
+                      "key": "page_size",
+                      "value": "20",
+                      "description": "1 to 100; default 20."
+                    },
+                    {
+                      "key": "search",
+                      "value": "perfume",
+                      "description": "Names containing this, any letter case."
+                    },
+                    {
+                      "key": "style",
+                      "value": "cradle_platform",
+                      "description": "partition_grid | cutout_card | cradle_platform"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "updated_at",
+                      "description": "updated_at (default) | created_at | name"
+                    },
+                    {
+                      "key": "order",
+                      "value": "desc",
+                      "description": "asc | desc; default asc by name, desc by date"
+                    }
+                  ]
+                },
+                "description": "\"My designs\": a page of the caller's designs, filtered and sorted. Items are summaries without outlines; open one with `GET /designs/{design_id}`. Unknown parameters are `INVALID_REQUEST`; a page past the end has no items but still says `total` and `total_pages`."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"items\": [\n    {\n      \"design_id\": \"01a18a5b-a2dc-760f-b789-a56b42001be7\",\n      \"name\": \"Perfume duo\",\n      \"version\": 2,\n      \"insert_style\": \"cradle_platform\",\n      \"product_types\": 1,\n      \"product_count\": 2,\n      \"has_box\": true,\n      \"created_at\": \"2026-10-30T01:10:23.714161Z\",\n      \"updated_at\": \"2026-10-30T01:10:24.064845Z\"\n    }\n  ],\n  \"page\": 1,\n  \"page_size\": 10,\n  \"total\": 1,\n  \"total_pages\": 1\n}"
+            },
+            {
+              "name": "400 a page size out of range",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs?page=1&page_size=20&search=perfume&style=cradle_platform&sort=updated_at&order=desc",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "From 1; default 1."
+                    },
+                    {
+                      "key": "page_size",
+                      "value": "20",
+                      "description": "1 to 100; default 20."
+                    },
+                    {
+                      "key": "search",
+                      "value": "perfume",
+                      "description": "Names containing this, any letter case."
+                    },
+                    {
+                      "key": "style",
+                      "value": "cradle_platform",
+                      "description": "partition_grid | cutout_card | cradle_platform"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "updated_at",
+                      "description": "updated_at (default) | created_at | name"
+                    },
+                    {
+                      "key": "order",
+                      "value": "desc",
+                      "description": "asc | desc; default asc by name, desc by date"
+                    }
+                  ]
+                },
+                "description": "\"My designs\": a page of the caller's designs, filtered and sorted. Items are summaries without outlines; open one with `GET /designs/{design_id}`. Unknown parameters are `INVALID_REQUEST`; a page past the end has no items but still says `total` and `total_pages`."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"page_size\",\n      \"allowed\": \"1 to 100\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a design",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "designs",
+                "{{design_id}}"
+              ]
+            },
+            "description": "The caller's design, with the `version` to send back with the next `PATCH`. Someone else's, or an unknown id, is `DESIGN_NOT_FOUND`."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "The caller's design, with the `version` to send back with the next `PATCH`. Someone else's, or an unknown id, is `DESIGN_NOT_FOUND`."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"design_id\": \"01a18a5b-a2dc-760f-b789-a56b42001be7\",\n  \"name\": \"Perfume set\",\n  \"version\": 1,\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  },\n  \"created_at\": \"2026-10-30T01:10:23.714161Z\",\n  \"updated_at\": \"2026-10-30T01:10:23.714161Z\"\n}"
+            },
+            {
+              "name": "404 someone else's or unknown",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "The caller's design, with the `version` to send back with the next `PATCH`. Someone else's, or an unknown id, is `DESIGN_NOT_FOUND`."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"DESIGN_NOT_FOUND\",\n    \"message\": \"There is no such design.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Change a design",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 1,\n  \"name\": \"Perfume duo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "designs",
+                "{{design_id}}"
+              ]
+            },
+            "description": "Saves a change: `version` is the version the editor changed (from the last read or save), plus a new `name`, a new `spec` (whole), or both. The answer carries the new version (one more), or the same version when nothing changed (autosaving the same state is free).\n\n**Conflict:** when the design was saved meanwhile (another tab), `DESIGN_VERSION_CONFLICT` (409) with `meta.current_version`: reload the design, then apply the change again. A broken spec is `DESIGN_INVALID` and leaves the design as it was."
+          },
+          "response": [
+            {
+              "name": "200 saved as the next version",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"version\": 1,\n  \"name\": \"Perfume duo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "Saves a change: `version` is the version the editor changed (from the last read or save), plus a new `name`, a new `spec` (whole), or both. The answer carries the new version (one more), or the same version when nothing changed (autosaving the same state is free).\n\n**Conflict:** when the design was saved meanwhile (another tab), `DESIGN_VERSION_CONFLICT` (409) with `meta.current_version`: reload the design, then apply the change again. A broken spec is `DESIGN_INVALID` and leaves the design as it was."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"design_id\": \"01a18a5b-a2dc-760f-b789-a56b42001be7\",\n  \"name\": \"Perfume duo\",\n  \"version\": 2,\n  \"spec\": {\n    \"material\": {\n      \"board\": \"chipboard\",\n      \"thickness_mm\": 1.5,\n      \"clearance_mm\": 1.0,\n      \"slot_tolerance_mm\": 0.3\n    },\n    \"products\": [\n      {\n        \"id\": \"p1\",\n        \"contour_mm\": [\n          [\n            0.0,\n            0.0\n          ],\n          [\n            52.0,\n            0.0\n          ],\n          [\n            52.0,\n            38.0\n          ],\n          [\n            0.0,\n            38.0\n          ]\n        ],\n        \"height_mm\": 110.0,\n        \"quantity\": 2\n      }\n    ],\n    \"insert\": {\n      \"style\": \"cradle_platform\",\n      \"deck_height_mm\": 40.0,\n      \"margin_mm\": 12.0,\n      \"align\": \"center\",\n      \"placements\": [\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            38.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        },\n        {\n          \"product_id\": \"p1\",\n          \"center_mm\": [\n            102.0,\n            31.0\n          ],\n          \"rotation_deg\": 0.0\n        }\n      ]\n    },\n    \"outer_box\": {\n      \"style\": \"mailer\",\n      \"material\": {\n        \"board\": \"e_flute\",\n        \"thickness_mm\": 1.6,\n        \"clearance_mm\": 1.5,\n        \"slot_tolerance_mm\": 0.5\n      },\n      \"inside_mm\": null\n    }\n  },\n  \"created_at\": \"2026-10-30T01:10:23.714161Z\",\n  \"updated_at\": \"2026-10-30T01:10:24.064845Z\"\n}"
+            },
+            {
+              "name": "409 saved meanwhile (another tab)",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"version\": 1,\n  \"name\": \"Perfume duo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "Saves a change: `version` is the version the editor changed (from the last read or save), plus a new `name`, a new `spec` (whole), or both. The answer carries the new version (one more), or the same version when nothing changed (autosaving the same state is free).\n\n**Conflict:** when the design was saved meanwhile (another tab), `DESIGN_VERSION_CONFLICT` (409) with `meta.current_version`: reload the design, then apply the change again. A broken spec is `DESIGN_INVALID` and leaves the design as it was."
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"DESIGN_VERSION_CONFLICT\",\n    \"message\": \"This design was changed somewhere else (version 2). Reload it to see the latest.\",\n    \"meta\": {\n      \"current_version\": 2\n    }\n  }\n}"
+            },
+            {
+              "name": "400 neither a name nor a spec",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"version\": 1,\n  \"name\": \"Perfume duo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "Saves a change: `version` is the version the editor changed (from the last read or save), plus a new `name`, a new `spec` (whole), or both. The answer carries the new version (one more), or the same version when nothing changed (autosaving the same state is free).\n\n**Conflict:** when the design was saved meanwhile (another tab), `DESIGN_VERSION_CONFLICT` (409) with `meta.current_version`: reload the design, then apply the change again. A broken spec is `DESIGN_INVALID` and leaves the design as it was."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"name\",\n      \"expected\": \"a name, a spec, or both\"\n    }\n  }\n}"
+            },
+            {
+              "name": "404 someone else's or unknown",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"version\": 1,\n  \"name\": \"Perfume duo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/designs/{{design_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "designs",
+                    "{{design_id}}"
+                  ]
+                },
+                "description": "Saves a change: `version` is the version the editor changed (from the last read or save), plus a new `name`, a new `spec` (whole), or both. The answer carries the new version (one more), or the same version when nothing changed (autosaving the same state is free).\n\n**Conflict:** when the design was saved meanwhile (another tab), `DESIGN_VERSION_CONFLICT` (409) with `meta.current_version`: reload the design, then apply the change again. A broken spec is `DESIGN_INVALID` and leaves the design as it was."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.5"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"DESIGN_NOT_FOUND\",\n    \"message\": \"There is no such design.\",\n    \"meta\": {}\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

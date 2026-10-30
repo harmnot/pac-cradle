@@ -1,0 +1,179 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO captures (id, user_id, mode, paper, input, exif, storage_key, purge_after)\n                VALUES ($1, $2, $3, $4, $5, $6, $7, now() + make_interval(secs => $8))\n                RETURNING id, user_id, status, input, run, result, confidence, level_used,\n                          error_code, error_meta, storage_key, created_at, purge_after\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "input",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "input"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "run",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "run"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "result",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "result"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "confidence",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "confidence"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "level_used",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "level_used"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "error_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "error_code"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "error_meta",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "error_meta"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "storage_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "storage_key"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "purge_after",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "purge_after"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "1e7887b1e07c9a8d6118299e9563d41172c21d446f644852c3df06923be20c67"
+}

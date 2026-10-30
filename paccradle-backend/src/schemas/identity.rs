@@ -6,8 +6,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::error::{AppError, ErrorCode};
+use crate::models::paper::Paper;
 use crate::models::session::{NextStep, SignedIn};
-use crate::models::user::{AccountRole, PaperDefault, User};
+use crate::models::user::{AccountRole, User};
 
 /// The longest email address (RFC 5321's path limit).
 const MAX_EMAIL_LEN: usize = 254;
@@ -123,7 +124,7 @@ pub struct AccountResponse {
     /// Their language, e.g. `en`.
     pub locale: String,
     /// `a4` or `letter`.
-    pub paper_default: PaperDefault,
+    pub paper_default: Paper,
     /// When the account (or the guest it grew from) was made, RFC 3339.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,

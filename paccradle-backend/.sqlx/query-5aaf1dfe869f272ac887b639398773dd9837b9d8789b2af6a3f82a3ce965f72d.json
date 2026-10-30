@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT run FROM captures",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "run",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "run"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5aaf1dfe869f272ac887b639398773dd9837b9d8789b2af6a3f82a3ce965f72d"
+}

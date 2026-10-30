@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE captures SET storage_key = NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a389b14d7e4da04cc594b681af935101efa94dbf926e1a96765f7f081eb6269d"
+}

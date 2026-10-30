@@ -33,6 +33,59 @@ pub(super) const fn error_message(code: ErrorCode) -> &'static str {
         }
         ErrorCode::AuthPasskeyRejected => "That passkey didn't work. Please try again.",
         ErrorCode::AuthPasskeyAlreadyRegistered => "This passkey is already saved.",
+        ErrorCode::CaptureFileTooLarge => {
+            "The photo is too large. Send one of at most {max_mb} MB, as a JPEG."
+        }
+        ErrorCode::CaptureUnsupportedImage => {
+            "This file isn't a JPEG, PNG or WebP photo. Send the photo as a JPEG."
+        }
+        ErrorCode::CaptureUnreadableImage => {
+            "The photo can't be read: it may be damaged or cut short. Please take it again."
+        }
+        ErrorCode::CaptureImageTooLarge => {
+            "The photo has too many pixels ({width} × {height}). Send one of at most \
+             {max_megapixels} megapixels."
+        }
+        ErrorCode::CaptureImageTooSmall => {
+            "The photo is too small to measure ({width} × {height} px). Its long side needs at \
+             least {min_long_side} px."
+        }
+        ErrorCode::CaptureInvalidInput => "The setting {field} must be {allowed}.",
+        ErrorCode::CapturePaperNotFound => {
+            "We couldn't find the paper. Put it on a darker surface and keep all 4 corners in \
+             the photo."
+        }
+        ErrorCode::CaptureProductNotFound => {
+            "We couldn't find the product on the paper. Tap it, or put it in the middle, at \
+             least 2 cm from the edges, and take the photo again."
+        }
+        ErrorCode::CaptureTraceNotFound => {
+            "We couldn't find a closed pen outline. Trace all the way round the product, then \
+             take it away before the photo."
+        }
+        ErrorCode::CaptureNothingAtTap => {
+            "Nothing was found where you tapped. Tap the middle of the product, or use Trace \
+             mode if it's close to the paper's colour."
+        }
+        ErrorCode::CaptureOutlineCrossesItself => {
+            "The outline crosses itself. Move the points so the line goes round the product once."
+        }
+        ErrorCode::CaptureProcessingFailed => {
+            "Something went wrong measuring the photo. Tap the product to try again."
+        }
+        ErrorCode::CaptureNotFound => "There is no such capture.",
+        ErrorCode::CapturePhotoDeleted => {
+            "This photo was deleted after 30 days. Take a new one to measure again."
+        }
+        ErrorCode::CaptureNotReady => {
+            "There's no outline to edit yet. Wait for the measurement, or tap the product."
+        }
+        ErrorCode::DesignNotFound => "There is no such design.",
+        ErrorCode::DesignInvalid => "This design can't be saved: {detail}.",
+        ErrorCode::DesignVersionConflict => {
+            "This design was changed somewhere else (version {current_version}). Reload it to \
+             see the latest."
+        }
     }
 }
 

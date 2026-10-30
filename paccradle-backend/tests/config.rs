@@ -72,6 +72,14 @@ fn production_needs_an_https_web_app_origin() {
         ("SMTP_USERNAME", "api"),
         ("SMTP_PASSWORD", "secret"),
         ("EMAIL_FROM", "Example <no-reply@example.com>"),
+        // Photos (M1-D4): checked below.
+        (
+            "STORAGE_ENDPOINT",
+            "https://account.r2.cloudflarestorage.com",
+        ),
+        ("STORAGE_BUCKET", "paccradle-photos"),
+        ("STORAGE_ACCESS_KEY_ID", "key-id"),
+        ("STORAGE_SECRET_ACCESS_KEY", "key-secret"),
     ]);
     assert_eq!(config.web_origin, "https://app.example.com");
     assert_eq!(
@@ -199,4 +207,85 @@ fn database_settings_are_checked_without_repeating_the_url() {
     assert_eq!(config.job_workers, 0);
     // Printing the config (a panic message, a debug log) never shows the password.
     assert!(!format!("{config:?}").contains("hunter2"));
+}
+
+#[test]
+fn photo_storage_is_optional_in_development_and_needed_whole_in_production() {
+    let config = config(&[]);
+    assert!(config.storage.is_none(), "photos kept in memory");
+    assert_eq!(config.rate_limit_uploads_per_hour.get(), 30);
+
+    let storage = [
+        (
+            "STORAGE_ENDPOINT",
+            "https://Account.r2.cloudflarestorage.com/",
+        ),
+        ("STORAGE_BUCKET", "paccradle-photos"),
+        ("STORAGE_ACCESS_KEY_ID", "key-id"),
+        ("STORAGE_SECRET_ACCESS_KEY", "key-secret"),
+    ];
+    let config = load(&storage).unwrap();
+    let stored = config.storage.unwrap();
+    assert_eq!(stored.endpoint, "https://account.r2.cloudflarestorage.com");
+    assert_eq!(stored.region, "auto");
+    assert_eq!(stored.bucket, "paccradle-photos");
+    assert_eq!(format!("{:?}", stored.secret_access_key), "[redacted]");
+
+    // They go together, in development too.
+    assert_eq!(
+        error(&storage[1..]),
+        "STORAGE_ENDPOINT must be set too: the STORAGE_* settings go together"
+    );
+    assert!(error(&storage[..3]).starts_with("STORAGE_SECRET_ACCESS_KEY must be set too"));
+    assert_eq!(
+        error(&[
+            ("APP_ENV", "production"),
+            ("APP_WEB_URL", "https://app.example.com"),
+            ("DATABASE_URL", "postgres://api:secret@db:5432/paccradle"),
+            ("AUTH_JWT_SECRET", "0123456789abcdef0123456789abcdef"),
+            ("SMTP_HOST", "mail.example.com"),
+            ("SMTP_USERNAME", "api"),
+            ("SMTP_PASSWORD", "secret"),
+            ("EMAIL_FROM", "Example <no-reply@example.com>"),
+        ]),
+        "STORAGE_ENDPOINT is required in production"
+    );
+}
+
+#[test]
+fn photo_storage_settings_are_checked() {
+    let with = |name: &'static str, value: &'static str| {
+        let mut vars = vec![
+            (
+                "STORAGE_ENDPOINT",
+                "https://account.r2.cloudflarestorage.com",
+            ),
+            ("STORAGE_BUCKET", "paccradle-photos"),
+            ("STORAGE_ACCESS_KEY_ID", "key-id"),
+            ("STORAGE_SECRET_ACCESS_KEY", "key-secret"),
+        ];
+        vars.retain(|(var, _)| *var != name);
+        vars.push((name, value));
+        vars
+    };
+    // A local S3 server over http is fine in development only, and never with a path.
+    assert!(load(&with("STORAGE_ENDPOINT", "http://127.0.0.1:9000")).is_ok());
+    assert!(
+        error(&with(
+            "STORAGE_ENDPOINT",
+            "https://account.r2.cloudflarestorage.com/bucket"
+        ))
+        .starts_with("STORAGE_ENDPOINT must be an origin")
+    );
+    for bucket in ["ab", "Photos", "-photos", "photos-", "pho_tos"] {
+        assert!(
+            error(&with("STORAGE_BUCKET", bucket)).starts_with("STORAGE_BUCKET must be 3 to 63"),
+            "{bucket}"
+        );
+    }
+    assert!(error(&with("STORAGE_REGION", "EU West")).starts_with("STORAGE_REGION must be"));
+    assert!(
+        error(&with("STORAGE_ACCESS_KEY_ID", "key id")).starts_with("STORAGE_ACCESS_KEY_ID must")
+    );
+    assert!(error(&[("RATE_LIMIT_UPLOADS_PER_HOUR", "0")]).contains("from 1 to 10000"));
 }

@@ -257,6 +257,54 @@ fn exif_orientation_turns_the_photo_upright() -> TestResult {
     Ok(())
 }
 
+/// Whether two images have exactly the same pixels.
+fn same_pixels((a, b): (&Mat, &Mat)) -> opencv::Result<bool> {
+    if a.size()? != b.size()? {
+        return Ok(false);
+    }
+    Ok(core::norm2(a, b, core::NORM_INF, &core::no_array())? == 0.0)
+}
+
+/// M1-D4: the API keeps uploads without their metadata (`photo_file::clean`). What it keeps
+/// must decode to the very same pixels, still turned upright, and measure the same.
+#[test]
+fn a_cleaned_upload_decodes_to_the_same_pixels_and_stays_upright() -> TestResult {
+    let photo = disc_photo()?;
+    for extension in [".jpg", ".png", ".webp"] {
+        let bytes = encode((&photo, extension))?;
+        let cleaned = photo_file::clean(&bytes)?.bytes;
+        assert!(
+            same_pixels((&vision::decode(&bytes)?, &vision::decode(&cleaned)?))?,
+            "{extension} pixels changed"
+        );
+    }
+    // A phone's JPEG: turned (orientation 6), with XMP and a comment that must go.
+    let jpeg = encode((&photo, ".jpg"))?;
+    let mut phone = with_orientation((&jpeg, 6));
+    let xmp = b"http://ns.adobe.com/xap/1.0/\0<x:xmpmeta exif:GPSLatitude='51,30N'/>";
+    let mut extra = vec![0xFF, 0xE1];
+    extra.extend(u16::try_from(xmp.len() + 2)?.to_be_bytes());
+    extra.extend(xmp);
+    extra.extend([0xFF, 0xFE, 0x00, 0x09]);
+    extra.extend(b"comment");
+    // After the EXIF segment, as phones write them: OpenCV reads only the first APP1.
+    let exif_end = 4 + usize::from(u16::from_be_bytes([phone[4], phone[5]]));
+    phone.splice(exif_end..exif_end, extra);
+    let cleaned = photo_file::clean(&phone)?.bytes;
+    assert!(cleaned.len() < phone.len());
+    assert!(!cleaned.windows(8).any(|window| window == b"GPSLatit"));
+    let upright = vision::decode(&cleaned)?;
+    assert_eq!((upright.cols(), upright.rows()), (3000, 4000));
+    assert!(same_pixels((&vision::decode(&phone)?, &upright))?);
+    let result = vision::run((&photo_input(), &cleaned))?;
+    assert_close(
+        "cleaned diameter",
+        result.products[0].diameter_mm.ok_or("no diameter")?,
+        52.0,
+    );
+    Ok(())
+}
+
 #[test]
 fn the_input_reads_from_json_and_is_checked_first() -> TestResult {
     let input: CaptureInput = serde_json::from_value(json!({ "paper": "a4", "mode": "trace" }))?;

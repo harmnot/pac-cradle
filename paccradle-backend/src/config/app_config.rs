@@ -88,6 +88,34 @@ pub struct AppConfig {
     pub auth: AuthConfig,
     /// Outgoing email (sign-in links).
     pub email: EmailConfig,
+    /// Object storage for photos (M1-D4). `None` only in development without `STORAGE_*`:
+    /// photos are then kept in memory and lost at restart.
+    pub storage: Option<StorageConfig>,
+    /// `RATE_LIMIT_UPLOADS_PER_HOUR`, default 30: vision runs one user may start per hour
+    /// (each upload and each tap counts). One client address may upload
+    /// [`UPLOADS_PER_ADDRESS_FACTOR`] times as many photos.
+    pub rate_limit_uploads_per_hour: NonZeroU32,
+}
+
+/// How many users' worth of uploads one client address gets (an office or a family behind
+/// one address).
+pub const UPLOADS_PER_ADDRESS_FACTOR: u32 = 4;
+
+/// An S3-compatible bucket: Cloudflare R2 in production (M1-D4).
+#[derive(Debug, Clone)]
+pub struct StorageConfig {
+    /// `STORAGE_ENDPOINT`, e.g. `https://<account id>.r2.cloudflarestorage.com`. `https://`
+    /// only in production; development may use `http://` for a local S3 server.
+    pub endpoint: String,
+    /// `STORAGE_REGION`, default `auto` (R2's only region).
+    pub region: String,
+    /// `STORAGE_BUCKET`: a private bucket, 3 to 63 lower-case letters, digits and hyphens.
+    pub bucket: String,
+    /// `STORAGE_ACCESS_KEY_ID`: an R2 API token's access key, with Object Read & Write on
+    /// the bucket.
+    pub access_key_id: String,
+    /// `STORAGE_SECRET_ACCESS_KEY`: its secret.
+    pub secret_access_key: Secret,
 }
 
 /// Sign-in settings (M1-D3).
@@ -259,6 +287,13 @@ impl AppConfig {
                 rp_name: vars.rp_name()?,
             },
             email: vars.email(env)?,
+            storage: vars.storage(env)?,
+            rate_limit_uploads_per_hour: NonZeroU32::new(vars.bounded(Bounded {
+                name: "RATE_LIMIT_UPLOADS_PER_HOUR",
+                default: 30,
+                range: 1..=10_000,
+            })?)
+            .unwrap_or(NonZeroU32::MIN),
         })
     }
 }
@@ -469,6 +504,87 @@ impl<F: Fn(&str) -> Option<String>> Vars<F> {
         })
     }
 
+    fn storage(&self, env: AppEnv) -> Result<Option<StorageConfig>, ConfigError> {
+        const NAMES: [&str; 4] = [
+            "STORAGE_ENDPOINT",
+            "STORAGE_BUCKET",
+            "STORAGE_ACCESS_KEY_ID",
+            "STORAGE_SECRET_ACCESS_KEY",
+        ];
+        let values = NAMES.map(|name| self.get(name));
+        let any_set = values.iter().any(Option::is_some);
+        let [
+            Some(endpoint),
+            Some(bucket),
+            Some(access_key_id),
+            Some(secret),
+        ] = values
+        else {
+            let name = NAMES
+                .iter()
+                .zip(&values)
+                .find_map(|(name, value)| value.is_none().then_some(*name))
+                .unwrap_or(NAMES[0]);
+            return match (any_set, env) {
+                (false, AppEnv::Development) => Ok(None),
+                (false, AppEnv::Production) => Err(ConfigError::Missing { name }),
+                (true, _) => Err(ConfigError::Invalid {
+                    name,
+                    problem: "must be set too: the STORAGE_* settings go together".to_owned(),
+                }),
+            };
+        };
+        let endpoint = parse_origin(&endpoint, env)
+            .map_err(|problem| ConfigError::Invalid {
+                name: "STORAGE_ENDPOINT",
+                problem,
+            })?
+            .to_str()
+            .unwrap_or_default()
+            .to_owned();
+        let region = self
+            .get("STORAGE_REGION")
+            .unwrap_or_else(|| "auto".to_owned());
+        if region.is_empty()
+            || !region
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        {
+            return Err(ConfigError::Invalid {
+                name: "STORAGE_REGION",
+                problem: "must be lower-case letters, digits and hyphens, e.g. auto".to_owned(),
+            });
+        }
+        if !valid_bucket(&bucket) {
+            return Err(ConfigError::Invalid {
+                name: "STORAGE_BUCKET",
+                problem: "must be 3 to 63 lower-case letters, digits and hyphens, starting and \
+                          ending with a letter or digit"
+                    .to_owned(),
+            });
+        }
+        // The key travels in a header: printable, no spaces. The secret is never repeated.
+        if !access_key_id.bytes().all(|b| b.is_ascii_graphic()) {
+            return Err(ConfigError::Invalid {
+                name: "STORAGE_ACCESS_KEY_ID",
+                problem: "must be printable ASCII with no spaces".to_owned(),
+            });
+        }
+        if env == AppEnv::Production && secret.contains("CHANGE_ME") {
+            return Err(ConfigError::Invalid {
+                name: "STORAGE_SECRET_ACCESS_KEY",
+                problem: "is still the template's placeholder".to_owned(),
+            });
+        }
+        Ok(Some(StorageConfig {
+            endpoint,
+            region,
+            bucket,
+            access_key_id,
+            secret_access_key: Secret::new(secret),
+        }))
+    }
+
     fn origin(&self, name: &'static str, env: AppEnv) -> Result<Option<HeaderValue>, ConfigError> {
         let Some(value) = self.get(name) else {
             return Ok(None);
@@ -477,6 +593,18 @@ impl<F: Fn(&str) -> Option<String>> Vars<F> {
             .map(Some)
             .map_err(|problem| ConfigError::Invalid { name, problem })
     }
+}
+
+/// An S3 bucket name as R2 allows it: 3 to 63 lower-case letters, digits and hyphens, starting
+/// and ending with a letter or digit.
+fn valid_bucket(bucket: &str) -> bool {
+    let edges_ok = |b: Option<u8>| b.is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit());
+    (3..=63).contains(&bucket.len())
+        && bucket
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        && edges_ok(bucket.bytes().next())
+        && edges_ok(bucket.bytes().last())
 }
 
 /// The host of an origin made by [`parse_origin`]: `https://app.example.com:8443` gives

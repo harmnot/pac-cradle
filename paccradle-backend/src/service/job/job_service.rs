@@ -5,7 +5,7 @@ use sqlx::PgConnection;
 
 use super::JobService;
 use crate::error::AppError;
-use crate::models::job::{Job, JobError, JobOutcome, NewJob, Tidied};
+use crate::models::job::{Job, JobError, JobOutcome, NewJob, Schedule, Tidied};
 use crate::repository::job::JobRepository;
 use crate::shared::future::BoxFuture;
 
@@ -79,6 +79,13 @@ impl JobService for DefaultJobService {
         job: &'a NewJob,
     ) -> BoxFuture<'a, Result<(), AppError>> {
         self.jobs.insert(conn, job)
+    }
+
+    fn schedule<'a>(&'a self, schedule: &'a Schedule) -> BoxFuture<'a, Result<bool, AppError>> {
+        Box::pin(async move {
+            let job = schedule.next_job();
+            self.jobs.insert_unless_recent((&job, schedule.every)).await
+        })
     }
 
     fn claim<'a>(

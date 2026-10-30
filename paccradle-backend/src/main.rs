@@ -52,15 +52,29 @@ async fn main() -> ExitCode {
     };
 
     let job_workers = config.job_workers;
-    let state = AppState::new(config, pool);
+    let state = match AppState::new(config, pool) {
+        Ok(state) => state,
+        Err(error) => {
+            tracing::error!(%error, source = ?std::error::Error::source(&error), "cannot set up the providers");
+            return ExitCode::FAILURE;
+        }
+    };
+    let schedules = match jobs::schedules() {
+        Ok(schedules) => schedules,
+        Err(error) => {
+            tracing::error!(%error, "cannot set up the scheduled jobs");
+            return ExitCode::FAILURE;
+        }
+    };
     let (stop_sender, stop) = watch::channel(false);
     tokio::spawn(async move {
         shutdown::signal().await;
         tracing::info!("shutting down");
         let _ = stop_sender.send(true);
     });
-    let workers =
-        Worker::new(state.jobs.clone(), jobs::handlers(&state)).start(job_workers, stop.clone());
+    let workers = Worker::new(state.jobs.clone(), jobs::handlers(&state))
+        .with_schedules(schedules)
+        .start(job_workers, stop.clone());
     tracing::info!(%address, version = env!("CARGO_PKG_VERSION"), job_workers, "paccradle API listening");
 
     // Connection info gives the rate limiter the peer address when no proxy header is set.

@@ -1,7 +1,7 @@
 use sqlx::PgConnection;
 
 use crate::error::AppError;
-use crate::models::job::{Job, JobError, JobOutcome, NewJob, Tidied};
+use crate::models::job::{Job, JobError, JobOutcome, NewJob, Schedule, Tidied};
 use crate::shared::future::BoxFuture;
 
 /// The job queue, for services (adding jobs) and the worker (running them).
@@ -13,6 +13,10 @@ pub trait JobService: Send + Sync {
         conn: &'a mut PgConnection,
         job: &'a NewJob,
     ) -> BoxFuture<'a, Result<(), AppError>>;
+
+    /// Adds the next run of `schedule` when it is due: none of its kind queued or running,
+    /// and the last finished at least `schedule.every` ago. Says whether it added one.
+    fn schedule<'a>(&'a self, schedule: &'a Schedule) -> BoxFuture<'a, Result<bool, AppError>>;
 
     /// The next due job of one of `kinds`, leased to the caller. `None` when there is none.
     fn claim<'a>(

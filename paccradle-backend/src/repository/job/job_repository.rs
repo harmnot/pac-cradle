@@ -46,6 +46,47 @@ impl JobRepository for PgJobRepository {
         })
     }
 
+    fn insert_unless_recent<'a>(
+        &'a self,
+        (job, every): (&'a NewJob, Duration),
+    ) -> BoxFuture<'a, Result<bool, AppError>> {
+        Box::pin(async move {
+            let mut tx = self.pool.begin().await?;
+            // One check per kind at a time, so two API processes (a deploy's overlap) can't
+            // both add one.
+            sqlx::query_scalar!(
+                r#"
+                SELECT count(*) AS "locked!"
+                FROM (SELECT pg_advisory_xact_lock(hashtextextended('schedule:' || $1, 0))) AS lock
+                "#,
+                job.kind,
+            )
+            .fetch_one(&mut *tx)
+            .await?;
+            let result = sqlx::query!(
+                r#"
+                INSERT INTO jobs (id, kind, payload, max_attempts, run_at)
+                SELECT $1, $2, $3, $4, now()
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM jobs
+                    WHERE kind = $2
+                      AND (status IN ('queued', 'running')
+                           OR finished_at > now() - make_interval(secs => $5))
+                )
+                "#,
+                job.id,
+                job.kind,
+                job.payload,
+                job.max_attempts,
+                every.as_secs_f64(),
+            )
+            .execute(&mut *tx)
+            .await?;
+            tx.commit().await?;
+            Ok(result.rows_affected() == 1)
+        })
+    }
+
     fn claim<'a>(
         &'a self,
         kinds: &'a [&'static str],

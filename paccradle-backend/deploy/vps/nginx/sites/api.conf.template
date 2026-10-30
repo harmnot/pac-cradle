@@ -55,12 +55,13 @@ server {
         proxy_pass http://paccradle_api_production;
     }
 
-    # Progress photo files: PUT up to 10 MiB, with the API's upload timeout.
-    location ~ ^/api/v1/progress-photos/[^/]+/file$ {
-        client_max_body_size 11m;
-        client_body_timeout 120s;
-        proxy_send_timeout 150s;
-        proxy_read_timeout 150s;
+    # Capture photos (M1-D4): POST multipart, a photo of at most 15 MB plus its
+    # settings (the API refuses more with CAPTURE_FILE_TOO_LARGE). Nginx takes
+    # the whole body from the phone first (request buffering is on), so a slow
+    # connection waits here, never on the API's 30-second limit.
+    location = /api/client/v1/captures {
+        client_max_body_size 16m;
+        client_body_timeout 60s;
         proxy_pass http://paccradle_api_production;
     }
 

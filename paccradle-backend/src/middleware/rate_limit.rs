@@ -1,6 +1,6 @@
-//! Requests per client address across the whole API (`RATE_LIMIT_PER_MINUTE`), and the
-//! stricter one on sign-in routes (`RATE_LIMIT_AUTH_PER_MINUTE`, M1-D3). Uploads (D4) can
-//! reuse [`PerClient::with_rate`].
+//! Requests per client address across the whole API (`RATE_LIMIT_PER_MINUTE`), the stricter
+//! one on sign-in routes (`RATE_LIMIT_AUTH_PER_MINUTE`, M1-D3), and photo uploads per hour
+//! (M1-D4, [`PerClient::with_window`]).
 
 use std::net::{IpAddr, Ipv4Addr};
 use std::num::NonZeroU32;
@@ -34,8 +34,13 @@ impl PerClient {
     /// A limiter allowing `per_minute` per client address (the sign-in routes' own limit),
     /// reading the address like the API-wide one.
     pub fn with_rate(config: &AppConfig, per_minute: NonZeroU32) -> Self {
+        Self::with_window(config, (per_minute, Duration::from_secs(60)))
+    }
+
+    /// A limiter allowing `capacity` per client address, refilled over `window`.
+    pub fn with_window(config: &AppConfig, (capacity, window): (NonZeroU32, Duration)) -> Self {
         Self {
-            limiter: Arc::new(RateLimiter::new(per_minute)),
+            limiter: Arc::new(RateLimiter::with_window((capacity, window))),
             client_ip_header: config.client_ip_header.clone(),
         }
     }

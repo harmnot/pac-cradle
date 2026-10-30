@@ -62,6 +62,35 @@ pub enum VisionError {
     OpenCv(#[from] opencv::Error),
 }
 
+/// The upload checks shared with the API keep their codes.
+impl From<photo_file::PhotoError> for VisionError {
+    fn from(error: photo_file::PhotoError) -> Self {
+        use photo_file::PhotoError;
+        match error {
+            PhotoError::UnsupportedImage => Self::UnsupportedImage,
+            PhotoError::UnreadableImage => Self::UnreadableImage,
+            PhotoError::ImageTooLarge {
+                width,
+                height,
+                max_pixels,
+            } => Self::ImageTooLarge {
+                width,
+                height,
+                max_pixels,
+            },
+            PhotoError::ImageTooSmall {
+                width,
+                height,
+                min_long_side,
+            } => Self::ImageTooSmall {
+                width,
+                height,
+                min_long_side,
+            },
+        }
+    }
+}
+
 impl VisionError {
     /// The stable error code the API sends and translates, e.g.
     /// `CAPTURE_PAPER_NOT_FOUND`.

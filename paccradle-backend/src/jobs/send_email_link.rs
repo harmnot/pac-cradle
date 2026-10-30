@@ -30,9 +30,9 @@ impl JobHandler for SendEmailLinkHandler {
     }
 }
 
-/// A provider or database outage is retried; anything else (an address the provider can't
-/// take) never will work.
-fn job_error(error: AppError) -> JobError {
+/// A provider or database outage, or a bug that a later release may fix, is retried; anything
+/// else (an address the provider can't take) never will work.
+pub(super) fn job_error(error: AppError) -> JobError {
     let reason = match error.source() {
         Some(source) => format!("{error}: {source}"),
         None => error.to_string(),

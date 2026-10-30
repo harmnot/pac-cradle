@@ -6,6 +6,7 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
 pub mod authenticator;
+pub mod photos;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -14,7 +15,6 @@ use axum::Router;
 use axum::body::{Body, Bytes};
 use axum::http::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, ORIGIN, SET_COOKIE};
 use axum::http::{HeaderMap, Method, Request, StatusCode};
-use paccradle_backend::AppState;
 use paccradle_backend::config::AppConfig;
 use paccradle_backend::error::AppError;
 use paccradle_backend::jobs;
@@ -23,6 +23,8 @@ use paccradle_backend::models::job::JobKind;
 use paccradle_backend::repository::database;
 use paccradle_backend::shared::future::BoxFuture;
 use paccradle_backend::third_party::email::{EmailMessage, EmailSender};
+use paccradle_backend::third_party::storage::MemoryStorage;
+use paccradle_backend::{AppState, Providers};
 use serde_json::Value;
 use sqlx::PgPool;
 use tower::ServiceExt;
@@ -47,12 +49,12 @@ pub const NO_DATABASE: &str = "postgres://nobody:nothing@127.0.0.1:9/none";
 pub fn app(vars: &[(&str, &str)]) -> Router {
     let config = config(&[&[("DATABASE_URL", NO_DATABASE)], vars].concat());
     let pool = database::connect_lazy(&config.database).expect("the URL parses");
-    paccradle_backend::app(AppState::new(config, pool))
+    paccradle_backend::app(AppState::new(config, pool).expect("the providers start"))
 }
 
 /// The whole API with `vars` on `pool` (a `#[sqlx::test]` database).
 pub fn app_on(pool: PgPool, vars: &[(&str, &str)]) -> Router {
-    paccradle_backend::app(AppState::new(config(vars), pool))
+    paccradle_backend::app(AppState::new(config(vars), pool).expect("the providers start"))
 }
 
 /// A response, read to the end.
@@ -215,11 +217,12 @@ impl EmailSender for Outbox {
     }
 }
 
-/// The API on a test database, with its state and its outbox.
+/// The API on a test database, with its state, its outbox and its photo store.
 pub struct TestApi {
     pub app: Router,
     pub state: AppState,
     pub outbox: Arc<Outbox>,
+    pub storage: Arc<MemoryStorage>,
     pub pool: PgPool,
 }
 
@@ -228,11 +231,17 @@ pub struct TestApi {
 pub fn auth_api(pool: PgPool, vars: &[(&str, &str)]) -> TestApi {
     let config = config(&[&[("RATE_LIMIT_AUTH_PER_MINUTE", "10000")], vars].concat());
     let outbox = Arc::new(Outbox::default());
-    let state = AppState::with_email(config, pool.clone(), outbox.clone());
+    let storage = Arc::new(MemoryStorage::new());
+    let providers = Providers {
+        email: outbox.clone(),
+        storage: storage.clone(),
+    };
+    let state = AppState::with_providers(config, pool.clone(), providers);
     TestApi {
         app: paccradle_backend::app(state.clone()),
         state,
         outbox,
+        storage,
         pool,
     }
 }
@@ -269,4 +278,73 @@ pub fn get(path: &str) -> Request<Body> {
     Request::get(path)
         .body(Body::empty())
         .expect("valid request")
+}
+
+/// The boundary of the multipart bodies tests send.
+pub const BOUNDARY: &str = "paccradle-test-boundary";
+
+/// `POST /api/client/v1/captures` (M1-D4).
+pub const CAPTURES: &str = "/api/client/v1/captures";
+
+/// One part of a multipart body: its name and bytes, and a file name for a file.
+pub struct Part<'a> {
+    pub name: &'a str,
+    pub file_name: Option<&'a str>,
+    pub bytes: Vec<u8>,
+}
+
+pub fn settings_part(settings: &Value) -> Part<'static> {
+    Part {
+        name: "capture",
+        file_name: None,
+        bytes: serde_json::to_vec(settings).unwrap(),
+    }
+}
+
+pub fn photo_part(bytes: Vec<u8>) -> Part<'static> {
+    Part {
+        name: "photo",
+        file_name: Some("photo.jpg"),
+        bytes,
+    }
+}
+
+pub fn multipart(parts: &[Part<'_>]) -> Vec<u8> {
+    let mut body = Vec::new();
+    for part in parts {
+        body.extend(format!("--{BOUNDARY}\r\n").as_bytes());
+        let disposition = match part.file_name {
+            Some(file) => format!(
+                "Content-Disposition: form-data; name=\"{}\"; filename=\"{file}\"\r\n\
+                 Content-Type: image/jpeg\r\n",
+                part.name
+            ),
+            None => format!(
+                "Content-Disposition: form-data; name=\"{}\"\r\n\
+                 Content-Type: application/json\r\n",
+                part.name
+            ),
+        };
+        body.extend(disposition.as_bytes());
+        body.extend(b"\r\n");
+        body.extend(&part.bytes);
+        body.extend(b"\r\n");
+    }
+    body.extend(format!("--{BOUNDARY}--\r\n").as_bytes());
+    body
+}
+
+/// `POST /captures` with `parts`, as `token`.
+pub async fn upload(api: &TestApi, (token, parts): (&str, &[Part<'_>])) -> Reply {
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri(CAPTURES)
+        .header(AUTHORIZATION, format!("Bearer {token}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={BOUNDARY}"),
+        )
+        .body(Body::from(multipart(parts)))
+        .unwrap();
+    send(&api.app, request).await
 }

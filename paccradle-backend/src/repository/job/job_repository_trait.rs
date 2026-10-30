@@ -17,6 +17,13 @@ pub trait JobRepository: Send + Sync {
         job: &'a NewJob,
     ) -> BoxFuture<'a, Result<(), AppError>>;
 
+    /// Inserts `job`, due now, unless a job of its kind is queued or running, or finished
+    /// (done or dead) less than `every` ago. Says whether it did.
+    fn insert_unless_recent<'a>(
+        &'a self,
+        job: (&'a NewJob, Duration),
+    ) -> BoxFuture<'a, Result<bool, AppError>>;
+
     /// Leases the oldest due queued job of one of `kinds` for `lease`, counting the attempt.
     /// Jobs other workers are claiming at the same moment are skipped, not waited for.
     fn claim<'a>(

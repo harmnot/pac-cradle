@@ -533,11 +533,15 @@ POST   /auth/passkey/sign-in/options    → {ceremony_id, public_key}      POST 
 POST   /auth/refresh                    (refresh cookie) → session        POST /auth/sign-out → 204
 GET    /me                              PUT /me/password {password, current_password?}
 POST   /me/passkeys/options             POST /me/passkeys {ceremony_id, credential, name?}
-POST   /captures                        multipart image + {paper, mode, exif}  → {capture_id}
-GET    /captures/{capture_id}           → {status, paper, products[], warnings[], level_used}
-POST   /captures/{capture_id}/correct   {tap_point_px | edited_contour_px | height_mm} → re-run measure (tap), measure as drawn (edit) or recheck the tall-product warning (height)
-POST   /designs                         {products, insert, material, box}      → {design_id}
-GET    /designs/{design_id}   PATCH /designs/{design_id}
+POST   /captures                        multipart photo + capture {paper, mode, pen_width_mm?, height_mm?, exif{make, model, focal_length_35mm}}
+                                        → 201 {capture_id, status, photo{format, width, height}, photo_kept_until}
+GET    /captures/{capture_id}           → {status pending|done|failed, mode, paper, settings, result (§5.5) | null, error {code, message, meta} | null,
+                                           photo {url (10 min), url_expires_at} | null, photo_kept_until}   (poll while pending)
+POST   /captures/{capture_id}/correct   {tap_point_px | edited_contour_px | height_mm} → 202 re-run keeping the outline under the tap,
+                                        200 edit measured as drawn, 200 height applied (202 re-run if a run is pending)
+POST   /designs                         {name?, spec: insert_core::Design {material, products, insert, outer_box}} → 201 {design_id, name, version 1, spec, …}
+GET    /designs                         ?page&page_size&search&style&sort&order → {items[summary], page, page_size, total, total_pages}
+GET    /designs/{design_id}             PATCH /designs/{design_id} {version, name?, spec?} → version + 1, or 409 if saved meanwhile
 POST   /designs/{design_id}/exports     {formats, preset}  → 200 {export_id} | 402 {checkout}
 GET    /exports/{export_id}             → {status, files:[{format, signed_url}]}
 GET    /me                              → {id, email, role, has_password, passkey_count, …}; billing adds {plan, credits, unlocked_designs, subscription} (F5)
@@ -569,7 +573,9 @@ Built in M1-D2 (`paccradle-backend/migrations/`). Every table has a UUID v7 `id`
 users(id, email?, locale, paper_default, role[user|admin], email_confirmed_at?, password_hash?, created_at, updated_at)
                                                                        -- no email = guest; an email is stored only once confirmed; unique whatever its case
 captures(id, user_id, status, mode, paper, input jsonb, exif jsonb, storage_key?, result jsonb?, error_code?,
-         confidence?, level_used?, created_at, updated_at, purge_after) -- storage_key cleared once the photo is deleted
+         error_meta jsonb, confidence?, level_used?, run, created_at, updated_at, purge_after)
+                                                                       -- storage_key cleared once the photo is deleted; a run
+                                                                       -- saves its result only while `run` is still its own (M1-D5)
 products(id, user_id, capture_id?, name, shape, contour_mm jsonb, bbox_mm jsonb, height_mm?, profile jsonb?, created_at, updated_at)
 designs(id, user_id, name, spec jsonb, version, share_slug?, created_at, updated_at)
 exports(id, design_id, design_version, formats text[], status, files jsonb, error_code?, created_at, updated_at)
@@ -598,8 +604,8 @@ admin_audit_log(id, admin_id?, admin_email, session_id, request_id, method, rout
 
 ### 8.5 Security and privacy
 
-- **Uploads:** 15 MB maximum. Check the file type and cap the pixel count to block "decompression bomb" images. Rate-limit uploads per user and per IP.
-- **Photos:** remove GPS data from EXIF, delete photos after 30 days, and keep only outlines and sizes. Let users delete their data.
+- **Uploads:** 15 MB maximum. Check the file type and cap the pixel count to block "decompression bomb" images (from the header, before decoding: `photo_file`, M1-D4). Rate-limit uploads per user and per IP (30 an hour per user by default, 4 times that per IP).
+- **Photos:** keep only the picture, its colour profile and its EXIF orientation (GPS and every other EXIF field, XMP, comments, thumbnails and depth or gain maps are dropped, without re-encoding), delete photos after 30 days (a daily job), and keep only outlines and sizes. Let users delete their data.
 - **Paid files:** sent only through signed URLs that expire in minutes.
 - **Code:** no user-supplied code ever runs on the server.
 - **Sign-in:** tokens are stored as SHA-256 and passwords as Argon2id; the refresh token lives in an `HttpOnly; SameSite=Strict` cookie, so the web app and the API must share a site (`app.` and `api.paccradle.com`). Email-link and password sign-ins never reveal whether an account exists.

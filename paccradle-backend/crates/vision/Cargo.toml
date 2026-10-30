@@ -10,6 +10,8 @@ workspace = true
 
 [dependencies]
 opencv.workspace = true
+# The upload's header checks, shared with the API (M1-D4).
+photo_file = { path = "../photo_file" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

@@ -16,6 +16,25 @@ jobs:
     defaults:
       run:
         working-directory: paccradle-backend
+    # The API's #[sqlx::test] tests each make a throwaway database here (M1-D2 on).
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: paccradle
+          POSTGRES_PASSWORD: paccradle
+          POSTGRES_DB: paccradle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U paccradle -d paccradle"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Queries compile against the committed .sqlx cache; the tests reach the database at run time.
+      SQLX_OFFLINE: "true"
+      DATABASE_URL: postgres://paccradle:paccradle@localhost:5432/paccradle
     steps:
       - uses: actions/checkout@v4
       - name: Install OpenCV and libclang
@@ -29,6 +48,13 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
+      - name: Check that the .sqlx offline cache is up to date
+        env:
+          SQLX_OFFLINE: "false"
+        run: |
+          command -v sqlx >/dev/null || cargo install sqlx-cli --version 0.9.0 --no-default-features --features rustls,postgres --locked
+          sqlx migrate run
+          cargo sqlx prepare --check -- --all-targets
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit

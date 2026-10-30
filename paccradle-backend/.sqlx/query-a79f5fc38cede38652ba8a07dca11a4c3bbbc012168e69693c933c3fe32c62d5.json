@@ -1,0 +1,107 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT status, mode, paper, input, exif, storage_key, result,\n               extract(epoch FROM purge_after - created_at)::float8 AS \"kept_seconds!\"\n        FROM captures WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "mode"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "paper",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "paper"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "input",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "input"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "exif",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "exif"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "storage_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "storage_key"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "result",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "result"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "kept_seconds!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "a79f5fc38cede38652ba8a07dca11a4c3bbbc012168e69693c933c3fe32c62d5"
+}

@@ -1,0 +1,805 @@
+{
+  "info": {
+    "name": "paccradle API: capture photo uploads (2026-10-30)",
+    "description": "Change: M1-D4, uploads and storage (2026-10-30). The client contract moves to **1.0.0-beta.3** (`api-version`); the admin contract stays at 1.0.0-beta.2. Merge into the main contract.\n\n**New:** `POST /api/client/v1/captures` (multipart photo upload) and six error codes: `CAPTURE_FILE_TOO_LARGE` (413), `CAPTURE_UNSUPPORTED_IMAGE` (415), `CAPTURE_UNREADABLE_IMAGE` (400), `CAPTURE_IMAGE_TOO_LARGE` (413), `CAPTURE_IMAGE_TOO_SMALL` (400), `CAPTURE_INVALID_INPUT` (400; `meta.field`, `meta.allowed`). `SERVICE_UNAVAILABLE` can now name `meta.dependency = \"storage\"`. Every message is in the caller's language; branch on `code` and fill your own text from `meta`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:7773"
+    },
+    {
+      "key": "web_origin",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Client: captures (/api/client/v1/captures)",
+      "item": [
+        {
+          "name": "Upload a photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "capture",
+                  "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                  "type": "text",
+                  "contentType": "application/json",
+                  "description": "JSON settings."
+                },
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "/path/to/photo.jpg",
+                  "description": "The image file (JPEG, PNG or WebP)."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/client/v1/captures",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "v1",
+                "captures"
+              ]
+            },
+            "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"capture_id\": \"01a18a23-a088-72c1-984d-394c311f905b\",\n  \"status\": \"pending\",\n  \"mode\": \"photo\",\n  \"paper\": \"a4\",\n  \"photo\": {\n    \"format\": \"jpeg\",\n    \"width\": 4000,\n    \"height\": 3000\n  },\n  \"created_at\": \"2026-10-30T00:09:13.095698Z\",\n  \"photo_kept_until\": \"2026-11-29T00:09:13.095698Z\"\n}"
+            },
+            {
+              "name": "400 a part missing, repeated or unknown, or settings that aren't the JSON above",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REQUEST\",\n    \"message\": \"The request isn't valid.\",\n    \"meta\": {\n      \"field\": \"photo\"\n    }\n  }\n}"
+            },
+            {
+              "name": "400 a setting out of range",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_INVALID_INPUT\",\n    \"message\": \"The setting pen_width_mm must be 0.1 to 3 mm.\",\n    \"meta\": {\n      \"field\": \"pen_width_mm\",\n      \"allowed\": \"0.1 to 3 mm\"\n    }\n  }\n}"
+            },
+            {
+              "name": "400 a photo too small to measure",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_IMAGE_TOO_SMALL\",\n    \"message\": \"The photo is too small to measure (999 × 750 px). Its long side needs at least 1000 px.\",\n    \"meta\": {\n      \"width\": 999,\n      \"height\": 750,\n      \"min_long_side\": 1000\n    }\n  }\n}"
+            },
+            {
+              "name": "400 a damaged or cut-short photo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_UNREADABLE_IMAGE\",\n    \"message\": \"The photo can't be read: it may be damaged or cut short. Please take it again.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "401 no session",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"AUTH_REQUIRED\",\n    \"message\": \"Please sign in to continue.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "413 a file over 15 MB",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Payload Too Large",
+              "code": 413,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_FILE_TOO_LARGE\",\n    \"message\": \"The photo is too large. Send one of at most 15 MB, as a JPEG.\",\n    \"meta\": {\n      \"max_mb\": 15\n    }\n  }\n}"
+            },
+            {
+              "name": "413 more than 40 megapixels",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Payload Too Large",
+              "code": 413,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_IMAGE_TOO_LARGE\",\n    \"message\": \"The photo has too many pixels (8000 × 5001). Send one of at most 40 megapixels.\",\n    \"meta\": {\n      \"width\": 8000,\n      \"height\": 5001,\n      \"max_megapixels\": 40\n    }\n  }\n}"
+            },
+            {
+              "name": "415 not a JPEG, PNG or WebP",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Unsupported Media Type",
+              "code": 415,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"CAPTURE_UNSUPPORTED_IMAGE\",\n    \"message\": \"This file isn't a JPEG, PNG or WebP photo. Send the photo as a JPEG.\",\n    \"meta\": {}\n  }\n}"
+            },
+            {
+              "name": "415 not multipart/form-data",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Unsupported Media Type",
+              "code": 415,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"UNSUPPORTED_MEDIA_TYPE\",\n    \"message\": \"This type of content isn't accepted here.\",\n    \"meta\": {\n      \"expected\": \"multipart/form-data\"\n    }\n  }\n}"
+            },
+            {
+              "name": "429 too many uploads",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"RATE_LIMITED\",\n    \"message\": \"Too many requests. Please try again in 1799 s.\",\n    \"meta\": {\n      \"retry_after_seconds\": 1799\n    }\n  }\n}"
+            },
+            {
+              "name": "503 photo storage unreachable",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "capture",
+                      "value": "{\n  \"paper\": \"a4\",\n  \"mode\": \"photo\",\n  \"height_mm\": 95,\n  \"exif\": {\n    \"make\": \"Apple\",\n    \"model\": \"iPhone 15 Pro\",\n    \"focal_length_35mm\": 24\n  }\n}",
+                      "type": "text",
+                      "contentType": "application/json",
+                      "description": "JSON settings."
+                    },
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "src": "/path/to/photo.jpg",
+                      "description": "The image file (JPEG, PNG or WebP)."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/client/v1/captures",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "client",
+                    "v1",
+                    "captures"
+                  ]
+                },
+                "description": "Uploads one photo of the product on A4 or Letter paper (CLAUDE.md §3 steps 1–3) and makes a capture waiting for vision. Guests may upload (`POST /auth/guest` first). Send `multipart/form-data` with two parts, in either order:\n\n- `photo`: the image file. JPEG, PNG or WebP; at most **15 MB**, at most **40 megapixels**, at least **1000 px** on the long side. Send the photo the browser re-encoded (≤ 4000 px, JPEG). The type is read from the file's bytes, not from its name or part `Content-Type`.\n- `capture`: JSON settings (unknown keys are refused):\n  - `paper` (required): `a4` | `letter`.\n  - `mode` (required): `photo` | `trace`.\n  - `pen_width_mm`: trace mode's pen width, 0.1–3, default 0.5.\n  - `height_mm`: the product's height if typed before the photo, 0.1–1000.\n  - `exif`: what the browser read from the photo before re-encoding it: `make`, `model` (≤ 100 characters each), `focal_length_35mm` (EXIF `FocalLengthIn35mmFormat`, 5–3000). Any other key is dropped unread: never send a location, but if one slips in it is not kept.\n\nThe server keeps the photo **without its metadata**: only the picture, its colour profile and its EXIF orientation stay (no GPS, camera fields, XMP, comments, thumbnails or depth/gain maps). It is private, deleted after 30 days (`photo_kept_until`), and later shown only through 10-minute signed URLs (`GET /captures/{capture_id}`, M1-D5). Outlines and sizes stay after the photo goes.\n\nLimits: `RATE_LIMIT_UPLOADS_PER_HOUR` per user (default 30) and 4 times that per client address; both answer `RATE_LIMITED`.\n\nUntil M1-D5 the capture stays `pending`: D5 starts the vision job in the same transaction and adds `GET /captures/{capture_id}` and `POST /captures/{capture_id}/correct`."
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "api-version",
+                  "value": "1.0.0-beta.3"
+                },
+                {
+                  "key": "x-request-id",
+                  "value": "01a18a23-a088-72c1-984d-394c311f905b"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"SERVICE_UNAVAILABLE\",\n    \"message\": \"The service is unavailable right now. Please try again in a few seconds.\",\n    \"meta\": {\n      \"dependency\": \"storage\"\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

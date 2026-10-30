@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE captures\n                SET status = $2, input = $3, run = $4, result = $5, confidence = $6,\n                    level_used = $7, error_code = $8, error_meta = $9\n                WHERE id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Int4",
+        "Jsonb",
+        "Float8",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24fc659899e334425fee5d31e03ba1fdda740009062fe21266bbceb955b29e6b"
+}

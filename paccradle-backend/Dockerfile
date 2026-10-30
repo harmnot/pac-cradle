@@ -11,6 +11,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends clang libclang-dev libopencv-dev pkg-config \
     && rm -rf /var/lib/apt/lists/* \
     && rustup component add rustfmt clippy
+# `cargo sqlx prepare` checks the queries of an API that links OpenCV (M1-D5), so it runs here.
+RUN cargo install sqlx-cli --version 0.9.0 --no-default-features --features rustls,postgres --locked \
+    && rm -rf /usr/local/cargo/registry
 WORKDIR /app
 
 FROM toolchain AS build
@@ -20,12 +23,13 @@ COPY . .
 RUN cargo build --release --workspace --locked
 
 FROM debian:trixie-slim AS runtime
+# The capture job runs the vision crate (M1-D5): the binary needs OpenCV's core, imgproc and
+# imgcodecs libraries and nothing else of it (checked with readelf). libopencv-imgcodecs410
+# pulls in GDAL, OpenEXR and TIFF: weigh a slimmer OpenCV build in M1-G1.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
+        libopencv-core410 libopencv-imgproc410 libopencv-imgcodecs410 \
     && rm -rf /var/lib/apt/lists/*
-# The OpenCV runtime libraries get added here once the API runs capture jobs with the
-# vision crate (M1-D5). Debian's libopencv-imgcodecs410 pulls in GDAL, OpenEXR and TIFF:
-# weigh a slimmer OpenCV build in M1-G1.
 COPY --from=build /app/target/release/paccradle-backend /usr/local/bin/paccradle-backend
 USER 65532:65532
 ENTRYPOINT ["/usr/local/bin/paccradle-backend"]

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE jobs SET run_at = now(), max_attempts = attempts + 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6e4552cf472a1f5e18090ba9bfc9c999a1416a08fe60c2c8cec6a068622f8422"
+}

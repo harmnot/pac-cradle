@@ -18,11 +18,24 @@ pub trait JobHandler: Send + Sync + 'static {
         &self,
         payload: <Self::Kind as JobKind>::Payload,
     ) -> impl Future<Output = Result<(), JobError>> + Send;
+
+    /// Called once a job has failed for good: it gave up, or its last attempt failed. A
+    /// handler whose job leaves a row waiting (a capture's vision run) records that here, so
+    /// the row doesn't wait forever. Does nothing unless a handler says otherwise.
+    fn failed_for_good(
+        &self,
+        payload: <Self::Kind as JobKind>::Payload,
+    ) -> impl Future<Output = ()> + Send {
+        drop(payload);
+        async {}
+    }
 }
 
 /// A handler of any kind, taking its payload as stored.
 trait StoredJobHandler: Send + Sync {
     fn run_stored(&self, payload: Value) -> BoxFuture<'_, Result<(), JobError>>;
+
+    fn failed_stored(&self, payload: Value) -> BoxFuture<'_, ()>;
 }
 
 impl<H: JobHandler> StoredJobHandler for H {
@@ -31,6 +44,15 @@ impl<H: JobHandler> StoredJobHandler for H {
             let payload = serde_json::from_value(payload)
                 .map_err(|error| JobError::GiveUp(format!("the payload can't be read: {error}")))?;
             JobHandler::run(self, payload).await
+        })
+    }
+
+    fn failed_stored(&self, payload: Value) -> BoxFuture<'_, ()> {
+        Box::pin(async move {
+            // A payload that can't be read never ran, so there is nothing to record.
+            if let Ok(payload) = serde_json::from_value(payload) {
+                JobHandler::failed_for_good(self, payload).await;
+            }
         })
     }
 }
@@ -60,7 +82,8 @@ impl JobHandlers {
         kinds
     }
 
-    /// Runs `job` with its kind's handler.
+    /// Runs `job` with its kind's handler. When the run fails for good (it gave up, or it was
+    /// the last attempt), the handler hears of it before the result is returned.
     pub async fn run(&self, job: &Job) -> Result<(), JobError> {
         let Some(handler) = self.by_kind.get(job.kind.as_str()) else {
             return Err(JobError::GiveUp(format!(
@@ -68,6 +91,15 @@ impl JobHandlers {
                 job.kind
             )));
         };
-        handler.run_stored(job.payload.clone()).await
+        let result = handler.run_stored(job.payload.clone()).await;
+        let for_good = match &result {
+            Ok(()) => false,
+            Err(JobError::GiveUp(_)) => true,
+            Err(JobError::Retry(_)) => job.attempts >= job.max_attempts,
+        };
+        if for_good {
+            handler.failed_stored(job.payload.clone()).await;
+        }
+        result
     }
 }

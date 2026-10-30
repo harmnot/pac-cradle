@@ -2,7 +2,9 @@
 //! Each table's repository arrives with the task that first uses the table.
 
 pub mod audit;
+pub mod capture;
 pub mod database;
+pub mod design;
 pub mod email_link;
 pub mod health;
 pub mod job;

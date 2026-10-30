@@ -8,7 +8,8 @@
   - `src/` — the Axum API (this document).
   - `crates/insert_core/` — geometry core: inserts, boxes, hinges, fit checks, manufacturability warnings; all units mm. Compiled natively for the API and to WASM for the browser preview. Export writers (SVG/PDF/DXF) sit behind a server-only feature flag (CLAUDE.md §6.1).
   - `crates/insert_core_wasm/` — the browser build of `insert_core` (M1-A10): `generate`, `fits` and `warnings` over JSON, drawn lines as straight segments within 0.05 mm, points to 0.01 mm (CLAUDE.md §7.4). It never enables the export writers. Its own lints allow the `unsafe` glue `wasm-bindgen` generates; hand-written `unsafe` is still denied.
-  - `crates/vision/` — photo → paper → flattened 10 px/mm image → product outline in mm (CLAUDE.md §5). Pure computation, no I/O beyond the image it is given. The capture job calls `vision::run((input, image_bytes))` (M1-C1) from a blocking task (about half a second per photo); `vision::inspect` checks an upload's format and pixel count without decoding it. Corrections (M1-C3): a tap re-runs `vision::run` with `CaptureInput.tap_point_px`; `vision::accept_edit((stored_result, points_px))` measures an edited outline from the stored result, with no photo. Taps and outlines are in photo pixels. Height (M1-C4): `CaptureInput.height_mm`, or `vision::set_height((stored_result, height_mm))` with no photo, rechecks the tall-product warning against the camera the result carries. Errors carry stable codes (`CAPTURE_*`) that map straight to `AppError` codes.
+  - `crates/photo_file/` — uploaded photos as files (M1-D4), pure Rust: `inspect` reads the format and pixel size from the header (JPEG, PNG, WebP; 40 MP cap, 1000 px minimum) and `clean` copies the file keeping only the picture, its colour profile and its EXIF orientation. The API calls both at upload time without linking OpenCV; `vision` uses the same header code.
+  - `crates/vision/` — photo → paper → flattened 10 px/mm image → product outline in mm (CLAUDE.md §5). Pure computation, no I/O beyond the image it is given. The capture job calls `vision::run((input, image_bytes))` (M1-C1) from a blocking task (about half a second per photo); `vision::inspect` (from `photo_file`) checks an upload's format and pixel count without decoding it. Corrections (M1-C3): a tap re-runs `vision::run` with `CaptureInput.tap_point_px`; `vision::accept_edit((stored_result, points_px))` measures an edited outline from the stored result, with no photo. Taps and outlines are in photo pixels. Height (M1-C4): `CaptureInput.height_mm`, or `vision::set_height((stored_result, height_mm))` with no photo, rechecks the tall-product warning against the camera the result carries. Errors carry stable codes (`CAPTURE_*`) that map straight to `AppError` codes.
 - **External providers:** Paddle (payments, merchant of record), Cloudflare R2 (photos and export files), a transactional email provider over SMTP (sign-in links, M1-D3), and later an AI provider for the L3 vision helper (CLAUDE.md §5.4).
 - **Side-effect flow:** request → service writes data + a job row in one transaction → worker picks the job (`FOR UPDATE SKIP LOCKED`) → job calls a service, which calls `vision`, `insert_core` or a third-party provider with retries.
 
@@ -74,6 +75,7 @@ src/
 ├── middleware/
 └── shared/
 crates/insert_core/          # geometry engine (native + WASM)
+crates/photo_file/           # upload header checks and metadata cleaning (pure Rust, M1-D4)
 crates/vision/               # vision engine (OpenCV)
 migrations/                  # sqlx migrations
 postman/                     # dated API contract files (see code-style.md)
@@ -131,7 +133,13 @@ Rules: no HTTP logic, no repository logic, no service logic. Money fields use in
 
 Each model arrives with the task that first reads or writes its table. Built (M1-D2): `job.rs`: `JobKind` (a job's name, payload type and attempts), `NewJob::of::<K>(&payload)`, `Job` (a claimed job), `JobError` (`Retry` or `GiveUp`), `JobOutcome`, `Tidied`. Enum-like columns hold lower-case snake_case text in the database (`'a4'`, `'l1'`); the model maps them to Rust enums by implementing `TextEnum` (`ALL` + `as_str`; `from_text` comes free and turns an unknown stored value into a 500).
 
-Built (M1-D3): `user.rs` (`User` with `has_password` and `passkey_count`, `Role`, `AccountRole` guest/user/admin, `PaperDefault`, `NewUser`), `session.rs` (`Session`, `NewSession`, `RefreshMatch`, `Rotation`, `SignInMethod`, `AuthUser`, `SignedIn`, `NextStep`), `email_link.rs` (`EmailLink`, `EmailLinkPurpose`, the `SendEmailLink` job kind), `passkey.rs` (`Passkey`, `NewPasskey`, challenges, `PasskeyOptions`, the decoded browser answers), `audit.rs` (`AdminWrite`).
+Built (M1-D3): `user.rs` (`User` with `has_password` and `passkey_count`, `Role`, `AccountRole` guest/user/admin, `NewUser`), `session.rs` (`Session`, `NewSession`, `RefreshMatch`, `Rotation`, `SignInMethod`, `AuthUser`, `SignedIn`, `NextStep`), `email_link.rs` (`EmailLink`, `EmailLinkPurpose`, the `SendEmailLink` job kind), `passkey.rs` (`Passkey`, `NewPasskey`, challenges, `PasskeyOptions`, the decoded browser answers), `audit.rs` (`AdminWrite`).
+
+Built (M1-D4): `paper.rs` (`Paper`: `users.paper_default` and `captures.paper`), `capture.rs` (`CaptureStatus`, `CaptureMode`, `CaptureSettings` in `vision::CaptureInput`'s JSON shape for `captures.input`, `CameraExif` for `captures.exif` (make, model, focal length; never a location), `NewCapture`, `Capture`, `CreatedCapture`, `DuePhoto`, the `PurgePhotos` job kind, `PHOTO_RETENTION` 30 days and the setting ranges vision checks again). `job.rs` gained `Schedule` (a kind that runs by itself every so often).
+
+Built (M1-D5): `capture.rs` gained the full row (`run`, `result` as the §5.5 JSON, `confidence`, `level_used` as `VisionLevel`, `error` as `StoredError` code + meta, `storage_key`), `tap_point_px` in `CaptureSettings`, `CaptureView` (a capture and its signed photo link), `Correction` (tap, edit, height) and `Corrected` (done at once, or a run is pending), and the `RunVision` job kind (`{capture_id, run}`). The setting ranges are vision's own now (`vision::CaptureInput::validate`, called by the capture service).
+
+Built (M1-D6): `page.rs` (`PageRequest` with `offset`/`limit`, `Page<T>` with `total_pages`, `SortOrder`; `MAX_PAGE_SIZE` 100, `DEFAULT_PAGE_SIZE` 20: every list uses them), `design.rs` (`SavedDesign` holding the typed `insert_core::Design`, `NewDesign`, `DesignChange` with the version it was made from, `DesignSummary`, `InsertStyle`, `DesignSort`, `DesignListQuery`).
 
 ### 4.4 `src/repository`
 Database communication layer (SQLx).
@@ -167,7 +175,7 @@ How they are written (M1-D2):
 - No SQL built from strings: sqlx 0.9 only takes `&'static str` SQL unless wrapped in `AssertSqlSafe`, which production code doesn't use.
 - `sqlx::Error` converts into `AppError` (`?`): a database that can't be reached is 503 `SERVICE_UNAVAILABLE` (`meta.dependency = "database"`), anything else 500.
 - Built: `health/` (`ping`), `job/` (insert, claim, mark done/dead, requeue, release expired leases, delete old done jobs).
-- From M1-D3, `database::Database` (`begin()` → `Tx`, `connection()` → a pooled `Conn`) is how services get connections, and the new repositories take `&mut PgConnection` in **every** method: the service decides what commits together (`&mut tx`) or runs alone (`&mut conn`). Built: `user/` (find by id or email, password hash, insert guest or account, confirm a guest's email, move a guest's rows, delete, advisory lock per email), `session/` (insert, find by refresh hash current or previous, conditional rotate, revoke, revoke others, delete ended), `email_link/` (insert, count recent per address, set token, consume, retire the others, delete old), `passkey/` (challenges: insert, take once, delete expired; passkeys: insert unless known, find by credential id, ids per user, record use), `audit/` (insert with the admin's email copied, finish once).
+- From M1-D3, `database::Database` (`begin()` → `Tx`, `connection()` → a pooled `Conn`) is how services get connections, and the new repositories take `&mut PgConnection` in **every** method: the service decides what commits together (`&mut tx`) or runs alone (`&mut conn`). Built: `user/` (find by id or email, password hash, insert guest or account, confirm a guest's email, move a guest's rows, delete, advisory lock per email), `session/` (insert, find by refresh hash current or previous, conditional rotate, revoke, revoke others, delete ended), `email_link/` (insert, count recent per address, set token, consume, retire the others, delete old), `passkey/` (challenges: insert, take once, delete expired; passkeys: insert unless known, find by credential id, ids per user, record use), `audit/` (insert with the admin's email copied, finish once). Built (M1-D4): `capture/` (insert a pending capture, photos due for the purge, forget a photo's key if it still names it; M1-D5: find, `lock` with `FOR UPDATE`, `save` the fields that change); `design/` (M1-D6: insert, find, lock, update, a page of summaries and its count: the sort column and direction are parameters picked by `CASE`, since the SQL is fixed; search is `strpos(lower(name), lower($q))`, so no `LIKE` escaping); `job/` gained `insert_unless_recent` (the schedule check, under an advisory lock per kind).
 
 ### 4.5 `src/service`
 Business logic layer — one folder per Paccradle domain.
@@ -182,11 +190,11 @@ service/
 ├── session/                 # access tokens, rotating refresh tokens, guest merge at sign-in (M1-D3)
 ├── passkey/                 # WebAuthn ceremonies, both surfaces (M1-D3)
 ├── audit/                   # the admin write log (M1-D3)
-├── capture/                 # upload checks, vision jobs, corrections (calls vision)
-├── design/                  # create/update designs, versions, share links (calls insert_core)
+├── capture/                 # uploads (M1-D4); vision runs, reading a capture, corrections (M1-D5; calls vision)
+├── design/                  # create, get, versioned update, "My designs" (M1-D6; checks specs with insert_core); share links (M2)
 ├── export/                  # entitlement check, export jobs, signed URLs (calls insert_core exporters)
 ├── billing/                 # Paddle checkout payloads, webhooks, credits, unlocks, subscriptions
-└── privacy/                 # photo purge, account and data deletion
+└── privacy/                 # photo purge (M1-D4), account and data deletion
 ```
 
 Each folder follows the same pattern: `mod.rs`, `<domain>_service.rs`, `<domain>_service_trait.rs`.
@@ -205,10 +213,12 @@ third_party/
 │   ├── mod.rs
 │   ├── billing_provider_trait.rs   # BillingProvider (CLAUDE.md §9.4) — swap to another merchant of record later
 │   └── paddle.rs                   # checkout data, subscriptions API, webhook signature verification
-├── storage/
+├── http.rs                         # the HTTPS client providers share: reqwest on rustls + ring, webpki roots, no redirects (M1-D4)
+├── storage/                        # built in M1-D4
 │   ├── mod.rs
-│   ├── storage_trait.rs
-│   └── cloudflare_r2.rs            # uploads, short-lived signed URLs, deletes
+│   ├── storage_trait.rs            # ObjectStorage: put, get, delete (idempotent), signed_url (made locally, ≤ 7 days)
+│   ├── cloudflare_r2.rs            # S3 API, path-style URLs, SigV4 (shared::sigv4); outages 503 `storage`, refusals 500
+│   └── memory.rs                   # tests, and development without STORAGE_* (lost at restart); can be made to fail
 ├── email/                          # built in M1-D3
 │   ├── mod.rs
 │   ├── email_sender_trait.rs       # EmailSender, EmailMessage (plain text; Debug hides the body)
@@ -230,12 +240,12 @@ Request/response contracts. The API contract is documented in dated Postman file
 ```text
 schemas/
 ├── mod.rs
-├── common.rs                # error body (M1-D1); pagination (page, page_size, total_pages), money
+├── common.rs                # error body (M1-D1); PageResponse<T> + page_request (M1-D6); money later
 ├── meta.rs                  # HealthResponse, VersionResponse (M1-D1)
 ├── identity.rs              # email link, password, SessionResponse, AccountResponse (M1-D3)
 ├── passkey.rs               # W3C options/credential JSON, PasskeyResponse (M1-D3)
-├── capture.rs               # CaptureResponse (CLAUDE.md §5.5 JSON), CorrectionRequest
-├── design.rs                # CreateDesignRequest, DesignResponse, DesignListQuery
+├── capture.rs               # CreateCaptureRequest + CaptureCreatedResponse (M1-D4); CaptureResponse (CLAUDE.md §5.5 JSON), CorrectionRequest (D5)
+├── design.rs                # CreateDesignRequest, UpdateDesignRequest, DesignListParams, DesignResponse, DesignSummaryResponse (M1-D6)
 ├── export.rs                # CreateExportRequest, ExportResponse, CheckoutRequired (402)
 └── webhooks.rs              # Paddle webhook payloads
 ```
@@ -260,8 +270,8 @@ handlers/
 ├── auth/                    # /auth/{passkey/sign-in[/options],refresh,sign-out} on each surface; refresh cookie (M1-D3)
 ├── client/
 │   ├── mod.rs               # client router: its *_route.rs files, api-version header, CORS for APP_WEB_URL
-│   ├── capture/             # multipart upload (limit set in M1-D4)
-│   ├── design/
+│   ├── capture/             # POST /captures: multipart upload, own body limit and hourly per-address limit (M1-D4); GET /captures/{id}, POST /captures/{id}/correct, no-store (M1-D5)
+│   ├── design/              # POST/GET /designs, GET/PATCH /designs/{id} (M1-D6)
 │   ├── export/
 │   ├── billing/             # customer portal link
 │   ├── identity/            # /auth/{guest,email-link[/sign-in],password/sign-in}, /me, /me/password, /me/passkeys (M1-D3)
@@ -297,11 +307,11 @@ jobs/
 ├── handler.rs               # JobHandler (typed payload), JobHandlers (one per kind)
 ├── worker.rs                # claim loops + housekeeping (M1-D2)
 ├── send_email_link.rs       # makes a link's token and emails it, through the identity service (M1-D3)
-├── run_vision.rs            # calls capture service (M1-D5)
+├── purge_photos.rs          # daily: calls privacy service (photos older than 30 days, M1-D4)
+├── run_vision.rs            # calls capture service; marks a run failed when its job fails for good (M1-D5)
 ├── run_export.rs            # calls export service (M1-D7)
 ├── process_webhooks.rs      # calls billing service for stored Paddle events (M1-F3)
-├── reconcile_billing.rs     # daily: calls billing service to repair subscription drift
-└── purge_photos.rs          # daily: calls privacy service (photos older than 30 days, M1-D4)
+└── reconcile_billing.rs     # daily: calls billing service to repair subscription drift
 ```
 
 Rules: jobs behave like handlers for background work — they only call services; jobs are idempotent and safe to retry.
@@ -313,6 +323,8 @@ How the queue works (M1-D2; the states are drawn in `migrations/…_jobs.sql`):
 - **Lease**: a claim holds the job for 5 minutes. Housekeeping (every minute) requeues a job whose worker died, or buries it when it was the last attempt. A result that arrives after the lease is dropped (`JobOutcome::Lost`), so handlers must be safe to run twice.
 - **Failures**: `JobError::Retry` waits 10 s, 20 s, 40 s… (at most 1 h) until the attempts run out, then the job is dead; `JobError::GiveUp` (and a payload that can't be read) is dead at once; a panic counts as a retry. Dead jobs stay for the back office; done jobs are deleted after 7 days.
 - **Shutdown**: SIGTERM stops new claims; running jobs get up to 25 s to finish (the deploy allows 35 s), else their lease frees them.
+- **Failed for good** (M1-D5): `JobHandler::failed_for_good(payload)` runs once a job gives up or its last attempt fails (`JobHandlers::run` knows the attempts), so a handler whose job leaves a row waiting can record it. Only `run_vision` uses it (the capture's run becomes `failed`, `CAPTURE_PROCESSING_FAILED`). A worker that dies during the last attempt skips it (the lease expires instead).
+- **Schedules** (M1-D4): `jobs::schedules()` lists the kinds that run by themselves (`Schedule::of::<K>((payload, every))`). Housekeeping (at start, then every minute) adds the next run when none of the kind is queued or running and the last finished (done or dead) at least `every` ago, under an advisory lock so two processes can't both add it. Only kinds with a handler are scheduled. Built: `purge_photos` daily (10 attempts, so a storage outage of up to about 1.5 h is retried; a run longer than 3 minutes queues the next to carry on).
 
 ### 4.10 `src/middleware`
 Cross-cutting HTTP concerns. `middleware::stack` wraps every route, outermost first:
@@ -325,20 +337,20 @@ Cross-cutting HTTP concerns. `middleware::stack` wraps every route, outermost fi
 6. catch panics → 500;
 7. `timeout`: `HTTP_REQUEST_TIMEOUT_SECONDS` (30) → 503 `REQUEST_TIMEOUT`;
 8. `rate_limit`: `RATE_LIMIT_PER_MINUTE` (600) per client address (`client_ip`: the `RATE_LIMIT_CLIENT_IP_HEADER` header Nginx overwrites, else the peer) → 429 `RATE_LIMITED` with `retry-after`;
-9. body limit: `HTTP_BODY_LIMIT_BYTES` (1 MiB) through `DefaultBodyLimit`, which a route can raise for itself (uploads, M1-D4).
+9. body limit: `HTTP_BODY_LIMIT_BYTES` (1 MiB) through `DefaultBodyLimit`, which a route can raise for itself: `POST /captures` takes 15 MiB + 64 KiB (M1-D4) and keeps the 30-second timeout, since Nginx buffers the whole upload before passing it on.
 
-Per surface (in `handlers`): `cors::for_origin`, the `api-version` header, and an `Extension(ApiSurface)` so extractors know the surface. On `/auth/…`: `same_origin::require` (an `Origin` other than the surface's web origin is `FORBIDDEN`), `no-store`, and on the sign-in routes `rate_limit::PerClient::with_rate(RATE_LIMIT_AUTH_PER_MINUTE)`. On the admin router, every path but `/auth/…`: `admin_guard::require_admin`, which checks an admin access token and records every write in `admin_audit_log` before running it (a write it can't record doesn't run).
+Per surface (in `handlers`): `cors::for_origin`, the `api-version` header, and an `Extension(ApiSurface)` so extractors know the surface. On `/auth/…`: `same_origin::require` (an `Origin` other than the surface's web origin is `FORBIDDEN`), `no-store`, and on the sign-in routes `rate_limit::PerClient::with_rate(RATE_LIMIT_AUTH_PER_MINUTE)`. On `POST /captures`: `rate_limit::PerClient::with_window` allows 4 × `RATE_LIMIT_UPLOADS_PER_HOUR` per client address per hour, checked before the body is read (the per-user limit is in the capture service). On the admin router, every path but `/auth/…`: `admin_guard::require_admin`, which checks an admin access token and records every write in `admin_audit_log` before running it (a write it can't record doesn't run).
 
 Who a request comes from (M1-D3): handlers take `AuthUser` (`middleware::auth`), read from `Authorization: Bearer` and checked for the surface's audience; `AUTH_REQUIRED` otherwise. Compression (item 4) also skips `Cache-Control: no-store` responses, which every token- or account-carrying response is.
 
 ### 4.11 `src/shared`
 Reusable utilities with no business logic.
 
-Built (M1-D1): `api_surface.rs` (surfaces, prefixes, contract versions), `id.rs` (UUID v7), `logger.rs` (JSON logs in production), `rate_limiter.rs` (in-memory token bucket per key, idle keys swept). Built (M1-D3): `base64url.rs` (canonical, unpadded), `crypto.rs` (secure random, SHA-256, `NewToken` + `token_hash`), `jwt.rs` (HS256 only, one fixed header, constant-time check), `password.rs` (Argon2id PHC, `DUMMY_HASH` for equal timing), `webauthn/` (CBOR reader, COSE keys ES256/EdDSA/RS256, authenticator and client data, `verify_registration`, `verify_authentication`). Later: money helpers (minor units, formatting), unit helpers (mm), pagination helpers.
+Built (M1-D1): `api_surface.rs` (surfaces, prefixes, contract versions), `id.rs` (UUID v7), `logger.rs` (JSON logs in production), `rate_limiter.rs` (in-memory token bucket per key, idle keys swept). Built (M1-D3): `base64url.rs` (canonical, unpadded), `crypto.rs` (secure random, SHA-256, `NewToken` + `token_hash`), `jwt.rs` (HS256 only, one fixed header, constant-time check), `password.rs` (Argon2id PHC, `DUMMY_HASH` for equal timing), `webauthn/` (CBOR reader, COSE keys ES256/EdDSA/RS256, authenticator and client data, `verify_registration`, `verify_authentication`). Built (M1-D4): `sigv4.rs` (AWS Signature Version 4 for the S3 API: signed headers and presigned URLs, checked against AWS's worked examples); `rate_limiter.rs` gained `with_window` (hourly upload limits). Later: money helpers (minor units, formatting), unit helpers (mm), pagination helpers.
 
 ## 5. Data model (core tables)
 See CLAUDE.md §8.4 for the full list, and `migrations/` for the columns and rules:
-`users`, `captures`, `products`, `designs`, `design_unlocks`, `credit_ledger`, `subscriptions`, `paddle_events`, `exports`, `jobs` (M1-D2), plus the sign-in tables of M1-D3: `users.role`, `email_confirmed_at`, `password_hash`; `sessions`, `email_links`, `passkeys`, `passkey_challenges`, `admin_audit_log`.
+`users`, `captures`, `products`, `designs`, `design_unlocks`, `credit_ledger`, `subscriptions`, `paddle_events`, `exports`, `jobs` (M1-D2), plus the sign-in tables of M1-D3: `users.role`, `email_confirmed_at`, `password_hash`; `sessions`, `email_links`, `passkeys`, `passkey_challenges`, `admin_audit_log`. M1-D5 added `captures.run` (the run number) and `captures.error_meta` (the stored error's values).
 
 Conventions (the header of the first migration):
 - IDs are UUID v7 made by the API (`shared::id::new_id`), never serial numbers; external IDs (Paddle's) are unique text columns next to them.
@@ -356,8 +368,8 @@ Conventions (the header of the first migration):
 - **Outgoing side effects** (emails, vision runs, exports, AI calls) go through the job table, never inline in request handlers.
 
 ## 7. Security & privacy rules
-- **Uploads:** 10 MB maximum, file-type check, pixel-count cap (decompression bombs), rate limits (CLAUDE.md §8.5).
-- **Photos:** strip GPS from EXIF, store as private R2 objects, delete after 30 days; keep only outlines and sizes. Photos are only sent to an AI provider when the user hasn't opted out (CLAUDE.md §5.4).
+- **Uploads:** 15 MB maximum (`CAPTURE_FILE_TOO_LARGE`), file type from the bytes and pixel count from the header before anything is decoded or stored (`photo_file::inspect`; decompression bombs), 30 an hour per user and 4 times that per client address (`RATE_LIMIT_UPLOADS_PER_HOUR`) (CLAUDE.md §8.5).
+- **Photos:** stored as `photos/{capture_id}.{ext}`, private R2 objects, after `photo_file::clean` keeps only the picture, its colour profile and its EXIF orientation (no GPS or other EXIF, XMP, comments, thumbnails, or anything after the image); the camera make, model and focal length the browser read go to `captures.exif`, any other field it sends (a location included) is dropped unread. Deleted after 30 days by the daily purge; keep only outlines and sizes. A photo stored for a capture that then fails to save is deleted again. Photo bytes never reach a log line (`NewObject` and `PhotoUpload` print sizes only). Photos are only sent to an AI provider when the user hasn't opted out (CLAUDE.md §5.4).
 - **Paid files:** short-lived signed URLs only.
 - Refresh tokens issued as `HttpOnly; Secure; SameSite=Strict` cookies scoped to the surface's `/auth` path on the API host; CORS allows only the app's own origin. The web app and the API must be on the same site (`app.` and `api.paccradle.com`), or browsers drop the cookie.
 - **Back office:** the admin surface fails closed: every admin path, unknown ones included, answers 401 unless the caller is a signed-in admin, so admin routes can't be discovered; only `/auth/…` is open. Its CORS origin (`ADMIN_WEB_URL`) is separate from the web app's. Admins sign in with a passkey only (no password, no email link), get 5-minute access tokens and a 12-hour session that refreshes don't extend; losing the role ends the session at its next refresh. Every admin write is logged (who, what, when, status) before it runs. The role is granted in SQL for now.
@@ -373,6 +385,20 @@ Conventions (the header of the first migration):
 - **Sessions.** Access token: HS256 JWT (`sub`, `sid`, `aud` = surface, `role`, 15 min; 5 on the back office). Refresh token: 256 random bits in the cookie, SHA-256 in `sessions`, replaced on every refresh; the client session slides to 30 days. A refresh token reused within 30 s of its replacement (two tabs) gets an access token and no new cookie; later, it revokes the session. Any sign-in revokes the browser's previous session.
 - **Passkeys.** Options and answers are the W3C JSON shapes. Registration needs a signed-in account; attestation is not checked (`none`). Challenges are single-use, 5 minutes, and deleted before the answer is checked, so a refused answer can't be retried. Every refusal is `AUTH_PASSKEY_REJECTED`; the reason is logged. The passkey's user handle is the user's id. `WEBAUTHN_RP_ID` must cover the web app's and the back office's hosts and never change after launch.
 - **Housekeeping.** Expired sessions (30 days after expiry), old links (7 days) and expired challenges are deleted when new ones are made; there's no scheduled job yet.
+
+## 9. Captures and vision runs (M1-D5)
+- **A capture's run.** `captures.run` numbers its vision runs (1 at upload). A tap starts the next one (status `pending`, the last outline kept), and so does a height typed while a run is pending; an edit moves the number on too, since it outdates a pending run. Every change to a capture happens under its row lock (`CaptureRepository::lock`) in one transaction, with the next run's `run_vision` job queued in the same transaction.
+- **The job** (`{capture_id, run}`) reads the capture without a lock, skips it when the run is no longer the capture's or it isn't pending, reads the photo from storage (gone: `CAPTURE_PHOTO_DELETED`), runs `vision::run` in a blocking task (two at a time per process, `VISION_AT_ONCE`), then saves under the lock only if the run is still the capture's. Whatever vision says is saved (status `failed` with `error_code` and `error_meta`; `CAPTURE_PROCESSING_FAILED`, an OpenCV error, is also logged); storage and database outages are errors the job retries.
+- **Corrections** (`POST /captures/{id}/correct`, exactly one of): `tap_point_px` → 202, a new run (counts against the hourly vision runs; `CAPTURE_PHOTO_DELETED` once the photo is gone); `edited_contour_px` → 200, `vision::accept_edit` at once (`CAPTURE_NOT_READY` without an outline, `CAPTURE_OUTLINE_CROSSES_ITSELF`); `height_mm` → 200 with `vision::set_height` applied, or 202 with a new run while one is pending.
+- **Reading** (`GET /captures/{id}`): status, settings, the latest outline (the §5.5 JSON, kept while a newer run is pending or after it failed), the last error in the caller's language, and a 10-minute signed photo link while the photo is kept. Someone else's capture is `CAPTURE_NOT_FOUND`, as is an unknown id. Both answers are `no-store`.
+- **Codes.** Every `vision` code is an `ErrorCode` (`ErrorCode::from_code` reads a stored one back; an unknown one reads as `CAPTURE_PROCESSING_FAILED`). Vision's `InvalidInput` names the setting (`focal_length_35mm` is `exif.focal_length_35mm`, as the upload sends it) and what it allows.
+
+## 10. Designs (M1-D6)
+- **A design** is the editor's `insert_core::Design` (`designs.spec`) with a name (≤ 200 characters, may be empty) and a version. Its products carry **copies** of their outlines (from a capture's `result.products[].contour_mm`, or typed): a capture corrected later doesn't change a saved design. The `products` table stays unused until a product library or the kit builder (M3) needs products across designs.
+- **Saving** checks the spec twice: its shape when it is read (`DESIGN_INVALID` with serde's words) and its rules in the design service (`Design::validate`, `DESIGN_INVALID` with `insert_core`'s words in `meta.detail`). The messages are English: the editor runs the same rules in WASM, so these mean a bug or a hand-made request. A design that can't be generated yet (it doesn't fit its box…) is still saved; exports (M1-D7) generate it.
+- **Versions.** `POST` saves version 1. `PATCH` carries the version it was made from: another one is `DESIGN_VERSION_CONFLICT` with `meta.current_version` (another tab saved first; the editor reloads). A change that changes nothing keeps the version, so autosaving the same state costs nothing. Every saved change adds one; an export records the version it was made from.
+- **"My designs"** (`GET /designs`): `page` (from 1), `page_size` (1–100, default 20), `search` (name, any case), `style`, `sort` (`updated_at` default, `created_at`, `name`), `order` (default `asc` by name, `desc` by date); `{items, page, page_size, total, total_pages}`. Items are summaries without outlines (style, product types and count, whether it has a box). Unknown parameters are `INVALID_REQUEST`.
+- **Privacy.** Someone else's design, or an unknown id, is `DESIGN_NOT_FOUND`. Guests save designs too; they move to the account when the guest signs up or in (M1-D3).
 
 ## Related files
 - `CLAUDE.md` (repo root) — product plan

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT exif FROM captures",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exif",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "captures",
+            "name": "exif"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0b087cae025b1c392356ef64d4bf6d49567d64ab4566f6f4f607077fea4d7fea"
+}

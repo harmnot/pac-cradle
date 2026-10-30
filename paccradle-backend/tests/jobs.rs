@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use paccradle_backend::jobs::{JobHandler, JobHandlers, Worker};
-use paccradle_backend::models::job::{JobError, JobKind, JobOutcome, NewJob, Tidied};
+use paccradle_backend::models::job::{JobError, JobKind, JobOutcome, NewJob, Schedule, Tidied};
 use paccradle_backend::repository::job::PgJobRepository;
 use paccradle_backend::service::job::{DefaultJobService, JobService, RetryPolicy};
 use serde::{Deserialize, Serialize};
@@ -479,4 +479,100 @@ async fn no_workers_or_no_handlers_claim_nothing(pool: PgPool) {
     for worker_loop in loops {
         worker_loop.await.unwrap();
     }
+}
+
+/// M1-D4: a scheduled kind is queued by housekeeping as soon as the worker starts, then run;
+/// a kind the worker has no handler for is never scheduled.
+#[sqlx::test]
+async fn the_worker_queues_scheduled_jobs_it_can_run(pool: PgPool) {
+    let queue: Arc<dyn JobService> = Arc::new(queue(&pool));
+    let day = Duration::from_secs(24 * 60 * 60);
+    let schedules = vec![
+        Schedule::of::<Greet>((&greeting("daily"), day)).unwrap(),
+        Schedule::of::<Fragile>((&greeting("never"), day)).unwrap(),
+    ];
+    let seen = Arc::new(Mutex::new(vec!["daily".to_owned()]));
+    let handlers = JobHandlers::new().with(Flaky {
+        seen: Arc::clone(&seen),
+    });
+    let (stop_sender, stop) = watch::channel(false);
+    let loops = Worker::new(Arc::clone(&queue), handlers)
+        .with_schedules(schedules)
+        .poll_every(Duration::from_millis(10))
+        .start(1, stop);
+
+    let mut kinds = Vec::new();
+    for _ in 0..500 {
+        kinds = sqlx::query_scalar!("SELECT kind FROM jobs WHERE status = 'done'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        if !kinds.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    stop_sender.send(true).unwrap();
+    for worker_loop in loops {
+        worker_loop.await.unwrap();
+    }
+    assert_eq!(kinds, ["greet"]);
+    let all = sqlx::query_scalar!("SELECT kind FROM jobs")
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+    assert_eq!(all, ["greet"], "no handler, no schedule");
+}
+
+/// Records the payloads it was told failed for good (M1-D5).
+struct Doomed {
+    failed: Arc<Mutex<Vec<String>>>,
+}
+
+impl JobHandler for Doomed {
+    type Kind = Fragile;
+
+    async fn run(&self, payload: Greeting) -> Result<(), JobError> {
+        if payload.name == "hopeless" {
+            return Err(JobError::GiveUp("never".into()));
+        }
+        Err(JobError::Retry("not yet".into()))
+    }
+
+    async fn failed_for_good(&self, payload: Greeting) {
+        self.failed.lock().unwrap().push(payload.name);
+    }
+}
+
+/// M1-D5: a handler hears when its job fails for good (it gave up, or its last attempt
+/// failed), and not before.
+#[sqlx::test]
+async fn a_handler_hears_when_its_job_fails_for_good(pool: PgPool) {
+    let queue = queue(&pool);
+    let failed = Arc::new(Mutex::new(Vec::new()));
+    let handlers = JobHandlers::new().with(Doomed {
+        failed: Arc::clone(&failed),
+    });
+    for name in ["hopeless", "patient"] {
+        add(
+            &queue,
+            &pool,
+            NewJob::of::<Fragile>(&greeting(name)).unwrap(),
+        )
+        .await;
+    }
+    let mut outcomes = Vec::new();
+    for _ in 0..4 {
+        sqlx::query("UPDATE jobs SET run_at = now()")
+            .execute(&pool)
+            .await
+            .unwrap();
+        while let Some(job) = queue.claim(&[Fragile::NAME]).await.unwrap() {
+            let result = handlers.run(&job).await;
+            outcomes.push(queue.finish(&job, result).await.unwrap());
+        }
+    }
+    // "patient" fails its first attempt (retried), then its second and last.
+    assert_eq!(outcomes.len(), 3);
+    assert_eq!(*failed.lock().unwrap(), ["hopeless", "patient"]);
 }

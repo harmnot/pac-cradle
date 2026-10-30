@@ -5,7 +5,8 @@ use uuid::Uuid;
 use super::UserRepository;
 use crate::error::AppError;
 use crate::models::TextEnum;
-use crate::models::user::{NewUser, PaperDefault, Role, User};
+use crate::models::paper::Paper;
+use crate::models::user::{NewUser, Role, User};
 use crate::shared::future::BoxFuture;
 
 /// [`UserRepository`] on Postgres.
@@ -39,7 +40,7 @@ impl TryFrom<UserRow> for User {
             email: row.email,
             role: Role::from_text(&row.role)?,
             locale: row.locale,
-            paper_default: PaperDefault::from_text(&row.paper_default)?,
+            paper_default: Paper::from_text(&row.paper_default)?,
             has_password: row.has_password,
             passkey_count: row.passkey_count,
             created_at: row.created_at,

@@ -1,0 +1,13 @@
+[package]
+name = "photo_file"
+description = "Paccradle uploaded photos as files: what the header says, and a copy without the metadata (CLAUDE.md §8.5). Pure Rust, no OpenCV."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true

@@ -190,7 +190,7 @@ fn load(vars: &[(&str, &str)]) -> Result<AppConfig, ConfigError> {
     AppConfig::from_lookup(|name| vars.get(name).map(|value| (*value).to_owned()))
 }
 
-const PRODUCTION: [(&str, &str); 9] = [
+const PRODUCTION: [(&str, &str); 13] = [
     ("APP_ENV", "production"),
     (
         "DATABASE_URL",
@@ -203,6 +203,14 @@ const PRODUCTION: [(&str, &str); 9] = [
     ("SMTP_HOST", "mail.smtp2go.com"),
     ("SMTP_USERNAME", "paccradle"),
     ("SMTP_PASSWORD", "smtp-secret"),
+    // Photos (M1-D4): tests/config.rs checks these.
+    (
+        "STORAGE_ENDPOINT",
+        "https://account.r2.cloudflarestorage.com",
+    ),
+    ("STORAGE_BUCKET", "paccradle-photos"),
+    ("STORAGE_ACCESS_KEY_ID", "key-id"),
+    ("STORAGE_SECRET_ACCESS_KEY", "key-secret"),
 ];
 
 #[test]

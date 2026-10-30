@@ -11,7 +11,8 @@ use std::time::{Duration, Instant};
 /// doubles, so their cost spreads over many requests.
 const MIN_SWEEP_AT: usize = 10_000;
 
-/// Allows each key `per_minute` requests at once, refilled evenly over a minute.
+/// Allows each key a number of requests at once, refilled evenly over a window (a minute
+/// unless made with [`RateLimiter::with_window`]).
 pub struct RateLimiter<K> {
     capacity: f64,
     per_second: f64,
@@ -32,10 +33,16 @@ struct Bucket {
 impl<K: Hash + Eq> RateLimiter<K> {
     /// A limiter allowing `per_minute` requests per key.
     pub fn new(per_minute: NonZeroU32) -> Self {
-        let capacity = f64::from(per_minute.get());
+        Self::with_window((per_minute, Duration::from_secs(60)))
+    }
+
+    /// A limiter allowing `capacity` requests per key at once, refilled evenly over `window`
+    /// (uploads: so many per hour).
+    pub fn with_window((capacity, window): (NonZeroU32, Duration)) -> Self {
+        let capacity = f64::from(capacity.get());
         Self {
             capacity,
-            per_second: capacity / 60.0,
+            per_second: capacity / window.as_secs_f64().max(f64::MIN_POSITIVE),
             state: Mutex::new(Buckets {
                 by_key: HashMap::new(),
                 sweep_at: MIN_SWEEP_AT,

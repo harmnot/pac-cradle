@@ -6,19 +6,20 @@ use tokio::task::JoinHandle;
 use tracing::Instrument;
 
 use super::JobHandlers;
-use crate::models::job::{Job, JobError, JobOutcome, Tidied};
+use crate::models::job::{Job, JobError, JobOutcome, Schedule, Tidied};
 use crate::service::job::JobService;
 
 /// How often an idle worker looks for due jobs.
 pub const POLL_INTERVAL: Duration = Duration::from_millis(500);
 
-/// How often housekeeping runs (expired leases, old done jobs).
+/// How often housekeeping runs (expired leases, old done jobs, scheduled jobs that are due).
 const TIDY_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Claim loops over the job queue, plus housekeeping.
 pub struct Worker {
     jobs: Arc<dyn JobService>,
     handlers: Arc<JobHandlers>,
+    schedules: Vec<Schedule>,
     poll_interval: Duration,
 }
 
@@ -28,8 +29,19 @@ impl Worker {
         Self {
             jobs,
             handlers: Arc::new(handlers),
+            schedules: Vec::new(),
             poll_interval: POLL_INTERVAL,
         }
+    }
+
+    /// The same worker, adding the jobs of `schedules` when they are due (checked with
+    /// housekeeping, every minute). Only kinds it has a handler for are scheduled.
+    pub fn with_schedules(mut self, schedules: Vec<Schedule>) -> Self {
+        self.schedules = schedules
+            .into_iter()
+            .filter(|schedule| self.handlers.kinds().contains(&schedule.kind()))
+            .collect();
+        self
     }
 
     /// The same worker, looking for jobs every `interval` when idle.
@@ -130,6 +142,15 @@ impl Worker {
 
     async fn tidy_loop(self: Arc<Self>, mut stop: watch::Receiver<bool>) {
         loop {
+            for schedule in &self.schedules {
+                match self.jobs.schedule(schedule).await {
+                    Ok(true) => tracing::info!(kind = schedule.kind(), "scheduled job queued"),
+                    Ok(false) => {}
+                    Err(error) => {
+                        tracing::warn!(kind = schedule.kind(), ?error, "cannot schedule a job");
+                    }
+                }
+            }
             match self.jobs.tidy().await {
                 Ok(tidied) if tidied != Tidied::default() => tracing::info!(
                     requeued = tidied.requeued,

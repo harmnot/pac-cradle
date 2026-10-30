@@ -3,8 +3,11 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::config::AppConfig;
+use crate::error::AppError;
 use crate::repository::audit::PgAuditRepository;
+use crate::repository::capture::{CaptureRepository, PgCaptureRepository};
 use crate::repository::database::{Database, PgDatabase};
+use crate::repository::design::PgDesignRepository;
 use crate::repository::email_link::PgEmailLinkRepository;
 use crate::repository::health::PgHealthRepository;
 use crate::repository::job::PgJobRepository;
@@ -12,12 +15,16 @@ use crate::repository::passkey::PgPasskeyRepository;
 use crate::repository::session::PgSessionRepository;
 use crate::repository::user::{PgUserRepository, UserRepository};
 use crate::service::audit::{AuditService, DefaultAuditService};
+use crate::service::capture::{CaptureProviders, CaptureService, DefaultCaptureService};
+use crate::service::design::{DefaultDesignService, DesignProviders, DesignService};
 use crate::service::health::{DefaultHealthService, HealthService};
 use crate::service::identity::{DefaultIdentityService, IdentityProviders, IdentityService};
 use crate::service::job::{DefaultJobService, JobService};
 use crate::service::passkey::{DefaultPasskeyService, PasskeyProviders, PasskeyService};
+use crate::service::privacy::{DefaultPrivacyService, PrivacyProviders, PrivacyService};
 use crate::service::session::{DefaultSessionService, SessionService};
 use crate::third_party::email::{EmailSender, SmtpEmailSender};
+use crate::third_party::storage::{CloudflareR2, MemoryStorage, ObjectStorage};
 
 /// What every handler and job can reach: the settings and the services, each behind its trait
 /// so tests can swap one.
@@ -37,17 +44,54 @@ pub struct AppState {
     pub passkeys: Arc<dyn PasskeyService>,
     /// The log of admin writes.
     pub audit: Arc<dyn AuditService>,
+    /// Photo uploads, vision runs and corrections.
+    pub captures: Arc<dyn CaptureService>,
+    /// The photo purge (and, later, account deletion).
+    pub privacy: Arc<dyn PrivacyService>,
+    /// Saved designs.
+    pub designs: Arc<dyn DesignService>,
+}
+
+/// The outside services the app talks to.
+#[derive(Clone)]
+pub struct Providers {
+    /// Where email goes.
+    pub email: Arc<dyn EmailSender>,
+    /// Where photos are kept.
+    pub storage: Arc<dyn ObjectStorage>,
+}
+
+impl Providers {
+    /// The providers the settings name: SMTP, and R2 (in development without `STORAGE_*`, a
+    /// store in memory, with a warning). Fails only if the HTTPS client can't be set up.
+    pub fn from_config(config: &AppConfig) -> Result<Self, AppError> {
+        let storage: Arc<dyn ObjectStorage> = match &config.storage {
+            Some(storage) => Arc::new(CloudflareR2::new(storage)?),
+            None => {
+                tracing::warn!(
+                    "STORAGE_* is not set: photos are kept in memory and lost at restart"
+                );
+                Arc::new(MemoryStorage::new())
+            }
+        };
+        Ok(Self {
+            email: Arc::new(SmtpEmailSender::new(config.email.clone())),
+            storage,
+        })
+    }
 }
 
 impl AppState {
-    /// The services wired to `pool`, sending email over SMTP.
-    pub fn new(config: AppConfig, pool: PgPool) -> Self {
-        let email = Arc::new(SmtpEmailSender::new(config.email.clone()));
-        Self::with_email(config, pool, email)
+    /// The services wired to `pool` and the providers the settings name.
+    pub fn new(config: AppConfig, pool: PgPool) -> Result<Self, AppError> {
+        let providers = Providers::from_config(&config)?;
+        Ok(Self::with_providers(config, pool, providers))
     }
 
-    /// The services wired to `pool`, sending email through `email` (tests record it).
-    pub fn with_email(config: AppConfig, pool: PgPool, email: Arc<dyn EmailSender>) -> Self {
+    /// The services wired to `pool` and `providers` (tests record email and keep photos in
+    /// memory).
+    pub fn with_providers(config: AppConfig, pool: PgPool, providers: Providers) -> Self {
+        let Providers { email, storage } = providers;
         let config = Arc::new(config);
         let db: Arc<dyn Database> = Arc::new(PgDatabase::new(pool.clone()));
         let users: Arc<dyn UserRepository> = Arc::new(PgUserRepository::new());
@@ -79,7 +123,27 @@ impl AppState {
                 sessions: Arc::clone(&sessions),
             },
         );
-        let audit = DefaultAuditService::new(db, Arc::new(PgAuditRepository::new()));
+        let audit = DefaultAuditService::new(Arc::clone(&db), Arc::new(PgAuditRepository::new()));
+        let captures: Arc<dyn CaptureRepository> = Arc::new(PgCaptureRepository::new());
+        let capture_service = DefaultCaptureService::new((
+            CaptureProviders {
+                db: Arc::clone(&db),
+                captures: Arc::clone(&captures),
+                storage: Arc::clone(&storage),
+                jobs: Arc::clone(&jobs),
+            },
+            config.rate_limit_uploads_per_hour,
+        ));
+        let designs = DefaultDesignService::new(DesignProviders {
+            db: Arc::clone(&db),
+            designs: Arc::new(PgDesignRepository::new()),
+        });
+        let privacy = DefaultPrivacyService::new(PrivacyProviders {
+            db,
+            captures,
+            storage,
+            jobs: Arc::clone(&jobs),
+        });
         Self {
             config,
             health: Arc::new(health),
@@ -88,6 +152,9 @@ impl AppState {
             identity: Arc::new(identity),
             passkeys: Arc::new(passkeys),
             audit: Arc::new(audit),
+            captures: Arc::new(capture_service),
+            privacy: Arc::new(privacy),
+            designs: Arc::new(designs),
         }
     }
 }

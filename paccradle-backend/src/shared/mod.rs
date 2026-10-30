@@ -11,4 +11,5 @@ pub mod password;
 pub mod rate_limiter;
 pub mod secret;
 pub mod shutdown;
+pub mod sigv4;
 pub mod webauthn;
